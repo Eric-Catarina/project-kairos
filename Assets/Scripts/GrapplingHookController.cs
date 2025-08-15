@@ -91,8 +91,8 @@ public class GrapplingHookController : MonoBehaviour
 
             float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
 
-            joint.maxDistance = distanceFromPoint * 0.8f;
-            joint.minDistance = distanceFromPoint * 0.1f;
+            joint.maxDistance = distanceFromPoint ;
+            joint.minDistance = 1;
             joint.spring = springForce;
             joint.damper = damper;
             joint.massScale = massScale;
