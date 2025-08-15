@@ -18,6 +18,10 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private float springForce = 8f;
     [SerializeField] private float damper = 7f;
     [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+
+    [SerializeField] private float maxSpringSize = .8f;
+
 
     [Header("Configurações do Pêndulo")]
     [SerializeField] private float swingForce = 50f;
@@ -29,7 +33,7 @@ public class GrapplingHookController : MonoBehaviour
 
     private PlayerMovementController playerMovement;
     private SpringJoint joint;
-    private Vector3 grapplePoint;
+    private Vector3 grapplePoint, currentGrapplePosition;
     private Vector2 moveInput;
     private float cooldownTimer;
 
@@ -91,8 +95,8 @@ public class GrapplingHookController : MonoBehaviour
 
             float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
 
-            joint.maxDistance = distanceFromPoint ;
-            joint.minDistance = 1;
+            joint.maxDistance = distanceFromPoint * maxSpringSize;
+            joint.minDistance = distanceFromPoint * minSpringSize;
             joint.spring = springForce;
             joint.damper = damper;
             joint.massScale = massScale;
@@ -127,7 +131,10 @@ public class GrapplingHookController : MonoBehaviour
     private void DrawRope()
     {
         if (!joint) return;
+        currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
+
+
         lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, grapplePoint);
+        lineRenderer.SetPosition(1, currentGrapplePosition);
     }
 }

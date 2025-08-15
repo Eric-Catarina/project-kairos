@@ -10,7 +10,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private bool canDoubleJump;
 
     [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f;
+    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
     [SerializeField] private float airMultiplier = 0.6f;
@@ -94,18 +94,16 @@ public class PlayerMovementController : MonoBehaviour
         float forceMultiplier = isGrounded ? 1f : airMultiplier;
         rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
     }
-    
+
     private void LimitVelocity()
     {
         // CORRIGIDO: Usando a API moderna da Unity 6, 'linearVelocity'.
-        Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-
-        if (flatVel.magnitude > moveSpeed)
+        if (rb.linearVelocity.magnitude > maxMoveSpeed)
         {
-            Vector3 limitedVel = flatVel.normalized * moveSpeed;
-            // CORRIGIDO: Usando 'linearVelocity' para atribuir a velocidade.
-            rb.linearVelocity = new Vector3(limitedVel.x, rb.linearVelocity.y, limitedVel.z);
+            Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
+            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
         }
+
     }
 
     private void HandleJump()
@@ -132,7 +130,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded && !grapplingHookController.IsGrappling)
+        if (!isGrounded )
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }
