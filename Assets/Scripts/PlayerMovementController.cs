@@ -1,5 +1,6 @@
 // Local: Assets/Scripts/PlayerMovementController.cs
 
+using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -26,6 +27,7 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
+    public TextMeshProUGUI debugText;
 
     private Rigidbody rb;
     private Vector2 moveInput;
@@ -56,6 +58,8 @@ public class PlayerMovementController : MonoBehaviour
         CheckGroundedStatus();
         ApplyDrag();
         LimitVelocity();
+        debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
+
     }
 
     private void FixedUpdate()
@@ -97,7 +101,8 @@ public class PlayerMovementController : MonoBehaviour
 
     private void LimitVelocity()
     {
-        // CORRIGIDO: Usando a API moderna da Unity 6, 'linearVelocity'.
+
+
         if (rb.linearVelocity.magnitude > maxMoveSpeed)
         {
             Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
