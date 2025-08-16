@@ -297,7 +297,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: d24b930eec2223718bc70eb8a3f971c7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -408,7 +408,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: d24b930eec2223718bc70eb8a3f971c7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -601,7 +601,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 40, y: 6.012024}
+  m_AnchoredPosition: {x: 40, y: 6.011963}
   m_SizeDelta: {x: 658.2461, y: 184.988}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &203901434
@@ -768,7 +768,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: d24b930eec2223718bc70eb8a3f971c7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -879,7 +879,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: d24b930eec2223718bc70eb8a3f971c7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1062,6 +1062,7 @@ GameObject:
   m_Component:
   - component: {fileID: 818554838}
   - component: {fileID: 818554837}
+  - component: {fileID: 818554847}
   - component: {fileID: 818554839}
   - component: {fileID: 818554840}
   - component: {fileID: 818554843}
@@ -1150,8 +1151,8 @@ MonoBehaviour:
   isGrounded: 0
   canDoubleJump: 0
   moveSpeed: 7
-  maxMoveSpeed: 100
-  groundDrag: 5
+  maxMoveSpeed: 200
+  groundDrag: 3
   airDrag: 1
   airMultiplier: 1
   jumpForce: 25
@@ -1433,6 +1434,18 @@ TrailRenderer:
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1
+--- !u!114 &818554847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818554835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b90a1e69eeab1c85795029124db0bcc1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InputManager
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -1686,7 +1699,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: d24b930eec2223718bc70eb8a3f971c7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2006,22 +2019,22 @@ MonoBehaviour:
       Enabled: 1
       Input:
         InputAction: {fileID: -1448467868258644649, guid: f3baaf6744183cd8283bd7e915bf4332, type: 3}
-        Gain: 3
+        Gain: 4
         CancelDeltaTime: 0
       InputValue: 0
       Driver:
-        AccelTime: 0.2
+        AccelTime: 0
         DecelTime: 0.2
     - Name: Look Orbit Y
       Owner: {fileID: 1599364168}
       Enabled: 1
       Input:
         InputAction: {fileID: -1448467868258644649, guid: f3baaf6744183cd8283bd7e915bf4332, type: 3}
-        Gain: -3
+        Gain: -4
         CancelDeltaTime: 0
       InputValue: 0
       Driver:
-        AccelTime: 0.2
+        AccelTime: 0
         DecelTime: 0.2
     - Name: Orbit Scale
       Owner: {fileID: 1599364168}
@@ -2396,50 +2409,6 @@ MonoBehaviour:
   m_PointerBehavior: 0
   m_CursorLockBehavior: 0
   m_ScrollDeltaPerTick: 6
---- !u!1 &1866277361
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1866277363}
-  - component: {fileID: 1866277362}
-  m_Layer: 0
-  m_Name: InputManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1866277362
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1866277361}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b90a1e69eeab1c85795029124db0bcc1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::InputManager
---- !u!4 &1866277363
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1866277361}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.50681, y: 2.28476, z: 0.07832}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1867799288
 GameObject:
   m_ObjectHideFlags: 0
@@ -2724,7 +2693,6 @@ MeshFilter:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1866277363}
   - {fileID: 963194228}
   - {fileID: 705507995}
   - {fileID: 1788996113}
@@ -2736,5 +2704,5 @@ SceneRoots:
   - {fileID: 539316018}
   - {fileID: 145679690}
   - {fileID: 650255890}
-  - {fileID: 1521076725}
   - {fileID: 146226214}
+  - {fileID: 1521076725}

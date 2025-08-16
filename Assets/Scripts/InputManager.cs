@@ -31,6 +31,7 @@ public class InputManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         _playerControls = new PlayerControls();
+        Debug.Log("InputManager initialized and PlayerControls created.");
     }
 
     private void OnEnable()
@@ -43,6 +44,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Jump.performed += HandleJump;
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        Debug.Log("InputManager enabled and controls set up.");
     }
 
     private void OnDisable()
