@@ -1,5 +1,6 @@
 // Local: Assets/Scripts/PlayerLookController.cs
 
+using Unity.Cinemachine;
 using UnityEngine;
 
 /// <summary>
@@ -9,7 +10,11 @@ using UnityEngine;
 public class PlayerLookController : MonoBehaviour
 {
     [Header("Configurações")]
-    [SerializeField] private float rotationSpeed = 15f;
+    [SerializeField] private float playerRotationSpeed = 1;
+        [SerializeField] private float mouseSensitibityX = 4;
+        [SerializeField] private float mouseSensitibityY = 4;
+
+
 
     [Header("Referências")]
     [Tooltip("O modelo visual do jogador que deve rotacionar.")]
@@ -18,11 +23,20 @@ public class PlayerLookController : MonoBehaviour
     [SerializeField] private Transform orientation;
     [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
     [SerializeField] private Transform cameraTransform;
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        foreach (var c in cinemachineInputAxisController.Controllers)
+        {
+            if (c.Name == "Look Orbit X")
+            { c.Input.Gain = mouseSensitibityX; }
+            if (c.Name == "Look Orbit Y")
+            { c.Input.Gain = -mouseSensitibityY; }
+        } 
     }
 
     private void Update()
@@ -42,6 +56,6 @@ public class PlayerLookController : MonoBehaviour
         }
 
         // O modelo do jogador gira suavemente para se alinhar com a orientação.
-        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, rotationSpeed * Time.deltaTime);
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
 }

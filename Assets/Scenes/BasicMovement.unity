@@ -1132,10 +1132,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d9e8c580abd1d6c7917f676f3833876, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
-  rotationSpeed: 10
+  playerRotationSpeed: 1
+  mouseSensitibityX: 4
+  mouseSensitibityY: 4
   playerModel: {fileID: 2135841690}
   orientation: {fileID: 1457126761}
   cameraTransform: {fileID: 963194228}
+  cinemachineInputAxisController: {fileID: 1599364165}
 --- !u!114 &818554840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1292,7 +1295,7 @@ MonoBehaviour:
   grappleLayer:
     serializedVersion: 2
     m_Bits: 64
-  springForce: 10
+  springForce: 20
   damper: 7
   massScale: 10
   minSpringSize: 0.1
@@ -1508,7 +1511,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 62.42716
+  field of view: 69.2
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -1534,7 +1537,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.009121788, y: -0.011217122, z: 0.00010233088, w: 0.9998955}
+  m_LocalRotation: {x: 0.009121778, y: -0.011217122, z: 0.00010233078, w: 0.9998955}
   m_LocalPosition: {x: 1.1360614, y: 2.836, z: -3.835279}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2019,23 +2022,23 @@ MonoBehaviour:
       Enabled: 1
       Input:
         InputAction: {fileID: -1448467868258644649, guid: f3baaf6744183cd8283bd7e915bf4332, type: 3}
-        Gain: 4
+        Gain: 1
         CancelDeltaTime: 0
       InputValue: 0
       Driver:
         AccelTime: 0
-        DecelTime: 0.2
+        DecelTime: 0
     - Name: Look Orbit Y
       Owner: {fileID: 1599364168}
       Enabled: 1
       Input:
         InputAction: {fileID: -1448467868258644649, guid: f3baaf6744183cd8283bd7e915bf4332, type: 3}
-        Gain: -4
+        Gain: -1
         CancelDeltaTime: 0
       InputValue: 0
       Driver:
         AccelTime: 0
-        DecelTime: 0.2
+        DecelTime: 0
     - Name: Orbit Scale
       Owner: {fileID: 1599364168}
       Enabled: 1
@@ -2056,7 +2059,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1599364164}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a076c17fe76165e4f8ed21498b877bf9, type: 3}
   m_Name: 
@@ -2180,9 +2183,9 @@ MonoBehaviour:
   Target:
     TrackingTarget: {fileID: 818554838}
     LookAtTarget: {fileID: 818554838}
-    CustomLookAtTarget: 0
+    CustomLookAtTarget: 1
   Lens:
-    FieldOfView: 62.42716
+    FieldOfView: 69.2
     OrthographicSize: 5
     NearClipPlane: 0.3
     FarClipPlane: 1000
@@ -2209,7 +2212,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1599364164}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.009121785, y: -0.01121712, z: 0.00010233086, w: 0.9998955}
+  m_LocalRotation: {x: 0.009121777, y: -0.01121712, z: 0.000102330145, w: 0.9998955}
   m_LocalPosition: {x: 1.1360614, y: 2.836, z: -3.835279}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
