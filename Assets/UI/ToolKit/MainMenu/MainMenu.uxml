@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xmlns:engine="UnityEngine.UIElements" xmlns="UnityEngine.UIElements" stylesheet="MainMenu.uss" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/ToolKit/MainMenu/MainMenuUSS.uss?fileID=7433441132597879392&amp;guid=279a075fcfc87104e8cc605a892ead48&amp;type=3#MainMenuUSS" />
+    <ui:VisualElement name="main-container">
+        <ui:Label name="game-title" text="KAIROS" emoji-fallback-support="true" style="width: 346px; -unity-text-align: middle-center; height: 26px; right: auto; bottom: auto; left: auto; top: auto; position: relative; flex-wrap: nowrap; align-self: auto; align-content: auto; padding-top: 4px; padding-left: 2px; font-size: 60px; -unity-font-style: bold;" />
+        <ui:Button name="new-game-button" text="New Game" />
+        <ui:Button name="continue-button" text="Continue" />
+        <ui:Button name="settings-button" text="Settings" />
+        <ui:Button name="exit-button" text="Exit" />
+    </ui:VisualElement>
+</ui:UXML>
