@@ -34,7 +34,6 @@ Conquiste o flow perfeito entre movimento, tempo e precisão. 🚀
 - 🪝 **Grappling Hook dinâmico** para atravessar prédios  
 - ⏳ **Manipulação do tempo** (acelerar, desacelerar, congelar)  
 - 🏃 **Movimento fluido em parkour**
-- 📦 **Coleta de power-ups** para aprimorar velocidade e tempo  
 - 🏆 **Sistema de ranking** para competir contra seus próprios recordes  
 
 ---
