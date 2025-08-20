@@ -1,6 +1,6 @@
 # ⚡ Project Kairos – Um Speedrunner 3D Cyberpunk com Grappling Hook 🕶️🏙️
 
-🎮 **Project Kairos** é um jogo de **speedrun em primeira pessoa** onde cada segundo conta!  
+🎮 **Project Kairos** é um jogo de **speedrun em terceira pessoa** onde cada segundo conta!  
 Em meio a arranha-céus de um mundo **cyberpunk futurista**, você usará sua **habilidade com o Grappling Hook** 🪝 e o **controle do tempo** ⏳ para atravessar cenários vertiginosos e vencer seus próprios limites.  
 
 ---
