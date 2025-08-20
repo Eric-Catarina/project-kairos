@@ -25,7 +25,7 @@ Conquiste o flow perfeito entre movimento, tempo e precisão. 🚀
 - 👨‍💻 **C#** para lógica de gameplay e físicas  
 - 🎨 **Estética cyberpunk** com neons e contrastes vibrantes  
 - 🔊 **Trilha sonora futurista** para aumentar a adrenalina  
-- 💾 Sistema de **checkpoint e cronômetro** para speedruns  
+- 💾 Sistema de **cronômetro** para speedruns  
 
 ---
 
