@@ -11,7 +11,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private bool canDoubleJump;
 
     [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f;
+    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
     [SerializeField] private float airMultiplier = 0.6f;
@@ -27,6 +27,7 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
+    public GameObject velocityParticle;    
     public TextMeshProUGUI debugText;
 
     private Rigidbody rb;
@@ -108,6 +109,14 @@ public class PlayerMovementController : MonoBehaviour
             Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
             rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
         }
+            if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
+            {
+                velocityParticle.SetActive(true);
+            }
+            else
+            {
+                velocityParticle.SetActive(false);
+            }
 
     }
 
