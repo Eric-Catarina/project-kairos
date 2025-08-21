@@ -58,7 +58,10 @@ Conquiste o flow perfeito entre movimento, tempo e precisão. 🚀
 - Éric Catarina Parreiras  
 - Victor Araújo Diniz  
 - Caio de Freitas Ribeiro  
-- Gabriel Victor Chaves da Silva  
+- Gabriel Victor Chaves da Silva
+- Vinícius Augusto Maia Miranda
+- Felipe de Morais Oliveira
+- João Henrique Conceição da Silveira
 
 ---
 
