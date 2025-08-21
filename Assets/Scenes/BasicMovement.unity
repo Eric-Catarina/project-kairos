@@ -5180,6 +5180,7 @@ MonoBehaviour:
   grappleTip: {fileID: 1633603598}
   cameraTransform: {fileID: 963194228}
   lineRenderer: {fileID: 818554842}
+  predictionPointPrefab: {fileID: 2661843310905415723, guid: 2bee631aaa2f55027842afeaae93a372, type: 3}
 --- !u!136 &818554845
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -11496,7 +11497,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 10, y: 10}
+  m_SizeDelta: {x: 5, y: 5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1867799290
 MonoBehaviour:
@@ -11511,7 +11512,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 0, b: 0, a: 0.5254902}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

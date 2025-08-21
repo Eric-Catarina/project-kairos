@@ -30,12 +30,17 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private Transform grappleTip;
     [SerializeField] private Transform cameraTransform;
     [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
 
     private PlayerMovementController playerMovement;
     private SpringJoint joint;
     private Vector3 grapplePoint, currentGrapplePosition;
     private Vector2 moveInput;
     private float cooldownTimer;
+    private GameObject currentPredictionPoint;
+
+    private Vector3 predictedPoint;
+    private bool hasPredictedPoint;
 
     private void Awake()
     {
@@ -63,6 +68,8 @@ public class GrapplingHookController : MonoBehaviour
         {
             cooldownTimer -= Time.deltaTime;
         }
+
+        UpdatePredictionPoint();
     }
 
     private void LateUpdate()
@@ -80,31 +87,75 @@ public class GrapplingHookController : MonoBehaviour
         moveInput = input;
     }
 
-    private void StartGrapple()
+    private void UpdatePredictionPoint()
     {
-        if (cooldownTimer > 0 || isGrappling) return;
-
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out RaycastHit hit, maxGrappleDistance, grappleLayer))
+        if (isGrappling)
         {
-            isGrappling = true;
-            grapplePoint = hit.point;
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+            hasPredictedPoint = false;
+            return;
+        }
 
-            joint = gameObject.AddComponent<SpringJoint>();
-            joint.autoConfigureConnectedAnchor = false;
-            joint.connectedAnchor = grapplePoint;
+        RaycastHit hit;
+        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        if (!hitFound)
+        {
+            hitFound = Physics.SphereCast(cameraTransform.position, 10f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        }
 
-            float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+        if (hitFound)
+        {
+            predictedPoint = hit.point;
+            hasPredictedPoint = true;
 
-            joint.maxDistance = distanceFromPoint * maxSpringSize;
-            joint.minDistance = distanceFromPoint * minSpringSize;
-            joint.spring = springForce;
-            joint.damper = damper;
-            joint.massScale = massScale;
-
-            lineRenderer.positionCount = 2;
+            if (currentPredictionPoint == null)
+            {
+                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
+            }
+            else
+            {
+                currentPredictionPoint.SetActive(true);
+                currentPredictionPoint.transform.position = predictedPoint;
+            }
+        }
+        else
+        {
+            hasPredictedPoint = false;
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
         }
     }
 
+    private void StartGrapple()
+    {
+        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
+
+        isGrappling = true;
+        grapplePoint = predictedPoint;
+
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.connectedAnchor = grapplePoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+
+        lineRenderer.positionCount = 2;
+    }
+
+    private void CheckForSwingPoints()
+    {
+        RaycastHit sphereCastHit;
+        Physics.SphereCast(cameraTransform.position, 0.5f, cameraTransform.forward,
+                            out sphereCastHit, maxGrappleDistance, grappleLayer);
+
+    }
     private void ApplySwingForce()
     {
         if (!joint) return;
@@ -126,6 +177,12 @@ public class GrapplingHookController : MonoBehaviour
         Destroy(joint);
 
         playerMovement.EnableDoubleJump();
+
+        // Prediction point volta a aparecer após o grapple
+        if (currentPredictionPoint != null)
+        {
+            currentPredictionPoint.SetActive(true);
+        }
     }
 
     private void DrawRope()
