@@ -1,4 +1,4 @@
-using UnityEngine;
+/*using UnityEngine;
 using UnityEngine.UI; // Necessário para Button
 using UnityEngine.EventSystems; // Necessário para IPointerClickHandler
 
@@ -41,4 +41,4 @@ public class ButtonSound : MonoBehaviour, IPointerClickHandler
     AudioManager.Instance.PlaySoundEffectClip(soundClip, volume);
 
   }
-}
+}*/
