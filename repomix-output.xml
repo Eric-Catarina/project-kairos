@@ -1,0 +1,888 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: Assets/Scripts/**/*.cs
+- Files matching these patterns are excluded: Library/, Temp/, Obj/, Build/, Builds/, Logs/, *.log, *.tmp, *.bak, *.cache, *.csproj, *.sln, *.user, *.unityproj, *.pidb, *.booproj, *.svd, *.pdb, *.mdb, *.opendb, *.VC.db, *.pidb.meta, *.pdb.meta, *.mdb.meta, *.opendb.meta, *.VC.db.meta, Assets/Scripts/Player/PlayerControls.cs
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+Assets/
+  Scripts/
+    AudioManager.cs
+    GrapplingHookController.cs
+    InputManager.cs
+    PlayerLookController.cs
+    PlayerMovementController.cs
+    UIJuice.cs
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="Assets/Scripts/AudioManager.cs">
+using UnityEngine;
+using System.Collections.Generic;
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager Instance { get; private set; }
+
+    [Header("Músicas")]
+    [Tooltip("Lista de músicas de fundo disponíveis.")]
+    public List<AudioClip> backgroundMusicClips = new List<AudioClip>(); // Lista de músicas
+    public AudioSource bgmAudioSource;
+
+    [Header("Efeitos Sonoros")]
+    public AudioSource sfxAudioSource;
+    [Tooltip("Lista dos clipes de áudio dos efeitos sonoros.")]
+    public List<AudioClip> soundEffectClips;
+
+    private const float PITCH_VARIATION_PERCENTAGE = 0.10f; // 10%
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    void Start()
+    {
+        // Exemplo: Inicia a música do menu ao carregar a cena inicial
+        PlayBackgroundMusic(0); // Assume que a música do menu é o primeiro clipe na lista
+    }
+
+    /// <summary>
+    /// Toca uma música de fundo específica da lista.
+    /// </summary>
+    /// <param name="musicIndex">O índice da música na lista 'backgroundMusicClips'.</param>
+    public void PlayBackgroundMusic(int musicIndex)
+    {
+        if (bgmAudioSource == null || backgroundMusicClips.Count == 0)
+        {
+            Debug.LogWarning("AudioManager: bgmAudioSource não atribuído ou lista de músicas vazia.");
+            return;
+        }
+
+        if (musicIndex < 0 || musicIndex >= backgroundMusicClips.Count || backgroundMusicClips[musicIndex] == null)
+        {
+            Debug.LogWarning($"AudioManager: Índice de música inválido ({musicIndex}).");
+            return;
+        }
+
+        bgmAudioSource.clip = backgroundMusicClips[musicIndex];
+        bgmAudioSource.loop = true;
+        ApplyRandomPitch(bgmAudioSource);
+        bgmAudioSource.Play();
+    }
+
+    /// <summary>
+    /// Para a música de fundo.
+    /// </summary>
+    public void StopBackgroundMusic()
+    {
+        if (bgmAudioSource != null)
+        {
+            bgmAudioSource.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Toca um efeito sonoro específico da lista.
+    /// </summary>
+    /// <param name="sfxIndex">O índice do efeito sonoro na lista 'soundEffectClips'.</param>
+    /// <param name="volumeScale">Escala de volume opcional para este efeito sonoro (padrão é 1.0f).</param>
+    public void PlaySoundEffect(int sfxIndex, float volumeScale = 1.0f)
+    {
+        if (sfxAudioSource == null)
+        {
+            Debug.LogWarning("AudioManager: sfxAudioSource não foi atribuído. Efeito sonoro não pode ser tocado.");
+            return;
+        }
+
+        if (sfxIndex < 0 || sfxIndex >= soundEffectClips.Count || soundEffectClips[sfxIndex] == null)
+        {
+            Debug.LogWarning($"AudioManager: Índice de efeito sonoro inválido ({sfxIndex}) ou clipe de áudio não atribuído.");
+            return;
+        }
+
+        ApplyRandomPitch(sfxAudioSource);
+        sfxAudioSource.PlayOneShot(soundEffectClips[sfxIndex], volumeScale);
+    }
+
+    public void PlayConfettiSound()
+    {
+        if (sfxAudioSource == null)
+        {
+            Debug.LogWarning("AudioManager: sfxAudioSource não foi atribuído. Efeito sonoro de confete não pode ser tocado.");
+            return;
+        }
+
+        AudioClip confettiClip = soundEffectClips.Find(clip => clip.name.Contains("Confetti"));
+        if (confettiClip != null)
+        {
+            ApplyRandomPitch(sfxAudioSource);
+            sfxAudioSource.PlayOneShot(confettiClip);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager: Clip de confete não encontrado na lista de efeitos sonoros.");
+        }
+    }
+
+    public void PlaySoundEffectClip(AudioClip clip, float volumeScale = 1.0f)
+  {
+    if (sfxAudioSource == null)
+    {
+      Debug.LogWarning("AudioManager: sfxAudioSource não foi atribuído. Efeito sonoro não pode ser tocado.");
+      return;
+    }
+
+    if (clip == null)
+    {
+      Debug.LogWarning("AudioManager: Clip de áudio é nulo. Efeito sonoro não pode ser tocado.");
+      return;
+    }
+
+    ApplyRandomPitch(sfxAudioSource);
+    sfxAudioSource.PlayOneShot(clip, volumeScale);
+  }
+
+    private void ApplyRandomPitch(AudioSource audioSource)
+  {
+    float randomPitch = Random.Range(1f - PITCH_VARIATION_PERCENTAGE, 1f + PITCH_VARIATION_PERCENTAGE);
+    audioSource.pitch = randomPitch;
+  }
+}
+</file>
+
+<file path="Assets/Scripts/UIJuice.cs">
+using UnityEngine;
+using UnityEngine.Events;
+using DG.Tweening;
+
+[RequireComponent(typeof(CanvasGroup))]
+public class UIJuice : MonoBehaviour
+{
+    [Header("Configurações de Animação")]
+    [SerializeField] protected float duration = 0.5f;
+    [SerializeField] protected float delay = 0f;
+    [SerializeField] protected Ease easeType = Ease.OutBack;
+    [SerializeField] private Vector3 startScale = new Vector3(0.8f, 0.8f, 0.8f);
+
+    [Header("Comportamento")]
+    [SerializeField] protected bool playOnEnable = false;
+
+    [Header("Eventos de Animação")]
+    [Tooltip("Disparado quando a animação de entrada começa.")]
+    public UnityEvent OnPlayStart;
+
+    [Tooltip("Disparado quando a animação de entrada é concluída.")]
+    public UnityEvent OnPlayComplete;
+
+    [Tooltip("Disparado quando a animação de saída começa.")]
+    public UnityEvent OnReverseStart;
+
+    [Tooltip("Disparado quando a animação de saída é concluída.")]
+    public UnityEvent OnReverseComplete;
+
+    private CanvasGroup canvasGroup;
+    private RectTransform rectTransform;
+    private Sequence sequence;
+
+    private void Awake()
+    {
+        canvasGroup = GetComponent<CanvasGroup>();
+        rectTransform = GetComponent<RectTransform>();
+    }
+
+    protected virtual void OnEnable()
+    {
+        if (playOnEnable)
+        {
+            PlayAnimation();
+        }
+    }
+
+    /// <summary>
+    /// Deixa o painel ativo e inicia a animação de entrada.
+    /// Útil para chamar a partir de botões ou outros scripts.
+    /// </summary>
+    public void SetActiveAndPlay()
+    {
+        gameObject.SetActive(true);
+        PlayAnimation();
+    }
+
+    /// <summary>
+    /// Inicia a animação de "entrada" (por exemplo, abrir uma tela).
+    /// </summary>
+    public virtual void PlayAnimation()
+    {
+        KillExistingSequence();
+        CreateForwardSequence();
+
+        if (sequence != null)
+        {
+            sequence.OnStart(() => OnPlayStart?.Invoke());
+            sequence.OnComplete(() => OnPlayComplete?.Invoke());
+            sequence.Play();
+        }
+    }
+
+    /// <summary>
+    /// Inicia a animação de "saída" (por exemplo, fechar uma tela).
+    /// </summary>
+    public virtual void PlayReverseAnimation()
+    {
+        KillExistingSequence();
+        CreateReverseSequence();
+
+        if (sequence != null)
+        {
+            sequence.OnStart(() => OnReverseStart?.Invoke());
+            sequence.OnComplete(() => OnReverseComplete?.Invoke());
+            sequence.Play();
+        }
+    }
+
+    /// <summary>
+    /// Cria a sequência de animação de entrada (aparecer/abrir).
+    /// </summary>
+    private void CreateForwardSequence()
+    {
+        gameObject.SetActive(true);
+        canvasGroup.blocksRaycasts = true;
+
+        // Define o estado inicial antes da animação
+        canvasGroup.alpha = 0f;
+        rectTransform.localScale = startScale;
+
+        sequence = DOTween.Sequence();
+
+        if (delay > 0)
+        {
+            sequence.AppendInterval(delay);
+        }
+
+        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
+        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
+
+        // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.Pause();
+    }
+
+    /// <summary>
+    /// Cria a sequência de animação de saída (desaparecer/fechar).
+    /// </summary>
+    private void CreateReverseSequence()
+    {
+        // Impede cliques durante a animação de saída
+        canvasGroup.blocksRaycasts = false;
+
+        sequence = DOTween.Sequence();
+
+        // O delay não é aplicado na animação reversa por padrão, mas pode ser adicionado se necessário
+        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
+        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
+        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
+
+        // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.Pause();
+    }
+
+    /// <summary>
+    /// Para e destrói qualquer sequência de animação ativa para evitar sobreposições.
+    /// </summary>
+    private void KillExistingSequence()
+    {
+        if (sequence != null && sequence.IsActive())
+        {
+            sequence.Kill();
+        }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        KillExistingSequence();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/InputManager.cs">
+// Local: Assets/Scripts/InputManager.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+/// <summary>
+/// Gerencia todas as entradas do jogador usando o novo Input System.
+/// Implementa um padrão Singleton para fácil acesso e desacopla a lógica do jogo.
+/// </summary>
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public event Action<Vector2> OnMove;
+    public event Action<Vector2> OnLook;
+    public event Action OnJump;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        Debug.Log("InputManager initialized and PlayerControls created.");
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Enable();
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+        _playerControls.Player.Look.performed += HandleLook;
+        _playerControls.Player.Look.canceled += HandleLook;
+        _playerControls.Player.Jump.performed += HandleJump;
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        Debug.Log("InputManager enabled and controls set up.");
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+        _playerControls.Disable();
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        _playerControls.Player.Look.performed -= HandleLook;
+        _playerControls.Player.Look.canceled -= HandleLook;
+        _playerControls.Player.Jump.performed -= HandleJump;
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+    }
+
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+}
+</file>
+
+<file path="Assets/Scripts/PlayerLookController.cs">
+// Local: Assets/Scripts/PlayerLookController.cs
+
+using Unity.Cinemachine;
+using UnityEngine;
+
+/// <summary>
+/// Controla a orientação de movimento e a rotação visual do jogador com base na câmera.
+/// A câmera em si é controlada diretamente pelo Cinemachine.
+/// </summary>
+public class PlayerLookController : MonoBehaviour
+{
+    [Header("Configurações")]
+    [SerializeField] private float playerRotationSpeed = 1;
+        [SerializeField] private float mouseSensitibityX = 4;
+        [SerializeField] private float mouseSensitibityY = 4;
+
+
+
+    [Header("Referências")]
+    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
+    [SerializeField] private Transform playerModel;
+    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
+    [SerializeField] private Transform orientation;
+    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
+
+    private void Start()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        foreach (var c in cinemachineInputAxisController.Controllers)
+        {
+            if (c.Name == "Look Orbit X")
+            { c.Input.Gain = mouseSensitibityX; }
+            if (c.Name == "Look Orbit Y")
+            { c.Input.Gain = -mouseSensitibityY; }
+        } 
+    }
+
+    private void Update()
+    {
+        HandleRotation();
+    }
+
+    private void HandleRotation()
+    {
+        if (cameraTransform == null || orientation == null || playerModel == null) return;
+
+        // A orientação de movimento espelha a direção da câmera no plano horizontal.
+        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+        if (viewDirection != Vector3.zero)
+        {
+            orientation.forward = viewDirection;
+        }
+
+        // O modelo do jogador gira suavemente para se alinhar com a orientação.
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/GrapplingHookController.cs">
+// Local: Assets/Scripts/GrapplingHookController.cs
+
+using DG.Tweening;
+using UnityEngine;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    [Header("Estado")]
+    [SerializeField] private bool isGrappling = false;
+    public bool IsGrappling => isGrappling;
+
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleLayer;
+
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+
+    [SerializeField] private float maxSpringSize = .8f;
+
+
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+
+    [Header("Referências")]
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+
+    private PlayerMovementController playerMovement;
+    private SpringJoint joint;
+    private Vector3 grapplePoint, currentGrapplePosition;
+    private Vector2 moveInput;
+    private float cooldownTimer;
+    private GameObject currentPredictionPoint;
+
+    private Vector3 predictedPoint;
+    private bool hasPredictedPoint;
+
+    private void Awake()
+    {
+        playerMovement = GetComponent<PlayerMovementController>();
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += StartGrapple;
+        InputManager.Instance.OnGrappleCanceled += StopGrapple;
+        InputManager.Instance.OnMove += SetMoveInput;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= StartGrapple;
+        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
+        InputManager.Instance.OnMove -= SetMoveInput;
+    }
+
+    private void Update()
+    {
+        if (cooldownTimer > 0)
+        {
+            cooldownTimer -= Time.deltaTime;
+        }
+
+        UpdatePredictionPoint();
+    }
+
+    private void LateUpdate()
+    {
+        DrawRope();
+    }
+
+    private void FixedUpdate()
+    {
+        ApplySwingForce();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void UpdatePredictionPoint()
+    {
+        if (isGrappling)
+        {
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+            hasPredictedPoint = false;
+            return;
+        }
+
+        RaycastHit hit;
+        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        if (!hitFound)
+        {
+            hitFound = Physics.SphereCast(cameraTransform.position, 10f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        }
+
+        if (hitFound)
+        {
+            predictedPoint = hit.point;
+            hasPredictedPoint = true;
+
+            if (currentPredictionPoint == null)
+            {
+                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
+            }
+            else
+            {
+                currentPredictionPoint.SetActive(true);
+                currentPredictionPoint.transform.position = predictedPoint;
+            }
+        }
+        else
+        {
+            hasPredictedPoint = false;
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+        }
+    }
+
+    private void StartGrapple()
+    {
+        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
+
+        isGrappling = true;
+        grapplePoint = predictedPoint;
+
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.connectedAnchor = grapplePoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+
+        lineRenderer.positionCount = 2;
+    }
+
+    private void CheckForSwingPoints()
+    {
+        RaycastHit sphereCastHit;
+        Physics.SphereCast(cameraTransform.position, 0.5f, cameraTransform.forward,
+                            out sphereCastHit, maxGrappleDistance, grappleLayer);
+
+    }
+    private void ApplySwingForce()
+    {
+        if (!joint) return;
+
+        Vector3 viewDirection = cameraTransform.forward;
+        Vector3 rightDirection = cameraTransform.right;
+
+        playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
+    }
+
+    public void StopGrapple()
+    {
+        if (!isGrappling) return;
+
+        isGrappling = false;
+        cooldownTimer = grappleCooldown;
+        lineRenderer.positionCount = 0;
+        Destroy(joint);
+
+        playerMovement.EnableDoubleJump();
+
+        // Prediction point volta a aparecer após o grapple
+        if (currentPredictionPoint != null)
+        {
+            currentPredictionPoint.SetActive(true);
+        }
+    }
+
+    private void DrawRope()
+    {
+        if (!joint) return;
+        currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
+
+
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, currentGrapplePosition);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerMovementController.cs">
+// Local: Assets/Scripts/PlayerMovementController.cs
+
+using TMPro;
+using DG.Tweening;
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class PlayerMovementController : MonoBehaviour
+{
+    [Header("Estado Atual")]
+    [SerializeField] private bool isGrounded;
+    [SerializeField] private bool canDoubleJump;
+
+    [Header("Configurações de Movimento")]
+    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
+    [SerializeField] private float groundDrag = 6f;
+    [SerializeField] private float airDrag = 0.5f;
+    [SerializeField] private float airMultiplier = 0.6f;
+
+    [Header("Configurações de Pulo")]
+    [SerializeField] private float jumpForce = 14f;
+    [SerializeField] private float gravityMultiplier = 2.5f;
+
+    [Header("Verificação de Chão")]
+    [SerializeField] private float playerHeight = 2f;
+    [SerializeField] private LayerMask groundLayer;
+
+    [Header("Referências")]
+    [SerializeField] private Transform orientation;
+    [SerializeField] private GrapplingHookController grapplingHookController;
+    public GameObject velocityParticle;    
+    public TextMeshProUGUI debugText;
+    public GameObject playerModel;
+
+    [Header("Dash")]
+    [SerializeField] private float dashForce = 20f;
+    [SerializeField] private float dashCooldown = 0.5f;
+    private bool canDash = true;
+
+    private Rigidbody rb;
+    private Vector2 moveInput;
+
+    public Rigidbody Rb => rb;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnMove += SetMoveInput;
+        InputManager.Instance.OnJump += HandleJump;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        InputManager.Instance.OnJump -= HandleJump;
+    }
+
+    private void Update()
+    {
+        CheckGroundedStatus();
+        ApplyDrag();
+        LimitVelocity();
+        debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
+
+    }
+
+    private void FixedUpdate()
+    {
+        MovePlayer();
+        ApplyExtraGravity();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void CheckGroundedStatus()
+    {
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
+        if (isGrounded)
+        {
+            canDoubleJump = false;
+        }
+    }
+
+    private void ApplyDrag()
+    {
+        // CORRIGIDO: A propriedade correta é 'drag', não 'linearDamping'.
+        rb.linearDamping = isGrounded ? groundDrag : airDrag;
+    }
+
+    private void MovePlayer()
+    {
+        if (grapplingHookController.IsGrappling) return;
+
+        Vector3 moveDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
+        moveDirection.Normalize();
+
+        float forceMultiplier = isGrounded ? 1f : airMultiplier;
+        rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
+
+    }
+
+    private void LimitVelocity()
+    {
+
+
+        if (rb.linearVelocity.magnitude > maxMoveSpeed)
+        {
+            Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
+            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
+        }
+            if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
+            {
+                velocityParticle.SetActive(true);
+            }
+            else
+            {
+                velocityParticle.SetActive(false);
+            }
+
+    }
+
+    private void HandleJump()
+    {
+        if (grapplingHookController.IsGrappling) return;
+
+        if (isGrounded)
+        {
+            Jump();
+            canDash = true; // Reset dash ao tocar o chão
+        }
+        else if (canDoubleJump)
+        {
+            Jump();
+            canDoubleJump = false;
+            TryDash();
+        }
+    }
+
+    private void TryDash()
+    {
+        if (!canDash) return;
+        canDash = false;
+        Vector3 dashDir = Vector3.zero;
+
+        // Se não houver input ou input para frente, dash na direção do olhar
+        if (moveInput == Vector2.zero || Mathf.Abs(moveInput.y) > Mathf.Abs(moveInput.x))
+        {
+            dashDir = orientation.forward;
+        }
+        else
+        {
+            // Dash para a direção do input (direita/esquerda)
+            dashDir = orientation.right * Mathf.Sign(moveInput.x);
+        }
+
+        dashDir.Normalize();
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z); // Zera Y para dash consistente
+        rb.AddForce(dashDir * dashForce, ForceMode.VelocityChange);
+
+        Invoke(nameof(ResetDash), dashCooldown);
+    }
+
+    private void ResetDash()
+    {
+        canDash = true;
+    }
+
+    private void Jump()
+    {
+        // CORRIGIDO: Usando 'linearVelocity' para resetar a velocidade vertical.
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+    }
+
+    private void ApplyExtraGravity()
+    {
+        if (!isGrounded )
+        {
+            rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
+        }
+    }
+
+    public void EnableDoubleJump()
+    {
+        canDoubleJump = true;
+    }
+}
+</file>
+
+</files>

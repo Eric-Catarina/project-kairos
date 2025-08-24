@@ -1,0 +1,61 @@
+{
+  "output": {
+    "filePath": "repomix-output.xml",
+    "style": "xml",
+    "parsableStyle": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "copyToClipboard": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100
+    }
+  },
+  "include": [
+    "Assets/Scripts/**/*.cs"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "Library/",
+      "Temp/",
+      "Obj/",
+      "Build/",
+      "Builds/",
+      "Logs/",
+      "*.log",
+      "*.tmp",
+      "*.bak",
+      "*.cache",
+      "*.csproj",
+      "*.sln",
+      "*.user",
+      "*.unityproj",
+      "*.pidb",
+      "*.booproj",
+      "*.svd",
+      "*.pdb",
+      "*.mdb",
+      "*.opendb",
+      "*.VC.db",
+      "*.pidb.meta",
+      "*.pdb.meta",
+      "*.mdb.meta",
+      "*.opendb.meta",
+      "*.VC.db.meta",
+      "Assets/Scripts/Player/PlayerControls.cs"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}
