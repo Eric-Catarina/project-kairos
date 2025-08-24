@@ -1,6 +1,6 @@
 # ⚡ Project Kairos – Um Speedrunner 3D Cyberpunk com Grappling Hook 🕶️🏙️
 
-🎮 **Project Kairos** é um jogo de **speedrun em primeira pessoa** onde cada segundo conta!  
+🎮 **Project Kairos** é um jogo de **speedrun em terceira pessoa** onde cada segundo conta!  
 Em meio a arranha-céus de um mundo **cyberpunk futurista**, você usará sua **habilidade com o Grappling Hook** 🪝 e o **controle do tempo** ⏳ para atravessar cenários vertiginosos e vencer seus próprios limites.  
 
 ---
@@ -25,7 +25,7 @@ Conquiste o flow perfeito entre movimento, tempo e precisão. 🚀
 - 👨‍💻 **C#** para lógica de gameplay e físicas  
 - 🎨 **Estética cyberpunk** com neons e contrastes vibrantes  
 - 🔊 **Trilha sonora futurista** para aumentar a adrenalina  
-- 💾 Sistema de **checkpoint e cronômetro** para speedruns  
+- 💾 Sistema de **cronômetro** para speedruns  
 
 ---
 
@@ -33,8 +33,7 @@ Conquiste o flow perfeito entre movimento, tempo e precisão. 🚀
 
 - 🪝 **Grappling Hook dinâmico** para atravessar prédios  
 - ⏳ **Manipulação do tempo** (acelerar, desacelerar, congelar)  
-- 🏃 **Movimento fluido em parkour** (dash, wall run, wall jump)  
-- 📦 **Coleta de power-ups** para aprimorar velocidade e tempo  
+- 🏃 **Movimento fluido em parkour**
 - 🏆 **Sistema de ranking** para competir contra seus próprios recordes  
 
 ---
@@ -59,7 +58,10 @@ Conquiste o flow perfeito entre movimento, tempo e precisão. 🚀
 - Éric Catarina Parreiras  
 - Victor Araújo Diniz  
 - Caio de Freitas Ribeiro  
-- Gabriel Victor Chaves da Silva  
+- Gabriel Victor Chaves da Silva
+- Vinícius Augusto Maia Miranda
+- Felipe de Morais Oliveira
+- João Henrique Conceição da Silveira
 
 ---
 
