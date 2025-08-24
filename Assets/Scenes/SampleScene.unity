@@ -456,7 +456,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1282890666}
-  - component: {fileID: 1282890665}
+  - component: {fileID: 1282890667}
   m_Layer: 0
   m_Name: AudioManager
   m_TagString: Untagged
@@ -464,22 +464,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1282890665
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1282890664}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9b796c0b2b3b64895ba437492e14b202, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  backgroundMusicClips: []
-  bgmAudioSource: {fileID: 0}
-  sfxAudioSource: {fileID: 0}
-  soundEffectClips: []
 --- !u!4 &1282890666
 Transform:
   m_ObjectHideFlags: 0
@@ -495,6 +479,66 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1282890667
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1282890664}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b796c0b2b3b64895ba437492e14b202, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  musicSounds: []
+  ambientSounds:
+  - name: Platforms
+    clip: {fileID: 0}
+  - name: Doors
+    clip: {fileID: 0}
+  - name: Traffic
+    clip: {fileID: 0}
+  - name: Trap1
+    clip: {fileID: 0}
+  - name: Trap2
+    clip: {fileID: 0}
+  - name: Trap3
+    clip: {fileID: 0}
+  sfxSounds:
+  - name: Steps
+    clip: {fileID: 0}
+  - name: Jump
+    clip: {fileID: 0}
+  - name: Double Jump
+    clip: {fileID: 0}
+  - name: Landing
+    clip: {fileID: 0}
+  - name: Run
+    clip: {fileID: 0}
+  - name: Damage
+    clip: {fileID: 0}
+  - name: Death
+    clip: {fileID: 0}
+  - name: Respawn
+    clip: {fileID: 0}
+  - name: ActiveSkill
+    clip: {fileID: 0}
+  - name: DeactiveSkill
+    clip: {fileID: 0}
+  - name: Grappling Hook
+    clip: {fileID: 0}
+  - name: MovementWind
+    clip: {fileID: 0}
+  - name: Buttons
+    clip: {fileID: 0}
+  - name: HUD
+    clip: {fileID: 0}
+  masterSource: {fileID: 0}
+  musicSource: {fileID: 0}
+  sfxSource: {fileID: 0}
+  ambientSource: {fileID: 0}
+  audioMixer: {fileID: 24100000, guid: 558244343adc0684d84eb304c41aaff7, type: 2}
 --- !u!1 &1345039747
 GameObject:
   m_ObjectHideFlags: 0
