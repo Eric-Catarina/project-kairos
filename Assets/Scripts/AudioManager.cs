@@ -1,140 +1,139 @@
-using UnityEngine;
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Audio;
 
 public class AudioManager : MonoBehaviour
 {
-    public static AudioManager Instance { get; private set; }
+    public static AudioManager instance;
 
-    [Header("Músicas")]
-    [Tooltip("Lista de músicas de fundo disponíveis.")]
-    public List<AudioClip> backgroundMusicClips = new List<AudioClip>(); // Lista de músicas
-    public AudioSource bgmAudioSource;
-
-    [Header("Efeitos Sonoros")]
-    public AudioSource sfxAudioSource;
-    [Tooltip("Lista dos clipes de áudio dos efeitos sonoros.")]
-    public List<AudioClip> soundEffectClips;
-
-    private const float PITCH_VARIATION_PERCENTAGE = 0.10f; // 10%
+    public Sound[] musicSounds, ambientSounds, sfxSounds;
+    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
+    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    [SerializeField] private AudioMixer audioMixer;
 
     private void Awake()
     {
-        if (Instance == null)
+
+        AddSoundsToDictionary(sfxSounds);
+        AddSoundsToDictionary(musicSounds);
+        AddSoundsToDictionary(ambientSounds);
+
+        if (instance == null)
         {
-            Instance = this;
+            instance = this;
             DontDestroyOnLoad(gameObject);
         }
         else
         {
             Destroy(gameObject);
         }
+
     }
 
-    void Start()
+    private void Start()
     {
-        // Exemplo: Inicia a música do menu ao carregar a cena inicial
-        PlayBackgroundMusic(0); // Assume que a música do menu é o primeiro clipe na lista
+        PlayMusic("");
     }
 
-    /// <summary>
-    /// Toca uma música de fundo específica da lista.
-    /// </summary>
-    /// <param name="musicIndex">O índice da música na lista 'backgroundMusicClips'.</param>
-    public void PlayBackgroundMusic(int musicIndex)
+
+    private void AddSoundsToDictionary(Sound[] soundArray)
     {
-        if (bgmAudioSource == null || backgroundMusicClips.Count == 0)
+        foreach (Sound s in soundArray)
         {
-            Debug.LogWarning("AudioManager: bgmAudioSource não atribuído ou lista de músicas vazia.");
-            return;
-        }
-
-        if (musicIndex < 0 || musicIndex >= backgroundMusicClips.Count || backgroundMusicClips[musicIndex] == null)
-        {
-            Debug.LogWarning($"AudioManager: Índice de música inválido ({musicIndex}).");
-            return;
-        }
-
-        bgmAudioSource.clip = backgroundMusicClips[musicIndex];
-        bgmAudioSource.loop = true;
-        ApplyRandomPitch(bgmAudioSource);
-        bgmAudioSource.Play();
-    }
-
-    /// <summary>
-    /// Para a música de fundo.
-    /// </summary>
-    public void StopBackgroundMusic()
-    {
-        if (bgmAudioSource != null)
-        {
-            bgmAudioSource.Stop();
+            if (!sfxDictionary.ContainsKey(s.name))
+            {
+                sfxDictionary.Add(s.name, s.clip);
+            }
         }
     }
 
-    /// <summary>
-    /// Toca um efeito sonoro específico da lista.
-    /// </summary>
-    /// <param name="sfxIndex">O índice do efeito sonoro na lista 'soundEffectClips'.</param>
-    /// <param name="volumeScale">Escala de volume opcional para este efeito sonoro (padrão é 1.0f).</param>
-    public void PlaySoundEffect(int sfxIndex, float volumeScale = 1.0f)
+    public void PlayMusic(string name)
     {
-        if (sfxAudioSource == null)
+        Sound s = Array.Find(musicSounds, x => x.name == name);
+
+        if (s == null)
         {
-            Debug.LogWarning("AudioManager: sfxAudioSource não foi atribuído. Efeito sonoro não pode ser tocado.");
-            return;
+            Debug.Log("Sound Not Found");
         }
 
-        if (sfxIndex < 0 || sfxIndex >= soundEffectClips.Count || soundEffectClips[sfxIndex] == null)
+        else
         {
-            Debug.LogWarning($"AudioManager: Índice de efeito sonoro inválido ({sfxIndex}) ou clipe de áudio não atribuído.");
-            return;
+            musicSource.clip = s.clip;
+            musicSource.volume = musicSource.volume * masterSource.volume;
+            musicSource.Play();
         }
-
-        ApplyRandomPitch(sfxAudioSource);
-        sfxAudioSource.PlayOneShot(soundEffectClips[sfxIndex], volumeScale);
     }
 
-    public void PlayConfettiSound()
+    public void PlayAmbient(string name)
     {
-        if (sfxAudioSource == null)
+        Sound s = Array.Find(ambientSounds, x => x.name == name);
+        if (s == null)
         {
-            Debug.LogWarning("AudioManager: sfxAudioSource não foi atribuído. Efeito sonoro de confete não pode ser tocado.");
-            return;
-        }
-
-        AudioClip confettiClip = soundEffectClips.Find(clip => clip.name.Contains("Confetti"));
-        if (confettiClip != null)
-        {
-            ApplyRandomPitch(sfxAudioSource);
-            sfxAudioSource.PlayOneShot(confettiClip);
+            Debug.Log("Ambient sound not found: " + name);
         }
         else
         {
-            Debug.LogWarning("AudioManager: Clip de confete não encontrado na lista de efeitos sonoros.");
+            ambientSource.clip = s.clip;
+            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            ambientSource.loop = true;
+            ambientSource.Play();
+
         }
     }
 
-    public void PlaySoundEffectClip(AudioClip clip, float volumeScale = 1.0f)
-  {
-    if (sfxAudioSource == null)
+    public void PlaySFX(string name)
     {
-      Debug.LogWarning("AudioManager: sfxAudioSource não foi atribuído. Efeito sonoro não pode ser tocado.");
-      return;
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+        }
+        else
+        {
+            Debug.Log("Sound Not Found: " + name);
+        }
     }
 
-    if (clip == null)
+    public void ToggleMusic()
     {
-      Debug.LogWarning("AudioManager: Clip de áudio é nulo. Efeito sonoro não pode ser tocado.");
-      return;
+        musicSource.mute = !musicSource.mute;
     }
 
-    ApplyRandomPitch(sfxAudioSource);
-    sfxAudioSource.PlayOneShot(clip, volumeScale);
-  }
+    public void ToggleSFX()
+    {
+        sfxSource.mute = !sfxSource.mute;
+    }
 
-    private void ApplyRandomPitch(AudioSource audioSource)
-  {
-    float randomPitch = Random.Range(1f - PITCH_VARIATION_PERCENTAGE, 1f + PITCH_VARIATION_PERCENTAGE);
-    audioSource.pitch = randomPitch;
-  }
+    public void ToggleAmbient()
+    {
+        ambientSource.mute = !ambientSource.mute;
+    }
+
+    public void MusicVolume(float volume)
+    {
+        musicSource.volume = volume * masterSource.volume;
+    }
+
+    public void AmbientVolume(float volume)
+    {
+        ambientSource.volume = volume * masterSource.volume;
+    }
+
+    public void SFXVolume(float volume)
+    {
+        sfxSource.volume = volume * masterSource.volume;
+    }
+
+    public void MasterVolume(float volume)
+    {
+        audioMixer.SetFloat("MasterVolume", volume);
+    }
+
+    public void ToggleMaster()
+    {
+        masterSource.mute = !masterSource.mute;
+        musicSource.mute = masterSource.mute;
+        sfxSource.mute = masterSource.mute;
+    }
 }
