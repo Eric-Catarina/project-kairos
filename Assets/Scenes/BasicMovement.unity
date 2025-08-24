@@ -5165,8 +5165,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1ebf9413a3e092ac82d2e5e5ec57d7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrapplingHookController
+  canDoMultipleGrapple: 0
   isGrappling: 0
-  maxGrappleDistance: 10000
+  maxGrappleDistance: 100
   grappleCooldown: 0.05
   grappleLayer:
     serializedVersion: 2
