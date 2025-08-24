@@ -6,8 +6,10 @@ using UnityEngine;
 public class GrapplingHookController : MonoBehaviour
 {
     [Header("Estado")]
+    [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private bool isGrappling = false;
     public bool IsGrappling => isGrappling;
+    private bool hasGrappleAvailable = true;
 
     [Header("Configurações do Gancho")]
     [SerializeField] private float maxGrappleDistance = 50f;
@@ -45,6 +47,7 @@ public class GrapplingHookController : MonoBehaviour
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovementController>();
+        hasGrappleAvailable = true;
     }
 
     private void OnEnable()
@@ -52,6 +55,9 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted += StartGrapple;
         InputManager.Instance.OnGrappleCanceled += StopGrapple;
         InputManager.Instance.OnMove += SetMoveInput;
+        // Inscreve no evento de aterrissagem
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded += OnGroundLanded;
     }
 
     private void OnDisable()
@@ -60,6 +66,9 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted -= StartGrapple;
         InputManager.Instance.OnGrappleCanceled -= StopGrapple;
         InputManager.Instance.OnMove -= SetMoveInput;
+        // Remove inscrição do evento
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded -= OnGroundLanded;
     }
 
     private void Update()
@@ -67,6 +76,12 @@ public class GrapplingHookController : MonoBehaviour
         if (cooldownTimer > 0)
         {
             cooldownTimer -= Time.deltaTime;
+        }
+
+        // Se só pode usar uma vez, cooldown não recarrega sozinho
+        if (canDoMultipleGrapple && cooldownTimer <= 0)
+        {
+            hasGrappleAvailable = true;
         }
 
         UpdatePredictionPoint();
@@ -129,6 +144,9 @@ public class GrapplingHookController : MonoBehaviour
 
     private void StartGrapple()
     {
+        // Permite usar o grapple se estiver no chão, mesmo que hasGrappleAvailable seja false
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
+        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
         if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
 
         isGrappling = true;
@@ -147,6 +165,10 @@ public class GrapplingHookController : MonoBehaviour
         joint.massScale = massScale;
 
         lineRenderer.positionCount = 2;
+
+        // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
+        if (!canDoMultipleGrapple && !groundedOverride)
+            hasGrappleAvailable = false;
     }
 
     private void CheckForSwingPoints()
@@ -193,5 +215,14 @@ public class GrapplingHookController : MonoBehaviour
 
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, currentGrapplePosition);
+    }
+
+    // Novo método para resetar grapple ao tocar o chão
+    private void OnGroundLanded()
+    {
+        if (!canDoMultipleGrapple && !hasGrappleAvailable)
+        {
+            hasGrappleAvailable = true;
+        }
     }
 }
