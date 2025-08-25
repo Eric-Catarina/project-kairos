@@ -5031,6 +5031,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   isGrounded: 0
   canDoubleJump: 0
+  isSliding: 0
   moveSpeed: 7
   maxMoveSpeed: 2000
   vfxMinMoveSpeed: 140
@@ -5043,8 +5044,14 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
+  slideThresholdSpeed: 20
+  slideDuration: 1
+  slideDrag: 0
+  slideBoostWindow: 0.5
+  slideBoostForce: 100
   orientation: {fileID: 1457126761}
   grapplingHookController: {fileID: 818554843}
+  playerVisuals: {fileID: 2135841689}
   velocityParticle: {fileID: 982827512}
   debugText: {fileID: 203901434}
 --- !u!120 &818554842
