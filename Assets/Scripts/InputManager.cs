@@ -33,7 +33,7 @@ public class InputManager : MonoBehaviour
         _playerControls = new PlayerControls();
         Debug.Log("InputManager initialized and PlayerControls created.");
 
-        AudioManager.instance.PlayMusic("Menu");
+        // AudioManager.instance.PlayMusic("Menu");
     }
 
     private void OnEnable()
