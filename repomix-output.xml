@@ -55,504 +55,6 @@ Assets/
 <files>
 This section contains the contents of the repository's files.
 
-<file path="Assets/Scripts/GrapplingHookController.cs">
-// Player/GrapplingHookController.cs
-
-using DG.Tweening;
-using UnityEngine;
-
-/// <summary>
-/// Gerencia a mecânica de grappling hook, incluindo disparo, puxão, pêndulo e liberação.
-/// </summary>
-public class GrapplingHookController : MonoBehaviour
-{
-    [Header("Configurações do Gancho")]
-    [SerializeField] private float maxGrappleDistance = 50f;
-    [SerializeField] private float grappleCooldown = 1f;
-    [SerializeField] private LayerMask grappleLayer;
-
-    [Header("Configurações da Junta (Puxão)")]
-    [SerializeField] private float springForce = 4.5f;
-    [SerializeField] private float damper = 7f;
-    [SerializeField] private float massScale = 4.5f;
-
-    [Header("Configurações do Pêndulo")]
-    [SerializeField] private float swingForce = 80f;
-
-    [Header("Efeito de Puxão (DOTween)")]
-    [SerializeField] private bool usePullEffect = true;
-    [SerializeField] private float pullDuration = 0.5f;
-    [SerializeField] private float pullEndPercentage = 0.8f;
-
-    [Header("Referências")]
-    [SerializeField] private Transform grappleTip;
-    [SerializeField] private Transform mainCamera;
-    [SerializeField] private Transform orientation;
-    [SerializeField] private LineRenderer lineRenderer;
-
-    private PlayerMovementController _playerMovement;
-    private SpringJoint _joint;
-    private Vector3 _grapplePoint;
-    private Vector2 _moveInput;
-    private float _cooldownTimer;
-    private bool _isGrappling = false;
-
-    private void Awake()
-    {
-        _playerMovement = GetComponent<PlayerMovementController>();
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnGrappleStarted += StartGrapple;
-        InputManager.Instance.OnGrappleCanceled += StopGrapple;
-        InputManager.Instance.OnMove += SetMoveInput;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnGrappleStarted -= StartGrapple;
-            InputManager.Instance.OnGrappleCanceled -= StopGrapple;
-            InputManager.Instance.OnMove -= SetMoveInput;
-        }
-    }
-    
-    private void Update()
-    {
-        if (_cooldownTimer > 0)
-        {
-            _cooldownTimer -= Time.deltaTime;
-        }
-    }
-    
-    private void LateUpdate()
-    {
-        DrawRope();
-    }
-
-    private void FixedUpdate()
-    {
-        ApplySwingForce();
-    }
-
-    private void SetMoveInput(Vector2 moveInput)
-    {
-        _moveInput = moveInput;
-    }
-
-    private void StartGrapple()
-    {
-        if (_cooldownTimer > 0 || _isGrappling) return;
-
-        if (Physics.Raycast(mainCamera.position, mainCamera.forward, out RaycastHit hit, maxGrappleDistance, grappleLayer))
-        {
-            _isGrappling = true;
-            _grapplePoint = hit.point;
-
-            // Adiciona o SpringJoint para o efeito de puxar
-            _joint = gameObject.AddComponent<SpringJoint>();
-            _joint.autoConfigureConnectedAnchor = false;
-            _joint.connectedAnchor = _grapplePoint;
-
-            float distanceFromPoint = Vector3.Distance(transform.position, _grapplePoint);
-
-            // A distância da junta determina o comprimento da "corda"
-            _joint.maxDistance = distanceFromPoint * pullEndPercentage;
-            _joint.minDistance = 0;
-
-            // Configurações da mola para um puxão firme mas não totalmente rígido
-            _joint.spring = springForce;
-            _joint.damper = damper;
-            _joint.massScale = massScale;
-
-            lineRenderer.positionCount = 2;
-
-            // Efeito de "zip" opcional com DOTween
-            if (usePullEffect)
-            {
-                DOTween.To(() => _joint.maxDistance, x => _joint.maxDistance = x, distanceFromPoint * 0.1f, pullDuration)
-                    .SetEase(Ease.InOutSine);
-            }
-        }
-    }
-    
-    private void ApplySwingForce()
-    {
-        if (!_joint) return;
-
-        // Força para frente/trás baseada no input e orientação da câmera
-        if (_moveInput.y != 0)
-        {
-             _playerMovement.Rb.AddForce(orientation.forward * _moveInput.y * swingForce, ForceMode.Force);
-        }
-       
-        // Força para os lados (pêndulo) baseada no input e orientação da câmera
-        if (_moveInput.x != 0)
-        {
-             _playerMovement.Rb.AddForce(orientation.right * _moveInput.x * swingForce, ForceMode.Force);
-        }
-    }
-
-    public void StopGrapple()
-    {
-        if (!_isGrappling) return;
-
-        _isGrappling = false;
-        _cooldownTimer = grappleCooldown;
-        
-        lineRenderer.positionCount = 0;
-        Destroy(_joint);
-        
-        // Regra principal: Habilita o pulo duplo APÓS usar o gancho
-        _playerMovement.EnableDoubleJump();
-    }
-
-    private void DrawRope()
-    {
-        // Não desenha a corda se não estiver usando o gancho
-        if (!_joint) return;
-
-        lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, _grapplePoint);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/InputManager.cs">
-// Player/InputManager.cs
-
-using System;
-using UnityEngine;
-using UnityEngine.InputSystem;
-
-/// <summary>
-/// Gerencia todas as entradas do jogador usando o novo Input System.
-/// Implementa um padrão Singleton para fácil acesso.
-/// Desacopla a leitura de input da lógica do jogo através de eventos.
-/// </summary>
-public class InputManager : MonoBehaviour
-{
-    public static InputManager Instance { get; private set; }
-
-    // Ações para os outros scripts se inscreverem
-    public event Action<Vector2> OnMove;
-    public event Action<Vector2> OnLook;
-    public event Action OnJump;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        // Implementação do Singleton
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject); // Opcional: manter o input entre cenas
-
-        _playerControls = new PlayerControls();
-    }
-
-    private void OnEnable()
-    {
-        _playerControls.Enable();
-
-        // Inscrevendo os métodos de tratamento aos eventos do Input System
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-
-        _playerControls.Player.Look.performed += HandleLook;
-        _playerControls.Player.Look.canceled += HandleLook;
-
-        _playerControls.Player.Jump.performed += HandleJump;
-
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-    }
-
-    private void OnDisable()
-    {
-        _playerControls.Disable();
-
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-
-        _playerControls.Player.Look.performed -= HandleLook;
-        _playerControls.Player.Look.canceled -= HandleLook;
-
-        _playerControls.Player.Jump.performed -= HandleJump;
-
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-    }
-
-    // Métodos que disparam nossos eventos C#
-    private void HandleMove(InputAction.CallbackContext context)
-    {
-        OnMove?.Invoke(context.ReadValue<Vector2>());
-    }
-
-    private void HandleLook(InputAction.CallbackContext context)
-    {
-        OnLook?.Invoke(context.ReadValue<Vector2>());
-    }
-
-    private void HandleJump(InputAction.CallbackContext context)
-    {
-        OnJump?.Invoke();
-    }
-
-    private void HandleGrappleStarted(InputAction.CallbackContext context)
-    {
-        OnGrappleStarted?.Invoke();
-    }
-
-    private void HandleGrappleCanceled(InputAction.CallbackContext context)
-    {
-        OnGrappleCanceled?.Invoke();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerLookController.cs">
-// Player/PlayerLookController.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Controla a rotação da câmera, a orientação de movimento e a rotação visual do jogador.
-/// </summary>
-public class PlayerLookController : MonoBehaviour
-{
-    [Header("Configurações de Sensibilidade")]
-    [SerializeField] private float sensitivityX = 200f;
-    [SerializeField] private float sensitivityY = 200f;
-    [SerializeField] private float rotationSpeed = 10f;
-
-    [Header("Referências")]
-    [Tooltip("O objeto que a Cinemachine segue. Geralmente o próprio Player.")]
-    [SerializeField] private Transform cameraFollowTarget;
-    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
-    [SerializeField] private Transform playerModel; 
-    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
-    [SerializeField] private Transform orientation;
-
-    private Vector2 _lookInput;
-    private float _xRotation;
-    private float _yRotation;
-
-    private void OnEnable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnLook += SetLookInput;
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnLook -= SetLookInput;
-        }
-    }
-
-    private void Start()
-    {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
-    }
-
-    private void Update()
-    {
-        HandleRotation();
-    }
-    
-    private void HandleRotation()
-    {
-        float mouseX = _lookInput.x * sensitivityX * Time.deltaTime;
-        float mouseY = _lookInput.y * sensitivityY * Time.deltaTime;
-
-        _yRotation += mouseX;
-        _xRotation -= mouseY;
-        _xRotation = Mathf.Clamp(_xRotation, -90f, 90f); 
-
-        // Aplica a rotação ao alvo da câmera e ao objeto de orientação
-        cameraFollowTarget.rotation = Quaternion.Euler(_xRotation, _yRotation, 0);
-        orientation.rotation = Quaternion.Euler(0, _yRotation, 0);
-
-        // Rotaciona suavemente o modelo do jogador para corresponder à orientação
-        if (playerModel != null)
-        {
-            playerModel.rotation = Quaternion.Slerp(playerModel.rotation, orientation.rotation, rotationSpeed * Time.deltaTime);
-        }
-    }
-
-    private void SetLookInput(Vector2 lookInput)
-    {
-        _lookInput = lookInput;
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerMovementController.cs">
-// Player/PlayerMovementController.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Gerencia toda a física de movimento do jogador: andar, pular, gravidade e momentum.
-/// </summary>
-[RequireComponent(typeof(Rigidbody))]
-public class PlayerMovementController : MonoBehaviour
-{
-    [Header("Estado do Jogador")]
-    [SerializeField] private bool _isGrounded;
-    [SerializeField] private bool _canDoubleJump;
-
-    [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float groundDrag = 5f;
-    [SerializeField] private float airDrag = 0.5f;
-    [SerializeField] private float airMultiplier = 0.4f;
-
-    [Header("Configurações de Pulo")]
-    [SerializeField] private float jumpForce = 12f;
-    [SerializeField] private float gravityMultiplier = 2.5f;
-
-    [Header("Verificação de Chão")]
-    [SerializeField] private float playerHeight = 2f;
-    [SerializeField] private LayerMask groundLayer;
-
-    [Header("Referências")]
-    [SerializeField] private Transform orientation;
-
-    private Rigidbody _rb;
-    private Vector2 _moveInput;
-    private Vector3 _moveDirection;
-
-    public bool IsGrounded => _isGrounded;
-    public Rigidbody Rb => _rb;
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        _rb.freezeRotation = true;
-    }
-    
-    private void OnEnable()
-    {
-        InputManager.Instance.OnMove += SetMoveInput;
-        InputManager.Instance.OnJump += HandleJump;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnMove -= SetMoveInput;
-            InputManager.Instance.OnJump -= HandleJump;
-        }
-    }
-
-    private void Update()
-    {
-        CheckGroundedStatus();
-        ApplyDrag();
-        LimitVelocity();
-    }
-
-    private void FixedUpdate()
-    {
-        MovePlayer();
-        ApplyExtraGravity();
-    }
-    
-    private void SetMoveInput(Vector2 moveInput)
-    {
-        _moveInput = moveInput;
-    }
-
-    private void CheckGroundedStatus()
-    {
-        _isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
-
-        if (_isGrounded)
-        {
-            _canDoubleJump = false;
-        }
-    }
-
-    private void ApplyDrag()
-    {
-        _rb.linearDamping = _isGrounded ? groundDrag : airDrag;
-    }
-
-    private void MovePlayer()
-    {
-        _moveDirection = orientation.forward * _moveInput.y + orientation.right * _moveInput.x;
-        _moveDirection.Normalize();
-
-        float speed = moveSpeed;
-        float forceMultiplier = _isGrounded ? 1f : airMultiplier;
-
-        _rb.AddForce(_moveDirection * speed * forceMultiplier, ForceMode.Force);
-    }
-    
-    private void LimitVelocity()
-    {
-        // ALTERADO: Usando linearVelocity
-        Vector3 flatVel = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
-
-        if (flatVel.magnitude > moveSpeed)
-        {
-            Vector3 limitedVel = flatVel.normalized * moveSpeed;
-            // ALTERADO: Usando linearVelocity
-            _rb.linearVelocity = new Vector3(limitedVel.x, _rb.linearVelocity.y, limitedVel.z);
-        }
-    }
-
-    private void HandleJump()
-    {
-        if (_isGrounded)
-        {
-            Jump();
-        }
-        else if (_canDoubleJump)
-        {
-            Jump();
-            _canDoubleJump = false;
-        }
-    }
-
-    private void Jump()
-    {
-        // ALTERADO: Usando linearVelocity
-        _rb.linearVelocity = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
-        _rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-    }
-
-    private void ApplyExtraGravity()
-    {
-        if (!_isGrounded)
-        {
-            _rb.AddForce(Vector3.down * (gravityMultiplier - 1) * Physics.gravity.y, ForceMode.Acceleration);
-        }
-    }
-
-    public void EnableDoubleJump()
-    {
-        _canDoubleJump = true;
-    }
-}
-</file>
-
 <file path="Assets/Scripts/AudioManager.cs">
 using UnityEngine;
 using System.Collections.Generic;
@@ -845,6 +347,540 @@ public class UIJuice : MonoBehaviour
     protected virtual void OnDestroy()
     {
         KillExistingSequence();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/InputManager.cs">
+// Local: Assets/Scripts/InputManager.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+/// <summary>
+/// Gerencia todas as entradas do jogador usando o novo Input System.
+/// Implementa um padrão Singleton para fácil acesso e desacopla a lógica do jogo.
+/// </summary>
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public event Action<Vector2> OnMove;
+    public event Action<Vector2> OnLook;
+    public event Action OnJump;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        Debug.Log("InputManager initialized and PlayerControls created.");
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Enable();
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+        _playerControls.Player.Look.performed += HandleLook;
+        _playerControls.Player.Look.canceled += HandleLook;
+        _playerControls.Player.Jump.performed += HandleJump;
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        Debug.Log("InputManager enabled and controls set up.");
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+        _playerControls.Disable();
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        _playerControls.Player.Look.performed -= HandleLook;
+        _playerControls.Player.Look.canceled -= HandleLook;
+        _playerControls.Player.Jump.performed -= HandleJump;
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+    }
+
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+}
+</file>
+
+<file path="Assets/Scripts/PlayerLookController.cs">
+// Local: Assets/Scripts/PlayerLookController.cs
+
+using Unity.Cinemachine;
+using UnityEngine;
+
+/// <summary>
+/// Controla a orientação de movimento e a rotação visual do jogador com base na câmera.
+/// A câmera em si é controlada diretamente pelo Cinemachine.
+/// </summary>
+public class PlayerLookController : MonoBehaviour
+{
+    [Header("Configurações")]
+    [SerializeField] private float playerRotationSpeed = 1;
+        [SerializeField] private float mouseSensitibityX = 4;
+        [SerializeField] private float mouseSensitibityY = 4;
+
+
+
+    [Header("Referências")]
+    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
+    [SerializeField] private Transform playerModel;
+    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
+    [SerializeField] private Transform orientation;
+    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
+
+    private void Start()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        foreach (var c in cinemachineInputAxisController.Controllers)
+        {
+            if (c.Name == "Look Orbit X")
+            { c.Input.Gain = mouseSensitibityX; }
+            if (c.Name == "Look Orbit Y")
+            { c.Input.Gain = -mouseSensitibityY; }
+        } 
+    }
+
+    private void Update()
+    {
+        HandleRotation();
+    }
+
+    private void HandleRotation()
+    {
+        if (cameraTransform == null || orientation == null || playerModel == null) return;
+
+        // A orientação de movimento espelha a direção da câmera no plano horizontal.
+        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+        if (viewDirection != Vector3.zero)
+        {
+            orientation.forward = viewDirection;
+        }
+
+        // O modelo do jogador gira suavemente para se alinhar com a orientação.
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/GrapplingHookController.cs">
+// Local: Assets/Scripts/GrapplingHookController.cs
+
+using DG.Tweening;
+using UnityEngine;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    [Header("Estado")]
+    [SerializeField] private bool isGrappling = false;
+    public bool IsGrappling => isGrappling;
+
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleLayer;
+
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+
+    [SerializeField] private float maxSpringSize = .8f;
+
+
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+
+    [Header("Referências")]
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+
+    private PlayerMovementController playerMovement;
+    private SpringJoint joint;
+    private Vector3 grapplePoint, currentGrapplePosition;
+    private Vector2 moveInput;
+    private float cooldownTimer;
+    private GameObject currentPredictionPoint;
+
+    private Vector3 predictedPoint;
+    private bool hasPredictedPoint;
+
+    private void Awake()
+    {
+        playerMovement = GetComponent<PlayerMovementController>();
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += StartGrapple;
+        InputManager.Instance.OnGrappleCanceled += StopGrapple;
+        InputManager.Instance.OnMove += SetMoveInput;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= StartGrapple;
+        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
+        InputManager.Instance.OnMove -= SetMoveInput;
+    }
+
+    private void Update()
+    {
+        if (cooldownTimer > 0)
+        {
+            cooldownTimer -= Time.deltaTime;
+        }
+
+        UpdatePredictionPoint();
+    }
+
+    private void LateUpdate()
+    {
+        DrawRope();
+    }
+
+    private void FixedUpdate()
+    {
+        ApplySwingForce();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void UpdatePredictionPoint()
+    {
+        if (isGrappling)
+        {
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+            hasPredictedPoint = false;
+            return;
+        }
+
+        RaycastHit hit;
+        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        if (!hitFound)
+        {
+            hitFound = Physics.SphereCast(cameraTransform.position, 10f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        }
+
+        if (hitFound)
+        {
+            predictedPoint = hit.point;
+            hasPredictedPoint = true;
+
+            if (currentPredictionPoint == null)
+            {
+                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
+            }
+            else
+            {
+                currentPredictionPoint.SetActive(true);
+                currentPredictionPoint.transform.position = predictedPoint;
+            }
+        }
+        else
+        {
+            hasPredictedPoint = false;
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+        }
+    }
+
+    private void StartGrapple()
+    {
+        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
+
+        isGrappling = true;
+        grapplePoint = predictedPoint;
+
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.connectedAnchor = grapplePoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+
+        lineRenderer.positionCount = 2;
+    }
+
+    private void CheckForSwingPoints()
+    {
+        RaycastHit sphereCastHit;
+        Physics.SphereCast(cameraTransform.position, 0.5f, cameraTransform.forward,
+                            out sphereCastHit, maxGrappleDistance, grappleLayer);
+
+    }
+    private void ApplySwingForce()
+    {
+        if (!joint) return;
+
+        Vector3 viewDirection = cameraTransform.forward;
+        Vector3 rightDirection = cameraTransform.right;
+
+        playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
+    }
+
+    public void StopGrapple()
+    {
+        if (!isGrappling) return;
+
+        isGrappling = false;
+        cooldownTimer = grappleCooldown;
+        lineRenderer.positionCount = 0;
+        Destroy(joint);
+
+        playerMovement.EnableDoubleJump();
+
+        // Prediction point volta a aparecer após o grapple
+        if (currentPredictionPoint != null)
+        {
+            currentPredictionPoint.SetActive(true);
+        }
+    }
+
+    private void DrawRope()
+    {
+        if (!joint) return;
+        currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
+
+
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, currentGrapplePosition);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerMovementController.cs">
+// Local: Assets/Scripts/PlayerMovementController.cs
+
+using TMPro;
+using DG.Tweening;
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class PlayerMovementController : MonoBehaviour
+{
+    [Header("Estado Atual")]
+    [SerializeField] private bool isGrounded;
+    [SerializeField] private bool canDoubleJump;
+
+    [Header("Configurações de Movimento")]
+    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
+    [SerializeField] private float groundDrag = 6f;
+    [SerializeField] private float airDrag = 0.5f;
+    [SerializeField] private float airMultiplier = 0.6f;
+
+    [Header("Configurações de Pulo")]
+    [SerializeField] private float jumpForce = 14f;
+    [SerializeField] private float gravityMultiplier = 2.5f;
+
+    [Header("Verificação de Chão")]
+    [SerializeField] private float playerHeight = 2f;
+    [SerializeField] private LayerMask groundLayer;
+
+    [Header("Referências")]
+    [SerializeField] private Transform orientation;
+    [SerializeField] private GrapplingHookController grapplingHookController;
+    public GameObject velocityParticle;    
+    public TextMeshProUGUI debugText;
+    public GameObject playerModel;
+
+    [Header("Dash")]
+    [SerializeField] private float dashForce = 20f;
+    [SerializeField] private float dashCooldown = 0.5f;
+    private bool canDash = true;
+
+    private Rigidbody rb;
+    private Vector2 moveInput;
+
+    public Rigidbody Rb => rb;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnMove += SetMoveInput;
+        InputManager.Instance.OnJump += HandleJump;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        InputManager.Instance.OnJump -= HandleJump;
+    }
+
+    private void Update()
+    {
+        CheckGroundedStatus();
+        ApplyDrag();
+        LimitVelocity();
+        debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
+
+    }
+
+    private void FixedUpdate()
+    {
+        MovePlayer();
+        ApplyExtraGravity();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void CheckGroundedStatus()
+    {
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
+        if (isGrounded)
+        {
+            canDoubleJump = false;
+        }
+    }
+
+    private void ApplyDrag()
+    {
+        // CORRIGIDO: A propriedade correta é 'drag', não 'linearDamping'.
+        rb.linearDamping = isGrounded ? groundDrag : airDrag;
+    }
+
+    private void MovePlayer()
+    {
+        if (grapplingHookController.IsGrappling) return;
+
+        Vector3 moveDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
+        moveDirection.Normalize();
+
+        float forceMultiplier = isGrounded ? 1f : airMultiplier;
+        rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
+
+    }
+
+    private void LimitVelocity()
+    {
+
+
+        if (rb.linearVelocity.magnitude > maxMoveSpeed)
+        {
+            Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
+            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
+        }
+            if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
+            {
+                velocityParticle.SetActive(true);
+            }
+            else
+            {
+                velocityParticle.SetActive(false);
+            }
+
+    }
+
+    private void HandleJump()
+    {
+        if (grapplingHookController.IsGrappling) return;
+
+        if (isGrounded)
+        {
+            Jump();
+            canDash = true; // Reset dash ao tocar o chão
+        }
+        else if (canDoubleJump)
+        {
+            Jump();
+            canDoubleJump = false;
+            TryDash();
+        }
+    }
+
+    private void TryDash()
+    {
+        if (!canDash) return;
+        canDash = false;
+        Vector3 dashDir = Vector3.zero;
+
+        // Se não houver input ou input para frente, dash na direção do olhar
+        if (moveInput == Vector2.zero || Mathf.Abs(moveInput.y) > Mathf.Abs(moveInput.x))
+        {
+            dashDir = orientation.forward;
+        }
+        else
+        {
+            // Dash para a direção do input (direita/esquerda)
+            dashDir = orientation.right * Mathf.Sign(moveInput.x);
+        }
+
+        dashDir.Normalize();
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z); // Zera Y para dash consistente
+        rb.AddForce(dashDir * dashForce, ForceMode.VelocityChange);
+
+        Invoke(nameof(ResetDash), dashCooldown);
+    }
+
+    private void ResetDash()
+    {
+        canDash = true;
+    }
+
+    private void Jump()
+    {
+        // CORRIGIDO: Usando 'linearVelocity' para resetar a velocidade vertical.
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+    }
+
+    private void ApplyExtraGravity()
+    {
+        if (!isGrounded )
+        {
+            rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
+        }
+    }
+
+    public void EnableDoubleJump()
+    {
+        canDoubleJump = true;
     }
 }
 </file>
