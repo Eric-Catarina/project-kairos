@@ -5166,18 +5166,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1ebf9413a3e092ac82d2e5e5ec57d7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrapplingHookController
-  canDoMultipleGrapple: 0
+  canDoMultipleGrapple: 1
   isGrappling: 0
   maxGrappleDistance: 100
   grappleCooldown: 0.05
   grappleLayer:
     serializedVersion: 2
     m_Bits: 64
-  springForce: 7
+  springForce: 10
   damper: 7
   massScale: 10
   minSpringSize: 0.1
-  maxSpringSize: 0.5
+  maxSpringSize: 0.2
   swingForce: 100
   grappleTip: {fileID: 1633603598}
   cameraTransform: {fileID: 963194228}
