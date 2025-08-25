@@ -189,7 +189,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 03
+  m_Text: Empty
 --- !u!222 &18004182
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -735,7 +735,7 @@ GameObject:
   - component: {fileID: 159542721}
   - component: {fileID: 159542720}
   m_Layer: 5
-  m_Name: Cena01
+  m_Name: Background
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -814,7 +814,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: 
+          m_StringArgument: BackGroundTest
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &159542721
@@ -1744,6 +1744,7 @@ GameObject:
   m_Component:
   - component: {fileID: 328685191}
   - component: {fileID: 328685190}
+  - component: {fileID: 328685192}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -1831,6 +1832,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!114 &328685192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 328685189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &347011426
 GameObject:
   m_ObjectHideFlags: 0
@@ -3881,7 +3905,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 02
+  m_Text: Empty
 --- !u!222 &841342509
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5440,7 +5464,7 @@ GameObject:
   - component: {fileID: 1080183606}
   - component: {fileID: 1080183605}
   m_Layer: 5
-  m_Name: Cena03
+  m_Name: Empty
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5773,7 +5797,7 @@ GameObject:
   - component: {fileID: 1140314246}
   - component: {fileID: 1140314245}
   m_Layer: 5
-  m_Name: Cena04
+  m_Name: Empty
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6936,7 +6960,7 @@ GameObject:
   - component: {fileID: 1336632104}
   - component: {fileID: 1336632103}
   m_Layer: 5
-  m_Name: Cena02
+  m_Name: Empty
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7721,7 +7745,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 01
+  m_Text: BG
 --- !u!222 &1542164006
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -8763,7 +8787,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 04
+  m_Text: Empty
 --- !u!222 &1882210496
 CanvasRenderer:
   m_ObjectHideFlags: 0
