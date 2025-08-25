@@ -2,20 +2,25 @@
 
 using TMPro;
 using System;
-using DG.Tweening;
-
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
 {
+    public event Action OnSlideStart;
+    public event Action OnSlideEnd;
+    public event Action OnBoostJump;
+    public event Action OnGroundLanded;
+
     [Header("Estado Atual")]
     public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
-    [SerializeField] private bool isSliding; // Novo estado para o deslize
+    [SerializeField] private bool isSliding;
 
     [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
+    [SerializeField] private float moveSpeed = 7f;
+    [SerializeField] private float maxMoveSpeed = 30f;
+    [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
     [SerializeField] private float airMultiplier = 0.6f;
@@ -27,7 +32,6 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
-    public event Action OnGroundLanded;
 
     [Header("Configurações de Deslize")]
     [Tooltip("Velocidade mínima para iniciar o deslize ao aterrissar.")]
@@ -36,6 +40,8 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float slideDuration = 1f;
     [Tooltip("Atrito aplicado durante o deslize.")]
     [SerializeField] private float slideDrag = 1f;
+    [Tooltip("Força com que o jogador pode controlar a direção durante o deslize.")]
+    [SerializeField] private float slideControlForce = 5f;
     [Tooltip("Janela de tempo no final do deslize para conseguir o boost (em segundos).")]
     [SerializeField] private float slideBoostWindow = 0.1f;
     [Tooltip("Força do impulso concedido no pulo com boost.")]
@@ -44,13 +50,12 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
-    [SerializeField] private GameObject playerVisuals;
     public GameObject velocityParticle;
     public TextMeshProUGUI debugText;
 
     private Rigidbody rb;
     private Vector2 moveInput;
-    private float slideTimer; // Timer para controlar a duração do deslize
+    private float slideTimer;
 
     public Rigidbody Rb => rb;
 
@@ -76,7 +81,7 @@ public class PlayerMovementController : MonoBehaviour
     private void Update()
     {
         CheckGroundedStatus();
-        HandleSlide(); // Nova função para gerenciar o timer do deslize
+        HandleSlideTimer();
         ApplyDrag();
         LimitVelocity();
         debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
@@ -103,11 +108,9 @@ public class PlayerMovementController : MonoBehaviour
             canDoubleJump = false;
         }
 
-        // Invoca o evento e verifica se deve iniciar o deslize
         if (!wasGrounded && isGrounded)
         {
             OnGroundLanded?.Invoke();
-            // Inicia o deslize se a velocidade for alta o suficiente
             if (rb.linearVelocity.magnitude > slideThresholdSpeed)
             {
                 StartSlide();
@@ -117,31 +120,37 @@ public class PlayerMovementController : MonoBehaviour
 
     private void ApplyDrag()
     {
-        if (isSliding)
+        if (grapplingHookController.IsGrappling)
         {
-            rb.linearDamping = slideDrag;
+            rb.linearDamping = 0; // Remove drag during grapple for smoother swings
+            return;
         }
-        else
-        {
-            rb.linearDamping = isGrounded ? groundDrag : airDrag;
-        }
+        
+        rb.linearDamping = isSliding ? slideDrag : (isGrounded ? groundDrag : airDrag);
     }
 
     private void MovePlayer()
     {
-        // Desativa o controle de movimento durante o grapple ou o deslize
-        if (grapplingHookController.IsGrappling || isSliding) return;
+        if (grapplingHookController.IsGrappling) return;
 
         Vector3 moveDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
         moveDirection.Normalize();
 
-        float forceMultiplier = isGrounded ? 1f : airMultiplier;
-        rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
+        if (isSliding)
+        {
+            // Permite um controle direcional limitado durante o deslize
+            rb.AddForce(moveDirection * slideControlForce, ForceMode.Force);
+        }
+        else
+        {
+            float forceMultiplier = isGrounded ? 1f : airMultiplier;
+            rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
+        }
     }
 
     private void LimitVelocity()
     {
-        if (grapplingHookController.IsGrappling) return; // Não limita a velocidade durante o grapple
+        if (grapplingHookController.IsGrappling) return;
 
         if (rb.linearVelocity.magnitude > maxMoveSpeed)
         {
@@ -163,14 +172,13 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (grapplingHookController.IsGrappling) return;
 
-        // Lógica para o pulo com boost
         if (isSliding && slideTimer <= slideBoostWindow)
         {
             BoostJump();
-            return; // Sai da função para não executar o pulo normal
+            return;
         }
 
-        if (isGrounded) // Permite o pulo normal (mesmo durante o slide, fora da janela de boost)
+        if (isGrounded)
         {
             Jump();
         }
@@ -183,28 +191,27 @@ public class PlayerMovementController : MonoBehaviour
 
     private void Jump()
     {
-        if (isSliding) StopSlide(); // Para o slide se pular no meio dele
-
+        if (isSliding) StopSlide();
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
-
-    // --- NOVAS FUNÇÕES PARA O DESLIZE ---
-
+    
     private void StartSlide()
     {
         isSliding = true;
         slideTimer = slideDuration;
-        playerVisuals.transform.DOLocalRotate(new Vector3(-40f, 0f, 0f), 0.2f).SetEase(Ease.OutQuad);
+        OnSlideStart?.Invoke(); // Dispara o evento!
     }
 
     private void StopSlide()
     {
+        if (!isSliding) return;
         isSliding = false;
         slideTimer = 0f;
+        OnSlideEnd?.Invoke(); // Dispara o evento!
     }
 
-    private void HandleSlide()
+    private void HandleSlideTimer()
     {
         if (!isSliding) return;
 
@@ -217,33 +224,24 @@ public class PlayerMovementController : MonoBehaviour
 
     private void BoostJump()
     {
+        OnBoostJump?.Invoke(); // Dispara o evento de boost!
         StopSlide();
 
-        // Pulo normal
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
 
-        // Aplica o boost na direção do movimento atual
         Vector3 boostDirection = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).normalized;
-        if (boostDirection == Vector3.zero) // Caso o jogador pare completamente, usa a orientação
+        if(boostDirection == Vector3.zero)
         {
             boostDirection = orientation.forward;
         }
-
+        
         rb.AddForce(boostDirection * slideBoostForce, ForceMode.Impulse);
-        playerVisuals.transform.DOLocalRotate(new Vector3(40f, 0f, 0f), 0.2f).SetEase(Ease.OutQuad).OnComplete(() =>
-        {
-            playerVisuals.transform.DOLocalRotate(Vector3.zero, 0.2f).SetEase(Ease.OutQuad);
-        });
-
-
     }
-    
-    // ------------------------------------
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded)
+        if (!isGrounded && !grapplingHookController.IsGrappling)
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }

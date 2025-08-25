@@ -56,6 +56,6 @@ public class PlayerLookController : MonoBehaviour
         }
 
         // O modelo do jogador gira suavemente para se alinhar com a orientação.
-        // playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
 }

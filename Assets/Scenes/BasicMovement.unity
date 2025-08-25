@@ -4946,6 +4946,7 @@ GameObject:
   - component: {fileID: 818554842}
   - component: {fileID: 818554845}
   - component: {fileID: 818554846}
+  - component: {fileID: 818554848}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -5047,11 +5048,11 @@ MonoBehaviour:
   slideThresholdSpeed: 20
   slideDuration: 1
   slideDrag: 0
+  slideControlForce: 5
   slideBoostWindow: 0.5
   slideBoostForce: 100
   orientation: {fileID: 1457126761}
   grapplingHookController: {fileID: 818554843}
-  playerVisuals: {fileID: 2135841689}
   velocityParticle: {fileID: 982827512}
   debugText: {fileID: 203901434}
 --- !u!120 &818554842
@@ -5341,6 +5342,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b90a1e69eeab1c85795029124db0bcc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InputManager
+--- !u!114 &818554848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818554835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3210a61cb986db09badc301b7635c78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerMovementController: {fileID: 818554840}
+  playerModel: {fileID: 2135841690}
+  slideRotation: {x: -40, y: 0, z: 0}
+  slideAnimDuration: 0.2
+  slideShakeStrength: 10
+  slideShakeVibrato: 10
+  boostJumpRotation: {x: 350, y: 0, z: 0}
+  boostAnimDuration: 1
 --- !u!1 &852655025
 GameObject:
   m_ObjectHideFlags: 0
