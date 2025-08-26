@@ -34,6 +34,13 @@ public class PlayerMovementController : MonoBehaviour
     public GameObject velocityParticle;    
     public TextMeshProUGUI debugText;
 
+    [Header("Configurações de Áudio")] //se quiser alterar a frequência dos passos e da respiração
+    [SerializeField] private float stepInterval = 0.35f; 
+    [SerializeField] private float breathingInterval = 4f;
+
+    private float stepTimer;
+    private float breathingTimer;
+    
     private Rigidbody rb;
     private Vector2 moveInput;
 
@@ -64,6 +71,11 @@ public class PlayerMovementController : MonoBehaviour
         ApplyDrag();
         LimitVelocity();
         debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
+
+        HandleFootsteps();
+        HandleBreathing();
+
+        
     }
 
     private void FixedUpdate()
@@ -89,6 +101,7 @@ public class PlayerMovementController : MonoBehaviour
         if (!wasGrounded && isGrounded)
         {
             OnGroundLanded?.Invoke();
+            AudioManager.instance.PlaySFX("Landing");
         }
     }
 
@@ -121,10 +134,12 @@ public class PlayerMovementController : MonoBehaviour
             if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
             {
                 velocityParticle.SetActive(true);
+                AudioManager.instance.PlayLoop("Woosh");
             }
             else
             {
                 velocityParticle.SetActive(false);
+                AudioManager.instance.Stop("Woosh");
             }
 
     }
@@ -136,11 +151,14 @@ public class PlayerMovementController : MonoBehaviour
         if (isGrounded)
         {
             Jump();
+            AudioManager.instance.PlaySFX("Jump");
         }
         else if (canDoubleJump)
         {
             Jump();
             canDoubleJump = false;
+            AudioManager.instance.PlaySFX("DoubleJump");
+            //Por enquanto o som dos pulos é o mesmo, mas se necessário faço um diferente
         }
     }
 
@@ -163,4 +181,41 @@ public class PlayerMovementController : MonoBehaviour
     {
         canDoubleJump = true;
     }
+
+    private void HandleFootsteps()
+    {
+        // Só toca passos se estiver no chão e se movendo
+        if (isGrounded && rb.linearVelocity.magnitude > 2f)
+        {
+            stepTimer += Time.deltaTime;
+            if (stepTimer >= stepInterval)
+            {
+                AudioManager.instance.PlaySFX("Footstep");
+                stepTimer = 0f;
+            }
+        }
+        else
+        {
+            stepTimer = 0f;
+        }
+    }
+
+    private void HandleBreathing()
+    {
+        // Respiração só correndo, mas em frequência bem menor que passos
+        if (isGrounded && rb.linearVelocity.magnitude > 5f)
+        {
+            breathingTimer += Time.deltaTime;
+            if (breathingTimer >= breathingInterval)
+            {
+                AudioManager.instance.PlaySFX("Breathing");
+                breathingTimer = 0f;
+            }
+        }
+        else
+        {
+            breathingTimer = 0f;
+        }
+    }
+
 }

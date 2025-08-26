@@ -34,7 +34,7 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        PlayMusic("");
+        PlayMusic("Menu");
     }
 
 
@@ -136,4 +136,25 @@ public class AudioManager : MonoBehaviour
         musicSource.mute = masterSource.mute;
         sfxSource.mute = masterSource.mute;
     }
-}//
+
+    public void PlayLoop(string soundName)
+    {
+        Sound s = Array.Find(sfxSounds, sound => sound.name == soundName);
+        if (s != null)
+        {
+            sfxSource.clip = s.clip;
+            sfxSource.loop = true;
+            sfxSource.Play();
+        }
+    }
+
+    public void Stop(string soundName)
+    {
+        Sound s = Array.Find(sfxSounds, sound => sound.name == soundName);
+        if (s != null && sfxSource.isPlaying && sfxSource.clip == s.clip)
+        {
+            sfxSource.Stop();
+            sfxSource.loop = false;
+        }
+    }
+}
