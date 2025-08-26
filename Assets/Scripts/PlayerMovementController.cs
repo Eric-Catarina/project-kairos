@@ -1,14 +1,17 @@
 // Local: Assets/Scripts/PlayerMovementController.cs
 
 using TMPro;
+using System;
+
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
 {
     [Header("Estado Atual")]
-    [SerializeField] private bool isGrounded;
+    public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
+    private bool wasGroundedLastFrame; // novo campo para rastrear o estado anterior
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
@@ -23,6 +26,7 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
+    public event Action OnGroundLanded;
 
     [Header("Referências")]
     [SerializeField] private Transform orientation;
@@ -60,7 +64,6 @@ public class PlayerMovementController : MonoBehaviour
         ApplyDrag();
         LimitVelocity();
         debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
-
     }
 
     private void FixedUpdate()
@@ -76,10 +79,16 @@ public class PlayerMovementController : MonoBehaviour
 
     private void CheckGroundedStatus()
     {
+        bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
         if (isGrounded)
         {
             canDoubleJump = false;
+        }
+        // Invoca o evento apenas na transição de "no ar" para "no chão"
+        if (!wasGrounded && isGrounded)
+        {
+            OnGroundLanded?.Invoke();
         }
     }
 
