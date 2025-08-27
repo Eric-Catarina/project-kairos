@@ -20,7 +20,7 @@ public class PlayerMovementController : MonoBehaviour
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float maxMoveSpeed = 30f;
+    [SerializeField] private float maxMoveSpeed = 30f, maxGrappleMoveSpeed = 150f;
     [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
@@ -88,7 +88,7 @@ public class PlayerMovementController : MonoBehaviour
         HandleSlideTimer();
         ApplyDrag();
         LimitVelocity();
-        velocityText.text = "Velocidade: " + new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude.ToString("F2");
+
         distanceText.text = "Distancia: " +  grapplingHookController.grappleDistance.ToString("F2");
         
     }
@@ -153,25 +153,33 @@ public class PlayerMovementController : MonoBehaviour
         }
     }
 
-    private void LimitVelocity()
-    {
-        if (grapplingHookController.IsGrappling) return;
+private void LimitVelocity()
+{
+    // Determina a velocidade máxima atual baseada no estado do gancho de agarre.
+    float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+        float currentSpeedInKm = rb.linearVelocity.magnitude * 3.6f;
 
-        if (rb.linearVelocity.magnitude > maxMoveSpeed)
+    // Verifica se a magnitude da velocidade atual excede a velocidade máxima permitida.
+        if (currentSpeedInKm > currentMaxSpeed)
         {
-            Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
-            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
+            // Limita estritamente a magnitude da velocidade para a velocidade máxima, preservando a direção.
+            rb.linearVelocity = rb.linearVelocity.normalized * currentMaxSpeed/3.6f;
         }
-        
-        if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
-        {
-            velocityParticle.SetActive(true);
-        }
-        else
-        {
-            velocityParticle.SetActive(false);
-        }
+
+    // Calcula a velocidade em Km/h para exibição (considerando apenas o plano XZ).
+    float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+    velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+    
+    // Ativa ou desativa os efeitos visuais de velocidade com base na magnitude da velocidade.
+    if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
+    {
+        velocityParticle.SetActive(true);
     }
+    else
+    {
+        velocityParticle.SetActive(false);
+    }
+}
 
     private void HandleJump()
     {
