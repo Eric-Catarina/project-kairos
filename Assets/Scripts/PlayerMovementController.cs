@@ -15,6 +15,7 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Estado Atual")]
     public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
+    [SerializeField] private bool canDashSlide = false;
     [SerializeField] private bool isSliding;
 
     [Header("Configurações de Movimento")]
@@ -27,6 +28,8 @@ public class PlayerMovementController : MonoBehaviour
 
     [Header("Configurações de Pulo")]
     [SerializeField] private float jumpForce = 14f;
+    [SerializeField] private float doubleJumpForce = 14f;
+
     [SerializeField] private float gravityMultiplier = 2.5f;
 
     [Header("Verificação de Chão")]
@@ -180,24 +183,25 @@ public class PlayerMovementController : MonoBehaviour
 
         if (isGrounded)
         {
-            Jump();
+            Jump(jumpForce);
         }
         else if (canDoubleJump)
         {
-            Jump();
+            Jump(doubleJumpForce);
             canDoubleJump = false;
         }
     }
 
-    private void Jump()
+    private void Jump(float jumpStrenght)
     {
         if (isSliding) StopSlide();
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        rb.AddForce(transform.up * jumpStrenght, ForceMode.Impulse);
     }
     
     private void StartSlide()
     {
+        if (!canDashSlide) return;
         isSliding = true;
         slideTimer = slideDuration;
         OnSlideStart?.Invoke(); // Dispara o evento!
