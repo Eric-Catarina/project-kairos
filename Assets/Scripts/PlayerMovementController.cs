@@ -24,12 +24,13 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
+    [SerializeField] private float grappleAirDrag = 0.5f;
+
     [SerializeField] private float airMultiplier = 0.6f;
 
     [Header("Configurações de Pulo")]
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private float doubleJumpForce = 14f;
-
     [SerializeField] private float gravityMultiplier = 2.5f;
 
     [Header("Verificação de Chão")]
@@ -54,7 +55,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
     public GameObject velocityParticle;
-    public TextMeshProUGUI debugText;
+    public TextMeshProUGUI velocityText, distanceText;
 
     private Rigidbody rb;
     private Vector2 moveInput;
@@ -87,7 +88,9 @@ public class PlayerMovementController : MonoBehaviour
         HandleSlideTimer();
         ApplyDrag();
         LimitVelocity();
-        debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
+        velocityText.text = "Velocidade: " + new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude.ToString("F2");
+        distanceText.text = "Distancia: " +  grapplingHookController.grappleDistance.ToString("F2");
+        
     }
 
     private void FixedUpdate()
@@ -125,10 +128,9 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (grapplingHookController.IsGrappling)
         {
-            rb.linearDamping = 0; // Remove drag during grapple for smoother swings
+            rb.linearDamping = grappleAirDrag; // Remove drag during grapple for smoother swings
             return;
         }
-        
         rb.linearDamping = isSliding ? slideDrag : (isGrounded ? groundDrag : airDrag);
     }
 
@@ -245,7 +247,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded && !grapplingHookController.IsGrappling)
+        if (!isGrounded)
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }
