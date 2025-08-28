@@ -2,47 +2,64 @@
 
 using TMPro;
 using System;
-
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
 {
+    public event Action OnSlideStart;
+    public event Action OnSlideEnd;
+    public event Action OnBoostJump;
+    public event Action OnGroundLanded;
+
     [Header("Estado Atual")]
     public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
-    private bool wasGroundedLastFrame; // novo campo para rastrear o estado anterior
+    [SerializeField] private bool canDashSlide = false;
+    [SerializeField] private bool isSliding;
 
     [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
+    [SerializeField] private float moveSpeed = 7f;
+    [SerializeField] private float maxMoveSpeed = 30f, maxGrappleMoveSpeed = 150f;
+    [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
+    [SerializeField] private float grappleAirDrag = 0.5f;
+
     [SerializeField] private float airMultiplier = 0.6f;
 
     [Header("Configurações de Pulo")]
     [SerializeField] private float jumpForce = 14f;
+    [SerializeField] private float doubleJumpForce = 14f;
     [SerializeField] private float gravityMultiplier = 2.5f;
 
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
-    public event Action OnGroundLanded;
+
+    [Header("Configurações de Deslize")]
+    [Tooltip("Velocidade mínima para iniciar o deslize ao aterrissar.")]
+    [SerializeField] private float slideThresholdSpeed = 20f;
+    [Tooltip("Duração total do deslize em segundos.")]
+    [SerializeField] private float slideDuration = 1f;
+    [Tooltip("Atrito aplicado durante o deslize.")]
+    [SerializeField] private float slideDrag = 1f;
+    [Tooltip("Força com que o jogador pode controlar a direção durante o deslize.")]
+    [SerializeField] private float slideControlForce = 5f;
+    [Tooltip("Janela de tempo no final do deslize para conseguir o boost (em segundos).")]
+    [SerializeField] private float slideBoostWindow = 0.1f;
+    [Tooltip("Força do impulso concedido no pulo com boost.")]
+    [SerializeField] private float slideBoostForce = 25f;
 
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
-    public GameObject velocityParticle;    
-    public TextMeshProUGUI debugText;
+    public GameObject velocityParticle;
+    public TextMeshProUGUI velocityText, distanceText;
 
-    [Header("Configurações de Áudio")] //se quiser alterar a frequência dos passos e da respiração
-    [SerializeField] private float stepInterval = 0.35f; 
-    [SerializeField] private float breathingInterval = 4f;
-
-    private float stepTimer;
-    private float breathingTimer;
-    
     private Rigidbody rb;
     private Vector2 moveInput;
+    private float slideTimer;
 
     public Rigidbody Rb => rb;
 
@@ -68,13 +85,11 @@ public class PlayerMovementController : MonoBehaviour
     private void Update()
     {
         CheckGroundedStatus();
+        HandleSlideTimer();
         ApplyDrag();
         LimitVelocity();
-        debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
 
-        HandleFootsteps();
-        HandleBreathing();
-
+        distanceText.text = "Distancia: " +  grapplingHookController.grappleDistance.ToString("F2");
         
     }
 
@@ -93,85 +108,154 @@ public class PlayerMovementController : MonoBehaviour
     {
         bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
+        
         if (isGrounded)
         {
             canDoubleJump = false;
         }
-        // Invoca o evento apenas na transição de "no ar" para "no chão"
+
         if (!wasGrounded && isGrounded)
         {
             OnGroundLanded?.Invoke();
-            AudioManager.instance.PlaySFX("Landing");
+            if (rb.linearVelocity.magnitude > slideThresholdSpeed)
+            {
+                StartSlide();
+            }
         }
     }
 
     private void ApplyDrag()
     {
-        // CORRIGIDO: A propriedade correta é 'drag', não 'linearDamping'.
-        rb.linearDamping = isGrounded ? groundDrag : airDrag;
+        if (grapplingHookController.IsGrappling)
+        {
+            rb.linearDamping = grappleAirDrag; // Remove drag during grapple for smoother swings
+            return;
+        }
+        rb.linearDamping = isSliding ? slideDrag : (isGrounded ? groundDrag : airDrag);
     }
 
     private void MovePlayer()
     {
-        if (grapplingHookController.IsGrappling) return; 
+        if (grapplingHookController.IsGrappling) return;
 
         Vector3 moveDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
         moveDirection.Normalize();
 
-        float forceMultiplier = isGrounded ? 1f : airMultiplier;
-        rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
-    }
-
-    private void LimitVelocity()
-    {
-
-
-        if (rb.linearVelocity.magnitude > maxMoveSpeed)
+        if (isSliding)
         {
-            Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
-            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
+            // Permite um controle direcional limitado durante o deslize
+            rb.AddForce(moveDirection * slideControlForce, ForceMode.Force);
         }
-            if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
-            {
-                velocityParticle.SetActive(true);
-                AudioManager.instance.PlayLoop("Woosh");
-            }
-            else
-            {
-                velocityParticle.SetActive(false);
-                AudioManager.instance.Stop("Woosh");
-            }
-
+        else
+        {
+            float forceMultiplier = isGrounded ? 1f : airMultiplier;
+            rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
+        }
     }
+
+private void LimitVelocity()
+{
+    // Determina a velocidade máxima atual baseada no estado do gancho de agarre.
+    float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+        float currentSpeedInKm = rb.linearVelocity.magnitude * 3.6f;
+
+    // Verifica se a magnitude da velocidade atual excede a velocidade máxima permitida.
+        if (currentSpeedInKm > currentMaxSpeed)
+        {
+            // Limita estritamente a magnitude da velocidade para a velocidade máxima, preservando a direção.
+            rb.linearVelocity = rb.linearVelocity.normalized * currentMaxSpeed/3.6f;
+        }
+
+    // Calcula a velocidade em Km/h para exibição (considerando apenas o plano XZ).
+    float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+    velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+    
+    // Ativa ou desativa os efeitos visuais de velocidade com base na magnitude da velocidade.
+    if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
+    {
+        velocityParticle.SetActive(true);
+    }
+    else
+    {
+        velocityParticle.SetActive(false);
+    }
+}
 
     private void HandleJump()
     {
         if (grapplingHookController.IsGrappling) return;
 
+        if (isSliding && slideTimer <= slideBoostWindow)
+        {
+            BoostJump();
+            return;
+        }
+
         if (isGrounded)
         {
-            Jump();
-            AudioManager.instance.PlaySFX("Jump");
+            Jump(jumpForce);
         }
         else if (canDoubleJump)
         {
-            Jump();
+            Jump(doubleJumpForce);
             canDoubleJump = false;
-            AudioManager.instance.PlaySFX("DoubleJump");
-            //Por enquanto o som dos pulos é o mesmo, mas se necessário faço um diferente
         }
     }
 
-    private void Jump()
+    private void Jump(float jumpStrenght)
     {
-        // CORRIGIDO: Usando 'linearVelocity' para resetar a velocidade vertical.
+        if (isSliding) StopSlide();
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        rb.AddForce(transform.up * jumpStrenght, ForceMode.Impulse);
+    }
+    
+    private void StartSlide()
+    {
+        if (!canDashSlide) return;
+        isSliding = true;
+        slideTimer = slideDuration;
+        OnSlideStart?.Invoke(); // Dispara o evento!
+    }
+
+    private void StopSlide()
+    {
+        if (!isSliding) return;
+        isSliding = false;
+        slideTimer = 0f;
+        OnSlideEnd?.Invoke(); // Dispara o evento!
+    }
+
+    private void HandleSlideTimer()
+    {
+        if (!isSliding) return;
+
+        slideTimer -= Time.deltaTime;
+        if (slideTimer <= 0)
+        {
+            StopSlide();
+        }
+    }
+
+    private void BoostJump()
+    {
+        OnBoostJump?.Invoke(); // Dispara o evento de boost!
+        StopSlide();
+
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+
+        Vector3 boostDirection = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).normalized;
+        if(boostDirection == Vector3.zero)
+        {
+            boostDirection = orientation.forward;
+        }
+        
+        rb.AddForce(boostDirection * slideBoostForce, ForceMode.Impulse);
     }
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded )
+        if (!isGrounded)
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }
@@ -181,41 +265,4 @@ public class PlayerMovementController : MonoBehaviour
     {
         canDoubleJump = true;
     }
-
-    private void HandleFootsteps()
-    {
-        // Só toca passos se estiver no chão e se movendo
-        if (isGrounded && rb.linearVelocity.magnitude > 2f)
-        {
-            stepTimer += Time.deltaTime;
-            if (stepTimer >= stepInterval)
-            {
-                AudioManager.instance.PlaySFX("Footstep");
-                stepTimer = 0f;
-            }
-        }
-        else
-        {
-            stepTimer = 0f;
-        }
-    }
-
-    private void HandleBreathing()
-    {
-        // Respiração só correndo, mas em frequência bem menor que passos
-        if (isGrounded && rb.linearVelocity.magnitude > 5f)
-        {
-            breathingTimer += Time.deltaTime;
-            if (breathingTimer >= breathingInterval)
-            {
-                AudioManager.instance.PlaySFX("Breathing");
-                breathingTimer = 0f;
-            }
-        }
-        else
-        {
-            breathingTimer = 0f;
-        }
-    }
-
 }

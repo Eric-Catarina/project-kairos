@@ -28,6 +28,7 @@ public class GrapplingHookController : MonoBehaviour
     [Header("Configurações do Pêndulo")]
     [SerializeField] private float swingForce = 50f;
 
+
     [Header("Referências")]
     [SerializeField] private Transform grappleTip;
     [SerializeField] private Transform cameraTransform;
@@ -40,6 +41,7 @@ public class GrapplingHookController : MonoBehaviour
     private Vector2 moveInput;
     private float cooldownTimer;
     private GameObject currentPredictionPoint;
+    public float grappleDistance;
 
     private Vector3 predictedPoint;
     private bool hasPredictedPoint;
@@ -123,6 +125,7 @@ public class GrapplingHookController : MonoBehaviour
         {
             predictedPoint = hit.point;
             hasPredictedPoint = true;
+            grappleDistance = hit.distance;
 
             if (currentPredictionPoint == null)
             {
@@ -139,6 +142,8 @@ public class GrapplingHookController : MonoBehaviour
             hasPredictedPoint = false;
             if (currentPredictionPoint != null)
                 currentPredictionPoint.SetActive(false);
+            grappleDistance = 0f;
+
         }
     }
 
@@ -171,13 +176,6 @@ public class GrapplingHookController : MonoBehaviour
             hasGrappleAvailable = false;
     }
 
-    private void CheckForSwingPoints()
-    {
-        RaycastHit sphereCastHit;
-        Physics.SphereCast(cameraTransform.position, 0.5f, cameraTransform.forward,
-                            out sphereCastHit, maxGrappleDistance, grappleLayer);
-
-    }
     private void ApplySwingForce()
     {
         if (!joint) return;
