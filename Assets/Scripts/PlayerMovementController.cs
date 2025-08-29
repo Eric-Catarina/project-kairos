@@ -3,6 +3,7 @@
 using TMPro;
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
@@ -84,17 +85,15 @@ public class PlayerMovementController : MonoBehaviour
 
     private void Update()
     {
-        CheckGroundedStatus();
-        HandleSlideTimer();
-        ApplyDrag();
-        LimitVelocity();
-
         distanceText.text = "Distancia: " +  grapplingHookController.grappleDistance.ToString("F2");
-        
     }
 
     private void FixedUpdate()
     {
+        CheckGroundedStatus();
+        HandleSlideTimer();
+        ApplyDrag();
+        LimitVelocity();
         MovePlayer();
         ApplyExtraGravity();
     }
