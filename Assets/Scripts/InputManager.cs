@@ -18,7 +18,12 @@ public class InputManager : MonoBehaviour
     public event Action OnJump;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
-    
+
+    public event Action OnLevelFinished;
+    public event Action OnLevelRestarted;
+
+
+
     // --- NOVO ---
     public event Action OnSlowTimeStarted;
     public event Action OnSlowTimeCanceled;
@@ -48,7 +53,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Move.canceled += HandleMove;
         _playerControls.Player.Look.performed += HandleLook;
         _playerControls.Player.Look.canceled += HandleLook;
-        
+
         // Ações
         _playerControls.Player.Jump.performed += HandleJump;
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
@@ -58,14 +63,17 @@ public class InputManager : MonoBehaviour
         // Certifique-se de ter criado uma ação chamada "SlowTime" no seu Input Actions Asset.
         _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
         _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
-        // --- FIM NOVO ---
+
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
+
     }
 
     private void OnDisable()
     {
         if (_playerControls == null) return;
         _playerControls.Disable();
-        
+
         _playerControls.Player.Move.performed -= HandleMove;
         _playerControls.Player.Move.canceled -= HandleMove;
         _playerControls.Player.Look.performed -= HandleLook;
@@ -73,7 +81,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Jump.performed -= HandleJump;
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        
+
         // --- NOVO ---
         _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
         _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
@@ -86,9 +94,11 @@ public class InputManager : MonoBehaviour
     private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    
-    // --- NOVO ---
+
     private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
     private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
-    // --- FIM NOVO ---
+    
+    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
+    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+
 }
