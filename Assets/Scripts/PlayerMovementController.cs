@@ -3,6 +3,7 @@
 using TMPro;
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
@@ -15,18 +16,22 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Estado Atual")]
     public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
+    [SerializeField] private bool canDashSlide = false;
     [SerializeField] private bool isSliding;
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float maxMoveSpeed = 30f;
+    [SerializeField] private float maxMoveSpeed = 30f, maxGrappleMoveSpeed = 150f;
     [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 0.5f;
+    [SerializeField] private float grappleAirDrag = 0.5f;
+
     [SerializeField] private float airMultiplier = 0.6f;
 
     [Header("Configurações de Pulo")]
     [SerializeField] private float jumpForce = 14f;
+    [SerializeField] private float doubleJumpForce = 14f;
     [SerializeField] private float gravityMultiplier = 2.5f;
 
     [Header("Verificação de Chão")]
@@ -51,7 +56,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
     public GameObject velocityParticle;
-    public TextMeshProUGUI debugText;
+    public TextMeshProUGUI velocityText, distanceText;
 
     private Rigidbody rb;
     private Vector2 moveInput;
@@ -80,15 +85,15 @@ public class PlayerMovementController : MonoBehaviour
 
     private void Update()
     {
-        CheckGroundedStatus();
-        HandleSlideTimer();
-        ApplyDrag();
-        LimitVelocity();
-        debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
+        distanceText.text = "Distancia: " +  grapplingHookController.grappleDistance.ToString("F2");
     }
 
     private void FixedUpdate()
     {
+        CheckGroundedStatus();
+        HandleSlideTimer();
+        ApplyDrag();
+        LimitVelocity();
         MovePlayer();
         ApplyExtraGravity();
     }
@@ -122,10 +127,9 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (grapplingHookController.IsGrappling)
         {
-            rb.linearDamping = 0; // Remove drag during grapple for smoother swings
+            rb.linearDamping = grappleAirDrag; // Remove drag during grapple for smoother swings
             return;
         }
-        
         rb.linearDamping = isSliding ? slideDrag : (isGrounded ? groundDrag : airDrag);
     }
 
@@ -148,25 +152,33 @@ public class PlayerMovementController : MonoBehaviour
         }
     }
 
-    private void LimitVelocity()
-    {
-        if (grapplingHookController.IsGrappling) return;
+private void LimitVelocity()
+{
+    // Determina a velocidade máxima atual baseada no estado do gancho de agarre.
+    float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+        float currentSpeedInKm = rb.linearVelocity.magnitude * 3.6f;
 
-        if (rb.linearVelocity.magnitude > maxMoveSpeed)
+    // Verifica se a magnitude da velocidade atual excede a velocidade máxima permitida.
+        if (currentSpeedInKm > currentMaxSpeed)
         {
-            Vector3 limitedVelocity = rb.linearVelocity.normalized * maxMoveSpeed;
-            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
+            // Limita estritamente a magnitude da velocidade para a velocidade máxima, preservando a direção.
+            rb.linearVelocity = rb.linearVelocity.normalized * currentMaxSpeed/3.6f;
         }
-        
-        if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
-        {
-            velocityParticle.SetActive(true);
-        }
-        else
-        {
-            velocityParticle.SetActive(false);
-        }
+
+    // Calcula a velocidade em Km/h para exibição (considerando apenas o plano XZ).
+    float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+    velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+    
+    // Ativa ou desativa os efeitos visuais de velocidade com base na magnitude da velocidade.
+    if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
+    {
+        velocityParticle.SetActive(true);
     }
+    else
+    {
+        velocityParticle.SetActive(false);
+    }
+}
 
     private void HandleJump()
     {
@@ -180,24 +192,25 @@ public class PlayerMovementController : MonoBehaviour
 
         if (isGrounded)
         {
-            Jump();
+            Jump(jumpForce);
         }
         else if (canDoubleJump)
         {
-            Jump();
+            Jump(doubleJumpForce);
             canDoubleJump = false;
         }
     }
 
-    private void Jump()
+    private void Jump(float jumpStrenght)
     {
         if (isSliding) StopSlide();
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        rb.AddForce(transform.up * jumpStrenght, ForceMode.Impulse);
     }
     
     private void StartSlide()
     {
+        if (!canDashSlide) return;
         isSliding = true;
         slideTimer = slideDuration;
         OnSlideStart?.Invoke(); // Dispara o evento!
@@ -241,7 +254,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded && !grapplingHookController.IsGrappling)
+        if (!isGrounded)
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }

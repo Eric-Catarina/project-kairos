@@ -28,6 +28,7 @@ public class GrapplingHookController : MonoBehaviour
     [Header("Configurações do Pêndulo")]
     [SerializeField] private float swingForce = 50f;
 
+
     [Header("Referências")]
     [SerializeField] private Transform grappleTip;
     [SerializeField] private Transform cameraTransform;
@@ -40,10 +41,12 @@ public class GrapplingHookController : MonoBehaviour
     private Vector2 moveInput;
     private float cooldownTimer;
     private GameObject currentPredictionPoint;
+    public float grappleDistance;
 
     private Vector3 predictedPoint;
     private bool hasPredictedPoint;
 
+    private float grappleTimer;
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovementController>();
@@ -76,6 +79,16 @@ public class GrapplingHookController : MonoBehaviour
         if (cooldownTimer > 0)
         {
             cooldownTimer -= Time.deltaTime;
+        }
+
+        if (grappleTimer > 0)
+        {
+            grappleTimer -= Time.deltaTime;
+        }
+
+        if (grappleTimer <= 0 && isGrappling)
+        {
+            StopGrapple();
         }
 
         // Se só pode usar uma vez, cooldown não recarrega sozinho
@@ -123,6 +136,7 @@ public class GrapplingHookController : MonoBehaviour
         {
             predictedPoint = hit.point;
             hasPredictedPoint = true;
+            grappleDistance = hit.distance;
 
             if (currentPredictionPoint == null)
             {
@@ -139,6 +153,8 @@ public class GrapplingHookController : MonoBehaviour
             hasPredictedPoint = false;
             if (currentPredictionPoint != null)
                 currentPredictionPoint.SetActive(false);
+            grappleDistance = 0f;
+
         }
     }
 
@@ -151,6 +167,8 @@ public class GrapplingHookController : MonoBehaviour
 
         isGrappling = true;
         grapplePoint = predictedPoint;
+
+        grappleTimer = 3f; // Tempo máximo de grapple antes de forçar o desligamento
 
         joint = gameObject.AddComponent<SpringJoint>();
         joint.autoConfigureConnectedAnchor = false;
@@ -171,13 +189,6 @@ public class GrapplingHookController : MonoBehaviour
             hasGrappleAvailable = false;
     }
 
-    private void CheckForSwingPoints()
-    {
-        RaycastHit sphereCastHit;
-        Physics.SphereCast(cameraTransform.position, 0.5f, cameraTransform.forward,
-                            out sphereCastHit, maxGrappleDistance, grappleLayer);
-
-    }
     private void ApplySwingForce()
     {
         if (!joint) return;
