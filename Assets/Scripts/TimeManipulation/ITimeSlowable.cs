@@ -8,13 +8,13 @@
 public interface ITimeSlowable
 {
     /// <summary>
-    /// Inicia o efeito de desaceleração no objeto.
+    /// Salva o estado atual do objeto e inicia o efeito de desaceleração.
     /// </summary>
-    /// <param name="slowFactor">O fator pelo qual o objeto deve ser desacelerado (ex: 10f para aumentar o drag).</param>
-    void SlowDown(float slowFactor);
+    /// <param name="slowPercentage">A porcentagem de lentidão (0-100). 100 significa parada total.</param>
+    void SlowDown(float slowPercentage);
 
     /// <summary>
-    /// Restaura a velocidade e o comportamento normais do objeto.
+    /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
     /// </summary>
     void RestoreNormalTime();
 }
