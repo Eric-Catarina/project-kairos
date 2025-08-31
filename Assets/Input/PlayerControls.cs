@@ -127,6 +127,15 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""SlowTime"",
+                    ""type"": ""Button"",
+                    ""id"": ""44e554a1-13e4-49a0-9194-16d8214de3d4"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -217,6 +226,17 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""Grapple"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""97183833-4399-4e29-aa71-e2fe96028658"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SlowTime"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -229,6 +249,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_Look = m_Player.FindAction("Look", throwIfNotFound: true);
         m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
         m_Player_Grapple = m_Player.FindAction("Grapple", throwIfNotFound: true);
+        m_Player_SlowTime = m_Player.FindAction("SlowTime", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -313,6 +334,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Look;
     private readonly InputAction m_Player_Jump;
     private readonly InputAction m_Player_Grapple;
+    private readonly InputAction m_Player_SlowTime;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -340,6 +362,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/Grapple".
         /// </summary>
         public InputAction @Grapple => m_Wrapper.m_Player_Grapple;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/SlowTime".
+        /// </summary>
+        public InputAction @SlowTime => m_Wrapper.m_Player_SlowTime;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -378,6 +404,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Grapple.started += instance.OnGrapple;
             @Grapple.performed += instance.OnGrapple;
             @Grapple.canceled += instance.OnGrapple;
+            @SlowTime.started += instance.OnSlowTime;
+            @SlowTime.performed += instance.OnSlowTime;
+            @SlowTime.canceled += instance.OnSlowTime;
         }
 
         /// <summary>
@@ -401,6 +430,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Grapple.started -= instance.OnGrapple;
             @Grapple.performed -= instance.OnGrapple;
             @Grapple.canceled -= instance.OnGrapple;
+            @SlowTime.started -= instance.OnSlowTime;
+            @SlowTime.performed -= instance.OnSlowTime;
+            @SlowTime.canceled -= instance.OnSlowTime;
         }
 
         /// <summary>
@@ -469,5 +501,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnGrapple(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "SlowTime" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnSlowTime(InputAction.CallbackContext context);
     }
 }

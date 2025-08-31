@@ -12,11 +12,17 @@ public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
+    // Eventos de Ações do Jogador
     public event Action<Vector2> OnMove;
     public event Action<Vector2> OnLook;
     public event Action OnJump;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
+    
+    // --- NOVO ---
+    public event Action OnSlowTimeStarted;
+    public event Action OnSlowTimeCanceled;
+    // --- FIM NOVO ---
 
     private PlayerControls _playerControls;
 
@@ -31,28 +37,35 @@ public class InputManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         _playerControls = new PlayerControls();
-        Debug.Log("InputManager initialized and PlayerControls created.");
-
-        // AudioManager.instance.PlayMusic("Menu");
     }
 
     private void OnEnable()
     {
         _playerControls.Enable();
+
+        // Movimento e Câmera
         _playerControls.Player.Move.performed += HandleMove;
         _playerControls.Player.Move.canceled += HandleMove;
         _playerControls.Player.Look.performed += HandleLook;
         _playerControls.Player.Look.canceled += HandleLook;
+        
+        // Ações
         _playerControls.Player.Jump.performed += HandleJump;
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        Debug.Log("InputManager enabled and controls set up.");
+
+        // --- NOVO ---
+        // Certifique-se de ter criado uma ação chamada "SlowTime" no seu Input Actions Asset.
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
+        // --- FIM NOVO ---
     }
 
     private void OnDisable()
     {
         if (_playerControls == null) return;
         _playerControls.Disable();
+        
         _playerControls.Player.Move.performed -= HandleMove;
         _playerControls.Player.Move.canceled -= HandleMove;
         _playerControls.Player.Look.performed -= HandleLook;
@@ -60,11 +73,22 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Jump.performed -= HandleJump;
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        
+        // --- NOVO ---
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
+        // --- FIM NOVO ---
     }
 
+    // Métodos de manipulação de eventos
     private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
     private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
     private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    
+    // --- NOVO ---
+    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
+    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
+    // --- FIM NOVO ---
 }
