@@ -12,22 +12,23 @@ using UnityEngine;
 public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
 {
     [Header("Visual Feedback")]
-    [SerializeField] private Renderer objectRenderer;
-    [SerializeField] private Color slowDownColor = Color.cyan;
+    private Renderer objectRenderer;
+    private Color slowDownColor = Color.cyan;
 
     private Rigidbody _rb;
     private Color _originalColor;
-    
+
     // Variáveis para salvar o estado do Rigidbody
     private Vector3 _savedVelocity;
     private Vector3 _savedAngularVelocity;
-    
+
     private bool _isSlowed = false;
     private float _slowFactor; // Armazena o multiplicador (ex: 0.5 para 50% de lentidão)
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
+        objectRenderer = GetComponent<Renderer>();
 
         if (objectRenderer != null && objectRenderer.material != null)
         {
@@ -56,7 +57,7 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
     {
         // Se o tempo não está lento, a física normal do Unity cuida de tudo.
         if (!_isSlowed) return;
-        
+
         // Se o slow for 100%, não fazemos nada, o objeto fica parado.
         if (_slowFactor <= 0f) return;
 
@@ -80,7 +81,7 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         // Salva o estado atual
         _savedVelocity = _rb.linearVelocity;
         _savedAngularVelocity = _rb.angularVelocity;
-        
+
         // Converte a porcentagem (0-100) para um multiplicador (1.0-0.0)
         _slowFactor = 1.0f - (slowPercentage / 100.0f);
 
@@ -104,15 +105,21 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
 
         // Retorna o Rigidbody ao controle total da física.
         _rb.isKinematic = false;
-        
+
         // Restaura o estado de movimento. A física do Unity continuará a partir daqui.
         _rb.linearVelocity = _savedVelocity;
         _rb.angularVelocity = _savedAngularVelocity;
-        
+
         // Restaura feedback visual
         if (objectRenderer != null && objectRenderer.material != null)
         {
             objectRenderer.material.color = _originalColor;
         }
     }
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+
+
 }

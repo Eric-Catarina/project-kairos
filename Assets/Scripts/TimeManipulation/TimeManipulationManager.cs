@@ -16,6 +16,7 @@ public class TimeManipulationManager : MonoBehaviour
     [Tooltip("A porcentagem de lentidão a ser aplicada. 0 = sem efeito, 50 = 50% da velocidade, 100 = completamente parado.")]
     [Range(0f, 100f)]
     [SerializeField] private float slowPercentage = 50f;
+    [SerializeField] private Color slowDownColor = Color.cyan;
 
     // Lista de todos os objetos que podem ser desacelerados na cena.
     private readonly List<ITimeSlowable> _slowableObjects = new List<ITimeSlowable>();
@@ -58,6 +59,7 @@ public class TimeManipulationManager : MonoBehaviour
         if (!_slowableObjects.Contains(slowable))
         {
             _slowableObjects.Add(slowable);
+            slowable.SetSlowDownColor(slowDownColor);
         }
     }
 
