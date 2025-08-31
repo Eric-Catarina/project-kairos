@@ -4951,6 +4951,7 @@ GameObject:
   - component: {fileID: 818554842}
   - component: {fileID: 818554845}
   - component: {fileID: 818554846}
+  - component: {fileID: 818554848}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -5036,6 +5037,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   isGrounded: 0
   canDoubleJump: 0
+  isSliding: 0
   moveSpeed: 7
   maxMoveSpeed: 2000
   vfxMinMoveSpeed: 140
@@ -5048,6 +5050,12 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
+  slideThresholdSpeed: 20
+  slideDuration: 1
+  slideDrag: 0
+  slideControlForce: 5
+  slideBoostWindow: 0.5
+  slideBoostForce: 100
   orientation: {fileID: 1457126761}
   grapplingHookController: {fileID: 818554843}
   velocityParticle: {fileID: 982827512}
@@ -5171,18 +5179,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1ebf9413a3e092ac82d2e5e5ec57d7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrapplingHookController
-  canDoMultipleGrapple: 0
+  canDoMultipleGrapple: 1
   isGrappling: 0
   maxGrappleDistance: 100
   grappleCooldown: 0.05
   grappleLayer:
     serializedVersion: 2
     m_Bits: 64
-  springForce: 7
+  springForce: 10
   damper: 7
   massScale: 10
   minSpringSize: 0.1
-  maxSpringSize: 0.5
+  maxSpringSize: 0.2
   swingForce: 100
   grappleTip: {fileID: 1633603598}
   cameraTransform: {fileID: 963194228}
@@ -5339,6 +5347,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b90a1e69eeab1c85795029124db0bcc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InputManager
+--- !u!114 &818554848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818554835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3210a61cb986db09badc301b7635c78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerMovementController: {fileID: 818554840}
+  playerModel: {fileID: 2135841690}
+  slideRotation: {x: -40, y: 0, z: 0}
+  slideAnimDuration: 0.2
+  slideShakeStrength: 10
+  slideShakeVibrato: 10
+  boostJumpRotation: {x: 350, y: 0, z: 0}
+  boostAnimDuration: 1
 --- !u!1 &852655025
 GameObject:
   m_ObjectHideFlags: 0

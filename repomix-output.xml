@@ -49,6 +49,7 @@ Assets/
     InputManager.cs
     PlayerLookController.cs
     PlayerMovementController.cs
+    ShadowFollow.cs
     UIJuice.cs
 </directory_structure>
 
@@ -195,6 +196,44 @@ public class AudioManager : MonoBehaviour
     float randomPitch = Random.Range(1f - PITCH_VARIATION_PERCENTAGE, 1f + PITCH_VARIATION_PERCENTAGE);
     audioSource.pitch = randomPitch;
   }
+}
+</file>
+
+<file path="Assets/Scripts/ShadowFollow.cs">
+using UnityEngine;
+
+public class ShadowFollow : MonoBehaviour
+{
+    public Transform target; // O objeto do player que a sombra deve seguir
+    public float maxDistance = 100f; // Alcance máximo do raio
+    public LayerMask groundLayer; // Camada que representa o chão
+
+    void Update()
+    {
+        if (target != null)
+        {
+            // Lança um raio para baixo a partir da posição do player
+            Ray ray = new Ray(target.position, Vector3.down);
+            RaycastHit hit;
+
+            // Verifica se o raio atingiu algo dentro da distância máxima
+            if (Physics.Raycast(ray, out hit, maxDistance, groundLayer))
+            {
+                // Posiciona a sombra no ponto de impacto do raio
+                transform.position = hit.point;
+                // Opcional: Alinha a sombra com a superfície do chão
+                transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                // Mantém a sombra plana no chão
+                // sobe um pouco a sombra para evitar z-fighting
+                transform.position += Vector3.up * 0.01f;
+            }
+            else
+            {
+                // Se o raio não atingir nada, posiciona a sombra a uma distância fixa abaixo do player
+                transform.position = target.position + Vector3.down * maxDistance;
+            }
+        }
+    }
 }
 </file>
 
@@ -495,8 +534,10 @@ using UnityEngine;
 public class GrapplingHookController : MonoBehaviour
 {
     [Header("Estado")]
+    [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private bool isGrappling = false;
     public bool IsGrappling => isGrappling;
+    private bool hasGrappleAvailable = true;
 
     [Header("Configurações do Gancho")]
     [SerializeField] private float maxGrappleDistance = 50f;
@@ -534,6 +575,7 @@ public class GrapplingHookController : MonoBehaviour
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovementController>();
+        hasGrappleAvailable = true;
     }
 
     private void OnEnable()
@@ -541,6 +583,9 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted += StartGrapple;
         InputManager.Instance.OnGrappleCanceled += StopGrapple;
         InputManager.Instance.OnMove += SetMoveInput;
+        // Inscreve no evento de aterrissagem
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded += OnGroundLanded;
     }
 
     private void OnDisable()
@@ -549,6 +594,9 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted -= StartGrapple;
         InputManager.Instance.OnGrappleCanceled -= StopGrapple;
         InputManager.Instance.OnMove -= SetMoveInput;
+        // Remove inscrição do evento
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded -= OnGroundLanded;
     }
 
     private void Update()
@@ -556,6 +604,12 @@ public class GrapplingHookController : MonoBehaviour
         if (cooldownTimer > 0)
         {
             cooldownTimer -= Time.deltaTime;
+        }
+
+        // Se só pode usar uma vez, cooldown não recarrega sozinho
+        if (canDoMultipleGrapple && cooldownTimer <= 0)
+        {
+            hasGrappleAvailable = true;
         }
 
         UpdatePredictionPoint();
@@ -618,6 +672,9 @@ public class GrapplingHookController : MonoBehaviour
 
     private void StartGrapple()
     {
+        // Permite usar o grapple se estiver no chão, mesmo que hasGrappleAvailable seja false
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
+        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
         if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
 
         isGrappling = true;
@@ -636,6 +693,10 @@ public class GrapplingHookController : MonoBehaviour
         joint.massScale = massScale;
 
         lineRenderer.positionCount = 2;
+
+        // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
+        if (!canDoMultipleGrapple && !groundedOverride)
+            hasGrappleAvailable = false;
     }
 
     private void CheckForSwingPoints()
@@ -683,6 +744,15 @@ public class GrapplingHookController : MonoBehaviour
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, currentGrapplePosition);
     }
+
+    // Novo método para resetar grapple ao tocar o chão
+    private void OnGroundLanded()
+    {
+        if (!canDoMultipleGrapple && !hasGrappleAvailable)
+        {
+            hasGrappleAvailable = true;
+        }
+    }
 }
 </file>
 
@@ -690,15 +760,17 @@ public class GrapplingHookController : MonoBehaviour
 // Local: Assets/Scripts/PlayerMovementController.cs
 
 using TMPro;
-using DG.Tweening;
+using System;
+
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
 {
     [Header("Estado Atual")]
-    [SerializeField] private bool isGrounded;
+    public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
+    private bool wasGroundedLastFrame; // novo campo para rastrear o estado anterior
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f, maxMoveSpeed = 30f, vfxMinMoveSpeed = 150f;
@@ -713,18 +785,13 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
+    public event Action OnGroundLanded;
 
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
     public GameObject velocityParticle;    
     public TextMeshProUGUI debugText;
-    public GameObject playerModel;
-
-    [Header("Dash")]
-    [SerializeField] private float dashForce = 20f;
-    [SerializeField] private float dashCooldown = 0.5f;
-    private bool canDash = true;
 
     private Rigidbody rb;
     private Vector2 moveInput;
@@ -756,7 +823,6 @@ public class PlayerMovementController : MonoBehaviour
         ApplyDrag();
         LimitVelocity();
         debugText.text = "Velocidade: " + rb.linearVelocity.magnitude.ToString("F2");
-
     }
 
     private void FixedUpdate()
@@ -772,10 +838,16 @@ public class PlayerMovementController : MonoBehaviour
 
     private void CheckGroundedStatus()
     {
+        bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
         if (isGrounded)
         {
             canDoubleJump = false;
+        }
+        // Invoca o evento apenas na transição de "no ar" para "no chão"
+        if (!wasGrounded && isGrounded)
+        {
+            OnGroundLanded?.Invoke();
         }
     }
 
@@ -787,14 +859,13 @@ public class PlayerMovementController : MonoBehaviour
 
     private void MovePlayer()
     {
-        if (grapplingHookController.IsGrappling) return;
+        if (grapplingHookController.IsGrappling) return; 
 
         Vector3 moveDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
         moveDirection.Normalize();
 
         float forceMultiplier = isGrounded ? 1f : airMultiplier;
         rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
-
     }
 
     private void LimitVelocity()
@@ -824,43 +895,12 @@ public class PlayerMovementController : MonoBehaviour
         if (isGrounded)
         {
             Jump();
-            canDash = true; // Reset dash ao tocar o chão
         }
         else if (canDoubleJump)
         {
             Jump();
             canDoubleJump = false;
-            TryDash();
         }
-    }
-
-    private void TryDash()
-    {
-        if (!canDash) return;
-        canDash = false;
-        Vector3 dashDir = Vector3.zero;
-
-        // Se não houver input ou input para frente, dash na direção do olhar
-        if (moveInput == Vector2.zero || Mathf.Abs(moveInput.y) > Mathf.Abs(moveInput.x))
-        {
-            dashDir = orientation.forward;
-        }
-        else
-        {
-            // Dash para a direção do input (direita/esquerda)
-            dashDir = orientation.right * Mathf.Sign(moveInput.x);
-        }
-
-        dashDir.Normalize();
-        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z); // Zera Y para dash consistente
-        rb.AddForce(dashDir * dashForce, ForceMode.VelocityChange);
-
-        Invoke(nameof(ResetDash), dashCooldown);
-    }
-
-    private void ResetDash()
-    {
-        canDash = true;
     }
 
     private void Jump()
