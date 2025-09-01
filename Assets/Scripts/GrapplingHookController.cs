@@ -8,6 +8,7 @@ public class GrapplingHookController : MonoBehaviour
     [Header("Estado")]
     [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private bool isGrappling = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
     public bool IsGrappling => isGrappling;
     private bool hasGrappleAvailable = true;
 
@@ -168,7 +169,7 @@ public class GrapplingHookController : MonoBehaviour
         isGrappling = true;
         grapplePoint = predictedPoint;
 
-        grappleTimer = 3f; // Tempo máximo de grapple antes de forçar o desligamento
+        grappleTimer = maximumTimeGrappling; // Usa o valor configurado
 
         joint = gameObject.AddComponent<SpringJoint>();
         joint.autoConfigureConnectedAnchor = false;
