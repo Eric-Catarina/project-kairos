@@ -46,6 +46,7 @@ public class GrapplingHookController : MonoBehaviour
     private Vector3 predictedPoint;
     private bool hasPredictedPoint;
 
+    private float grappleTimer;
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovementController>();
@@ -78,6 +79,16 @@ public class GrapplingHookController : MonoBehaviour
         if (cooldownTimer > 0)
         {
             cooldownTimer -= Time.deltaTime;
+        }
+
+        if (grappleTimer > 0)
+        {
+            grappleTimer -= Time.deltaTime;
+        }
+
+        if (grappleTimer <= 0 && isGrappling)
+        {
+            StopGrapple();
         }
 
         // Se só pode usar uma vez, cooldown não recarrega sozinho
@@ -156,6 +167,8 @@ public class GrapplingHookController : MonoBehaviour
 
         isGrappling = true;
         grapplePoint = predictedPoint;
+
+        grappleTimer = 3f; // Tempo máximo de grapple antes de forçar o desligamento
 
         joint = gameObject.AddComponent<SpringJoint>();
         joint.autoConfigureConnectedAnchor = false;
