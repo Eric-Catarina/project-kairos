@@ -5016,6 +5016,7 @@ GameObject:
   - component: {fileID: 818554847}
   - component: {fileID: 818554840}
   - component: {fileID: 818554843}
+  - component: {fileID: 818554849}
   - component: {fileID: 818554842}
   - component: {fileID: 818554845}
   - component: {fileID: 818554846}
@@ -5109,9 +5110,12 @@ MonoBehaviour:
   isSliding: 0
   moveSpeed: 7
   maxMoveSpeed: 2000
+  maxGrappleMoveSpeed: 150
   vfxMinMoveSpeed: 140
   groundDrag: 3
   airDrag: 0.5
+  grappleAirDrag: 0.5
+  airMultiplier: 0.6
   jumpForce: 35
   doubleJumpForce: 14
   gravityMultiplier: 8
@@ -5128,7 +5132,8 @@ MonoBehaviour:
   orientation: {fileID: 1457126761}
   grapplingHookController: {fileID: 818554843}
   velocityParticle: {fileID: 982827512}
-  debugText: {fileID: 203901434}
+  velocityText: {fileID: 0}
+  distanceText: {fileID: 0}
 --- !u!120 &818554842
 LineRenderer:
   serializedVersion: 2
@@ -5265,6 +5270,7 @@ MonoBehaviour:
   cameraTransform: {fileID: 963194228}
   lineRenderer: {fileID: 818554842}
   predictionPointPrefab: {fileID: 2661843310905415723, guid: 2bee631aaa2f55027842afeaae93a372, type: 3}
+  grappleDistance: 0
 --- !u!136 &818554845
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -5436,6 +5442,23 @@ MonoBehaviour:
   slideShakeVibrato: 10
   boostJumpRotation: {x: 350, y: 0, z: 0}
   boostAnimDuration: 1
+--- !u!114 &818554849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818554835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 003808b781d723442b657ad7022aaea7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  jumpSfx: Jump
+  landSfx: Landing
+  footstepSfx: Footstep
+  stepInterval: 0.35
+  minStepSpeed: 2
 --- !u!1 &852655025
 GameObject:
   m_ObjectHideFlags: 0
