@@ -36,10 +36,13 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         }
     }
 
-    private void OnEnable()
+    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
+    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
+    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
+    private void Start()
     {
         // Se registra no manager para receber os eventos de tempo.
-        TimeManipulationManager.Instance?.Register(this);
+        TimeManipulationManager.Instance.Register(this);
     }
 
     private void OnDisable()
@@ -49,8 +52,13 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         {
             RestoreNormalTime();
         }
-        // Remove o registro do manager para evitar referências nulas.
-        TimeManipulationManager.Instance?.Unregister(this);
+        
+        // Remove o registro do manager para evitar referências nulas,
+        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
     }
 
     private void FixedUpdate()
@@ -116,10 +124,9 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
             objectRenderer.material.color = _originalColor;
         }
     }
+    
     public void SetSlowDownColor(Color newColor)
     {
         slowDownColor = newColor;
     }
-
-
 }

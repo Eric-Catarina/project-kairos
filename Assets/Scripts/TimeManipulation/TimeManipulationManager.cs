@@ -26,6 +26,7 @@ public class TimeManipulationManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            Debug.LogWarning($"[TimeManipulationManager] Mais de uma instância encontrada. Destruindo a nova em '{gameObject.name}'.");
             Destroy(gameObject);
             return;
         }
@@ -34,8 +35,16 @@ public class TimeManipulationManager : MonoBehaviour
 
     private void OnEnable()
     {
-        InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
-        InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
+        // Garante que o InputManager exista antes de se inscrever.
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
+            InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
+        }
+        else
+        {
+            Debug.LogError("[TimeManipulationManager] Não foi possível encontrar a instância do InputManager para se inscrever nos eventos.");
+        }
     }
 
     private void OnDisable()
@@ -56,6 +65,13 @@ public class TimeManipulationManager : MonoBehaviour
     /// </summary>
     public void Register(ITimeSlowable slowable)
     {
+        // Verificação de segurança adicional.
+        if (Instance == null)
+        {
+            Debug.LogError($"[TimeManipulationManager] Um objeto tentou se registrar antes que a instância do Manager estivesse pronta. Isso não deveria acontecer.");
+            return;
+        }
+
         if (!_slowableObjects.Contains(slowable))
         {
             _slowableObjects.Add(slowable);
@@ -82,7 +98,11 @@ public class TimeManipulationManager : MonoBehaviour
         // Percorre a lista de trás para frente para evitar problemas se um objeto for removido durante a iteração.
         for (int i = _slowableObjects.Count - 1; i >= 0; i--)
         {
-            _slowableObjects[i].SlowDown(slowPercentage);
+            // Adicionado null-check para o caso de um objeto ser destruído e não se desregistrar a tempo
+            if (_slowableObjects[i] != null)
+            {
+                _slowableObjects[i].SlowDown(slowPercentage);
+            }
         }
     }
 
@@ -93,7 +113,10 @@ public class TimeManipulationManager : MonoBehaviour
         
         for (int i = _slowableObjects.Count - 1; i >= 0; i--)
         {
-            _slowableObjects[i].RestoreNormalTime();
+            if (_slowableObjects[i] != null)
+            {
+                _slowableObjects[i].RestoreNormalTime();
+            }
         }
     }
 }
