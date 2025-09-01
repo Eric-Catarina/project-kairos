@@ -21128,8 +21128,8 @@ GameObject:
   - component: {fileID: 818554845}
   - component: {fileID: 818554846}
   - component: {fileID: 818554848}
-  - component: {fileID: 818554849}
   - component: {fileID: 818554850}
+  - component: {fileID: 818554851}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -21552,24 +21552,6 @@ MonoBehaviour:
   slideShakeVibrato: 10
   boostJumpRotation: {x: 350, y: 0, z: 0}
   boostAnimDuration: 1
---- !u!114 &818554849
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 818554835}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cd44fde6a73c2655c8ade40b75ec9586, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxDistance: 100
-  slowFactor: 10
-  slowableLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  cameraTransform: {fileID: 963194228}
 --- !u!114 &818554850
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21582,6 +21564,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56982a0c698f1862095b641b283de799, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &818554851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818554835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 003808b781d723442b657ad7022aaea7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  jumpSfx: Jump
+  landSfx: Landing
+  footstepSfx: Footstep
+  stepInterval: 0.35
+  minStepSpeed: 2
 --- !u!43 &827822038
 Mesh:
   m_ObjectHideFlags: 0
@@ -26815,7 +26814,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
