@@ -12,6 +12,9 @@ public class AudioManager : MonoBehaviour
     public AudioSource masterSource, musicSource, sfxSource, ambientSource;
     private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
     [SerializeField] private AudioMixer audioMixer;
+    [SerializeField] private float sfxPitchVariation = 0.1f;
+    float minPitch = 0.95f;
+    float maxPitch = 1.05f;
 
     private void Awake()
     {
@@ -34,7 +37,7 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        PlayMusic("");
+        PlayMusic("Menu");
     }
 
 
@@ -87,12 +90,18 @@ public class AudioManager : MonoBehaviour
     {
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            sfxSource.pitch = randomPitch;
             sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+
+            
         }
         else
         {
             Debug.Log("Sound Not Found: " + name);
         }
+
+       
     }
 
     public void ToggleMusic()
@@ -136,4 +145,7 @@ public class AudioManager : MonoBehaviour
         musicSource.mute = masterSource.mute;
         sfxSource.mute = masterSource.mute;
     }
-}//
+
+
+
+}
