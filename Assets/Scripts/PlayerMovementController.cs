@@ -43,6 +43,10 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Bunny Hop")]
     [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
     [SerializeField] private float bunnyHopWindow = 0.1f;
+    
+    [Header("Ajuste Fino do Controle Aéreo")]
+    [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
+    [SerializeField] private float airControlTargetSpeed = 7f;
 
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
@@ -68,6 +72,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+        airControlTargetSpeed = moveSpeed * 2; // Garante que o valor inicial seja o mesmo da velocidade de movimento
     }
 
     private void OnEnable()
@@ -178,8 +183,27 @@ public class PlayerMovementController : MonoBehaviour
         if (grapplingHookController.IsGrappling) return;
 
         Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
-        float forceMultiplier = isGrounded ? 1f : airMultiplier;
-        rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
+
+        if (isGrounded)
+        {
+            // No chão, a lógica é simples: aplicamos força, e o atrito alto a equilibra.
+            rb.AddForce(moveDirection * moveSpeed * 10f, ForceMode.Force);
+        }
+        else // No Ar
+        {
+            // PONTO-CHAVE DA SOLUÇÃO:
+            // Verificamos a velocidade atual na direção do input.
+            Vector3 currentVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+            float speedInInputDirection = Vector3.Dot(currentVelocity, moveDirection);
+
+            // Só aplicamos força se a velocidade na direção do input for menor que a nossa velocidade alvo.
+            // Isso previne a aceleração extra ao pular, mas ainda permite que o jogador mude de direção no ar (air-strafe).
+            if (speedInInputDirection < airControlTargetSpeed)
+            {
+                // A força aplicada aqui é calculada para ser forte o suficiente para dar bom controle.
+                rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
+            }
+        }
     }
 
     private void LimitVelocity()

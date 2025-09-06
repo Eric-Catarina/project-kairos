@@ -22186,12 +22186,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   isGrounded: 0
   canDoubleJump: 0
-  moveSpeed: 6
+  moveSpeed: 7
   maxMoveSpeed: 140
   maxGrappleMoveSpeed: 150
   vfxMinMoveSpeed: 110
-  airMultiplier: 0.88
-  groundDrag: 3.8
+  airMultiplier: 0.4
+  groundDrag: 4
   airDrag: 1.66
   grappleAirDrag: 0.68
   jumpForce: 40
@@ -22201,6 +22201,7 @@ MonoBehaviour:
   coyoteTimeDuration: 0.5
   jumpBufferDuration: 0.5
   bunnyHopWindow: 0.1
+  airControlTargetSpeed: 12
   playerHeight: 2
   groundLayer:
     serializedVersion: 2
