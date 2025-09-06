@@ -9,15 +9,13 @@ public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
-    // --- NOVA LINHA ---
-    // Propriedade pública para que outros sistemas possam acessar a instância gerenciada.
     public PlayerControls PlayerControls => _playerControls;
-    // --- FIM DA NOVA LINHA ---
 
     // Eventos de Ações do Jogador
     public event Action<Vector2> OnMove;
     public event Action<Vector2> OnLook;
-    public event Action OnJump;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled; // NOVO EVENTO
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
     public event Action OnLevelFinished;
@@ -50,16 +48,14 @@ public class InputManager : MonoBehaviour
 
     private void OnEnable()
     {
-        // _playerControls.Enable() não é mais necessário aqui, o StateManager cuida disso.
-
-        // Movimento e Câmera
         _playerControls.Player.Move.performed += HandleMove;
         _playerControls.Player.Move.canceled += HandleMove;
         _playerControls.Player.Look.performed += HandleLook;
         _playerControls.Player.Look.canceled += HandleLook;
 
-        // Ações
-        _playerControls.Player.Jump.performed += HandleJump;
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled; // NOVA INSCRIÇÃO
+        
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
         _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
@@ -79,7 +75,10 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Move.canceled -= HandleMove;
         _playerControls.Player.Look.performed -= HandleLook;
         _playerControls.Player.Look.canceled -= HandleLook;
-        _playerControls.Player.Jump.performed -= HandleJump;
+        
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled; // NOVA REMOÇÃO
+        
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
         _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
@@ -90,10 +89,10 @@ public class InputManager : MonoBehaviour
         _playerControls.UI.Unpause.performed -= HandleResumeGame;
     }
 
-    // Métodos de manipulação de eventos (sem alterações)
     private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
     private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
     private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();

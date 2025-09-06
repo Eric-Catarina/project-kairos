@@ -3,54 +3,50 @@
 using TMPro;
 using System;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
 {
-    public event Action OnSlideStart;
-    public event Action OnSlideEnd;
-    public event Action OnBoostJump;
     public event Action OnGroundLanded;
 
     [Header("Estado Atual")]
     public bool isGrounded;
     [SerializeField] private bool canDoubleJump;
-    [SerializeField] private bool canDashSlide = false;
-    [SerializeField] private bool isSliding;
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float maxMoveSpeed = 30f, maxGrappleMoveSpeed = 150f;
+    [SerializeField] private float maxMoveSpeed = 30f;
+    [SerializeField] private float maxGrappleMoveSpeed = 150f;
     [SerializeField] private float vfxMinMoveSpeed = 150f;
-    [SerializeField] private float groundDrag = 6f;
-    [SerializeField] private float airDrag = 0.5f;
-    [SerializeField] private float grappleAirDrag = 0.5f;
-
     [SerializeField] private float airMultiplier = 0.6f;
+
+    [Header("Configurações de Atrito (Drag)")]
+    [SerializeField] private float groundDrag = 6f;
+    [SerializeField] private float airDrag = 2f;
+    [SerializeField] private float grappleAirDrag = 0.5f;
 
     [Header("Configurações de Pulo")]
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private float doubleJumpForce = 14f;
     [SerializeField] private float gravityMultiplier = 2.5f;
 
+    [Header("Pulo Variável (Low/High Jump)")]
+    [Tooltip("Multiplicador aplicado na velocidade Y ao soltar o pulo, para um pulo mais curto.")]
+    [SerializeField] private float jumpReleaseMultiplier = 0.5f;
+
+    [Header("Coyote Time & Jump Buffer")]
+    [Tooltip("Tempo em segundos que o jogador pode pular após sair de uma plataforma.")]
+    [SerializeField] private float coyoteTimeDuration = 0.1f;
+    [Tooltip("Tempo em segundos que um pulo é 'guardado' se pressionado antes de tocar o chão.")]
+    [SerializeField] private float jumpBufferDuration = 0.1f;
+
+    [Header("Bunny Hop")]
+    [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
+    [SerializeField] private float bunnyHopWindow = 0.1f;
+
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
-
-    [Header("Configurações de Deslize")]
-    [Tooltip("Velocidade mínima para iniciar o deslize ao aterrissar.")]
-    [SerializeField] private float slideThresholdSpeed = 20f;
-    [Tooltip("Duração total do deslize em segundos.")]
-    [SerializeField] private float slideDuration = 1f;
-    [Tooltip("Atrito aplicado durante o deslize.")]
-    [SerializeField] private float slideDrag = 1f;
-    [Tooltip("Força com que o jogador pode controlar a direção durante o deslize.")]
-    [SerializeField] private float slideControlForce = 5f;
-    [Tooltip("Janela de tempo no final do deslize para conseguir o boost (em segundos).")]
-    [SerializeField] private float slideBoostWindow = 0.1f;
-    [Tooltip("Força do impulso concedido no pulo com boost.")]
-    [SerializeField] private float slideBoostForce = 25f;
 
     [Header("Referências")]
     [SerializeField] private Transform orientation;
@@ -60,7 +56,11 @@ public class PlayerMovementController : MonoBehaviour
 
     private Rigidbody rb;
     private Vector2 moveInput;
-    private float slideTimer;
+
+    private float coyoteTimeCounter;
+    private float jumpBufferCounter;
+    private float timeSinceLanded;
+    private bool isJumping;
 
     public Rigidbody Rb => rb;
 
@@ -73,25 +73,27 @@ public class PlayerMovementController : MonoBehaviour
     private void OnEnable()
     {
         InputManager.Instance.OnMove += SetMoveInput;
-        InputManager.Instance.OnJump += HandleJump;
+        InputManager.Instance.OnJumpPerformed += HandleJumpInput;
+        InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
     }
 
     private void OnDisable()
     {
         if (InputManager.Instance == null) return;
         InputManager.Instance.OnMove -= SetMoveInput;
-        InputManager.Instance.OnJump -= HandleJump;
+        InputManager.Instance.OnJumpPerformed -= HandleJumpInput;
+        InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
     }
 
     private void Update()
     {
-        distanceText.text = "Distancia: " +  grapplingHookController.grappleDistance.ToString("F2");
+        HandleTimers();
+        UpdateUI();
     }
 
     private void FixedUpdate()
     {
         CheckGroundedStatus();
-        HandleSlideTimer();
         ApplyDrag();
         LimitVelocity();
         MovePlayer();
@@ -103,6 +105,28 @@ public class PlayerMovementController : MonoBehaviour
         moveInput = input;
     }
 
+    private void HandleTimers()
+    {
+        if (!isGrounded)
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+        
+        timeSinceLanded += Time.deltaTime;
+        jumpBufferCounter -= Time.deltaTime;
+    }
+
+    private void UpdateUI()
+    {
+        if (grapplingHookController != null && distanceText != null)
+        {
+            distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
+        }
+
+        float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+        velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+    }
+
     private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
@@ -110,16 +134,24 @@ public class PlayerMovementController : MonoBehaviour
         
         if (isGrounded)
         {
-            canDoubleJump = false;
+            isJumping = false;
         }
 
         if (!wasGrounded && isGrounded)
         {
+            timeSinceLanded = 0f;
+            canDoubleJump = false;
             OnGroundLanded?.Invoke();
-            if (rb.linearVelocity.magnitude > slideThresholdSpeed)
+
+            if (jumpBufferCounter > 0f)
             {
-                StartSlide();
+                Jump(jumpForce);
             }
+        }
+        
+        if (wasGrounded && !isGrounded && !isJumping)
+        {
+            coyoteTimeCounter = coyoteTimeDuration;
         }
     }
 
@@ -127,70 +159,52 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (grapplingHookController.IsGrappling)
         {
-            rb.linearDamping = grappleAirDrag; // Remove drag during grapple for smoother swings
+            rb.linearDamping = grappleAirDrag;
             return;
         }
-        rb.linearDamping = isSliding ? slideDrag : (isGrounded ? groundDrag : airDrag);
+        
+        if (isGrounded)
+        {
+            rb.linearDamping = (timeSinceLanded > bunnyHopWindow) ? groundDrag : airDrag;
+        }
+        else
+        {
+            rb.linearDamping = airDrag;
+        }
     }
 
     private void MovePlayer()
     {
         if (grapplingHookController.IsGrappling) return;
 
-        Vector3 moveDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
-        moveDirection.Normalize();
-
-        if (isSliding)
-        {
-            // Permite um controle direcional limitado durante o deslize
-            rb.AddForce(moveDirection * slideControlForce, ForceMode.Force);
-        }
-        else
-        {
-            float forceMultiplier = isGrounded ? 1f : airMultiplier;
-            rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
-        }
+        Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
+        float forceMultiplier = isGrounded ? 1f : airMultiplier;
+        rb.AddForce(moveDirection * moveSpeed * 10f * forceMultiplier, ForceMode.Force);
     }
 
-private void LimitVelocity()
-{
-    // Determina a velocidade máxima atual baseada no estado do gancho de agarre.
-    float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+    private void LimitVelocity()
+    {
+        float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
         float currentSpeedInKm = rb.linearVelocity.magnitude * 3.6f;
 
-    // Verifica se a magnitude da velocidade atual excede a velocidade máxima permitida.
         if (currentSpeedInKm > currentMaxSpeed)
         {
-            // Limita estritamente a magnitude da velocidade para a velocidade máxima, preservando a direção.
-            rb.linearVelocity = rb.linearVelocity.normalized * currentMaxSpeed/3.6f;
+            rb.linearVelocity = rb.linearVelocity.normalized * (currentMaxSpeed / 3.6f);
         }
 
-    // Calcula a velocidade em Km/h para exibição (considerando apenas o plano XZ).
-    float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
-    velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
-    
-    // Ativa ou desativa os efeitos visuais de velocidade com base na magnitude da velocidade.
-    if (rb.linearVelocity.magnitude > vfxMinMoveSpeed)
-    {
-        velocityParticle.SetActive(true);
+        if (velocityParticle != null)
+        {
+            velocityParticle.SetActive(rb.linearVelocity.magnitude > vfxMinMoveSpeed);
+        }
     }
-    else
-    {
-        velocityParticle.SetActive(false);
-    }
-}
 
-    private void HandleJump()
+    private void HandleJumpInput()
     {
         if (grapplingHookController.IsGrappling) return;
 
-        if (isSliding && slideTimer <= slideBoostWindow)
-        {
-            BoostJump();
-            return;
-        }
+        jumpBufferCounter = jumpBufferDuration;
 
-        if (isGrounded)
+        if (coyoteTimeCounter > 0f || isGrounded)
         {
             Jump(jumpForce);
         }
@@ -201,55 +215,22 @@ private void LimitVelocity()
         }
     }
 
-    private void Jump(float jumpStrenght)
+    private void HandleJumpRelease()
     {
-        if (isSliding) StopSlide();
-        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        rb.AddForce(transform.up * jumpStrenght, ForceMode.Impulse);
-    }
-    
-    private void StartSlide()
-    {
-        if (!canDashSlide) return;
-        isSliding = true;
-        slideTimer = slideDuration;
-        OnSlideStart?.Invoke(); // Dispara o evento!
-    }
-
-    private void StopSlide()
-    {
-        if (!isSliding) return;
-        isSliding = false;
-        slideTimer = 0f;
-        OnSlideEnd?.Invoke(); // Dispara o evento!
-    }
-
-    private void HandleSlideTimer()
-    {
-        if (!isSliding) return;
-
-        slideTimer -= Time.deltaTime;
-        if (slideTimer <= 0)
+        if (rb.linearVelocity.y > 0 && isJumping)
         {
-            StopSlide();
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, rb.linearVelocity.y * jumpReleaseMultiplier, rb.linearVelocity.z);
         }
     }
 
-    private void BoostJump()
+    private void Jump(float jumpStrength)
     {
-        OnBoostJump?.Invoke(); // Dispara o evento de boost!
-        StopSlide();
+        coyoteTimeCounter = 0f;
+        jumpBufferCounter = 0f;
+        isJumping = true;
 
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-
-        Vector3 boostDirection = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).normalized;
-        if(boostDirection == Vector3.zero)
-        {
-            boostDirection = orientation.forward;
-        }
-        
-        rb.AddForce(boostDirection * slideBoostForce, ForceMode.Impulse);
+        rb.AddForce(transform.up * jumpStrength, ForceMode.Impulse);
     }
 
     private void ApplyExtraGravity()

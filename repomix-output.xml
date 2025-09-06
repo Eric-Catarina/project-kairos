@@ -54,93 +54,26 @@ Assets/
       SlowableRigidbody.cs
       TimeManipulationManager.cs
     AudioManager.cs
+    DeathFogLogic.cs
     GrapplingHookController.cs
     InputManager.cs
     InputStateManager.cs
     LevelData.cs
     PatrolMovement.cs
+    PlayerAudioHandler.cs
     PlayerLookController.cs
     PlayerMovementController.cs
     PlayerVisualController.cs
+    SceneManagerLogic.cs
     ShadowFollow.cs
     Sound.cs
+    TemporaryBGmusic.cs
     UIJuice.cs
+    WinLogic.cs
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="Assets/Scripts/InputStateManager.cs">
-// Local: Assets/Scripts/InputStateManager.cs
-
-using UnityEngine;
-
-public enum InputState
-{
-    Gameplay,
-    UI
-}
-
-/// <summary>
-/// Gerencia o estado do input, alternando entre os Action Maps (Gameplay, UI)
-/// e controlando o estado do cursor do mouse.
-/// Implementa o padrão Singleton para acesso global.
-/// </summary>
-public class InputStateManager : MonoBehaviour
-{
-    public static InputStateManager Instance { get; private set; }
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    public void Initialize(PlayerControls playerControls)
-    {
-        _playerControls = playerControls;
-    }
-
-    /// <summary>
-    /// O método central para alternar o contexto de input do jogo.
-    /// </summary>
-    /// <param name="newState">O novo estado para o qual o input deve mudar.</param>
-    public void SwitchState(InputState newState)
-    {
-        if (_playerControls == null) return;
-
-        
-        switch (newState)
-        {
-            case InputState.Gameplay:
-                // Ativa os controles de gameplay
-                _playerControls.Player.Enable();
-                _playerControls.UI.Disable();
-
-                // Esconde e trava o cursor no centro da tela
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-                break;
-
-            case InputState.UI:
-                // Ativa os controles de UI e desativa os de gameplay
-                _playerControls.UI.Enable();
-                _playerControls.Player.Disable();
-
-                // Libera e mostra o cursor para interagir com a UI
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-                break;
-        }
-    }
-}
-</file>
 
 <file path="Assets/Scripts/Scoring/ScoreManager.cs">
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
@@ -301,6 +234,100 @@ public class ScoreUIController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/DeathFogLogic.cs">
+using Unity.VisualScripting;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class DeathFogLogic : MonoBehaviour
+{
+    [SerializeField] SceneManagerLogic sceneManager;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Debug.Log("Collision detected with: " + collision.gameObject.name);
+
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Destroy(collision.gameObject);
+            sceneManager.RestartScene();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/InputStateManager.cs">
+// Local: Assets/Scripts/InputStateManager.cs
+
+using UnityEngine;
+
+public enum InputState
+{
+    Gameplay,
+    UI
+}
+
+/// <summary>
+/// Gerencia o estado do input, alternando entre os Action Maps (Gameplay, UI)
+/// e controlando o estado do cursor do mouse.
+/// Implementa o padrão Singleton para acesso global.
+/// </summary>
+public class InputStateManager : MonoBehaviour
+{
+    public static InputStateManager Instance { get; private set; }
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    public void Initialize(PlayerControls playerControls)
+    {
+        _playerControls = playerControls;
+    }
+
+    /// <summary>
+    /// O método central para alternar o contexto de input do jogo.
+    /// </summary>
+    /// <param name="newState">O novo estado para o qual o input deve mudar.</param>
+    public void SwitchState(InputState newState)
+    {
+        if (_playerControls == null) return;
+
+        
+        switch (newState)
+        {
+            case InputState.Gameplay:
+                // Ativa os controles de gameplay
+                _playerControls.Player.Enable();
+                _playerControls.UI.Disable();
+
+                // Esconde e trava o cursor no centro da tela
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                break;
+
+            case InputState.UI:
+                // Ativa os controles de UI e desativa os de gameplay
+                _playerControls.UI.Enable();
+                _playerControls.Player.Disable();
+
+                // Libera e mostra o cursor para interagir com a UI
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                break;
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/LevelData.cs">
 // Local: Assets/Scripts/Scoring/LevelData.cs
 
@@ -442,6 +469,79 @@ public class PatrolMovement : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour
+{
+    private PlayerMovementController movement;
+
+    [Header("Sons")]
+    [SerializeField] private string jumpSfx = "Jump";
+    [SerializeField] private string landSfx = "Land";
+    [SerializeField] private string footstepSfx = "Step";
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+
+    private float stepTimer;
+    private bool wasGrounded;
+
+    private void Awake()
+    {
+        movement = GetComponent<PlayerMovementController>();
+        wasGrounded = movement.isGrounded;
+        stepTimer = stepInterval;
+    }
+
+    private void OnEnable()
+    {
+        movement.OnGroundLanded += PlayLand;
+    }
+
+    private void OnDisable()
+    {
+        movement.OnGroundLanded -= PlayLand;
+    }
+
+    private void Update()
+    {
+        HandleJumpDetection();
+        HandleFootsteps();
+    }
+
+    private void HandleJumpDetection()
+    {
+        if (wasGrounded && !movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(jumpSfx);
+        }
+
+        wasGrounded = movement.isGrounded;
+    }
+
+    private void HandleFootsteps()
+    {
+        if (!movement.isGrounded || movement.Rb.linearVelocity.magnitude < minStepSpeed)
+        {
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            AudioManager.instance.PlaySFX(footstepSfx);
+            stepTimer = stepInterval;
+        }
+    }
+
+    private void PlayLand() => AudioManager.instance.PlaySFX(landSfx);
+}
+</file>
+
 <file path="Assets/Scripts/PlayerVisualController.cs">
 // Local: Assets/Scripts/PlayerVisualsController.cs
 
@@ -573,6 +673,50 @@ _slideShakeTween = playerModel.DOShakeRotation(duration: 1f, strength: slideShak
 }
 </file>
 
+<file path="Assets/Scripts/SceneManagerLogic.cs">
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class SceneManagerLogic : MonoBehaviour
+{
+    public void RestartScene()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
+    }
+
+    public void LoadNextScene()
+    {
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int nextSceneIndex = currentSceneIndex + 1;
+        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            SceneManager.LoadScene(0); // Volta para o menu principal ou primeira cena
+        }
+    }
+
+    public void LoadSceneByName(string sceneName)
+    {
+        SceneManager.LoadScene(sceneName);
+    }
+
+    public void QuitGame()
+    {
+        Debug.Log("Quit Game!");
+        Application.Quit();
+    }
+
+    public void LoadMainMenu()
+    {
+        SceneManager.LoadScene(0);
+    }
+}
+</file>
+
 <file path="Assets/Scripts/ShadowFollow.cs">
 using UnityEngine;
 
@@ -621,6 +765,26 @@ public class Sound
 {
     public string name;
     public AudioClip clip;
+}
+</file>
+
+<file path="Assets/Scripts/TemporaryBGmusic.cs">
+using UnityEngine;
+
+public class TemporaryBGmusic : MonoBehaviour
+{
+    float cooldown = 1.5f;
+    bool played = false;
+
+    private void Update()
+    {
+        if (cooldown > 0)
+        {
+            cooldown--;
+            return;
+        }
+        if (cooldown < 0 && !played) { AudioManager.instance.PlayMusic("Level 1");  played = true; }
+    }
 }
 </file>
 
@@ -777,6 +941,52 @@ public class UIJuice : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/WinLogic.cs">
+using UnityEngine;
+
+public class WinLogic : MonoBehaviour
+{
+    [SerializeField] SceneManagerLogic sceneManager;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Debug.Log("Collision detected with: " + collision.gameObject.name);
+
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Destroy(collision.gameObject);
+            sceneManager.LoadNextScene();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/TimeManipulation/ITimeSlowable.cs">
+// Local: Assets/Scripts/TimeManipulation/ITimeSlowable.cs
+
+using UnityEngine;
+
+/// <summary>
+/// Define uma interface para objetos que podem ter seu tempo localmente desacelerado.
+/// Implementa o Padrão de Estratégia, onde cada objeto define sua própria lógica
+/// de como desacelerar e restaurar o tempo.
+/// </summary>
+public interface ITimeSlowable
+{
+    /// <summary>
+    /// Salva o estado atual do objeto e inicia o efeito de desaceleração.
+    /// </summary>
+    /// <param name="slowPercentage">A porcentagem de lentidão (0-100). 100 significa parada total.</param>
+    void SlowDown(float slowPercentage);
+    void SetSlowDownColor(Color newColor);
+
+    /// <summary>
+    /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
+    /// </summary>
+    void RestoreNormalTime();
+}
+</file>
+
 <file path="Assets/Scripts/TimeManipulation/TimeManipulationManager.cs">
 // Local: Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
 
@@ -806,6 +1016,7 @@ public class TimeManipulationManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            Debug.LogWarning($"[TimeManipulationManager] Mais de uma instância encontrada. Destruindo a nova em '{gameObject.name}'.");
             Destroy(gameObject);
             return;
         }
@@ -814,8 +1025,16 @@ public class TimeManipulationManager : MonoBehaviour
 
     private void OnEnable()
     {
-        InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
-        InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
+        // Garante que o InputManager exista antes de se inscrever.
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
+            InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
+        }
+        else
+        {
+            Debug.LogError("[TimeManipulationManager] Não foi possível encontrar a instância do InputManager para se inscrever nos eventos.");
+        }
     }
 
     private void OnDisable()
@@ -836,6 +1055,13 @@ public class TimeManipulationManager : MonoBehaviour
     /// </summary>
     public void Register(ITimeSlowable slowable)
     {
+        // Verificação de segurança adicional.
+        if (Instance == null)
+        {
+            Debug.LogError($"[TimeManipulationManager] Um objeto tentou se registrar antes que a instância do Manager estivesse pronta. Isso não deveria acontecer.");
+            return;
+        }
+
         if (!_slowableObjects.Contains(slowable))
         {
             _slowableObjects.Add(slowable);
@@ -862,7 +1088,11 @@ public class TimeManipulationManager : MonoBehaviour
         // Percorre a lista de trás para frente para evitar problemas se um objeto for removido durante a iteração.
         for (int i = _slowableObjects.Count - 1; i >= 0; i--)
         {
-            _slowableObjects[i].SlowDown(slowPercentage);
+            // Adicionado null-check para o caso de um objeto ser destruído e não se desregistrar a tempo
+            if (_slowableObjects[i] != null)
+            {
+                _slowableObjects[i].SlowDown(slowPercentage);
+            }
         }
     }
 
@@ -873,7 +1103,10 @@ public class TimeManipulationManager : MonoBehaviour
         
         for (int i = _slowableObjects.Count - 1; i >= 0; i--)
         {
-            _slowableObjects[i].RestoreNormalTime();
+            if (_slowableObjects[i] != null)
+            {
+                _slowableObjects[i].RestoreNormalTime();
+            }
         }
     }
 }
@@ -2374,32 +2607,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
 }
 </file>
 
-<file path="Assets/Scripts/TimeManipulation/ITimeSlowable.cs">
-// Local: Assets/Scripts/TimeManipulation/ITimeSlowable.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Define uma interface para objetos que podem ter seu tempo localmente desacelerado.
-/// Implementa o Padrão de Estratégia, onde cada objeto define sua própria lógica
-/// de como desacelerar e restaurar o tempo.
-/// </summary>
-public interface ITimeSlowable
-{
-    /// <summary>
-    /// Salva o estado atual do objeto e inicia o efeito de desaceleração.
-    /// </summary>
-    /// <param name="slowPercentage">A porcentagem de lentidão (0-100). 100 significa parada total.</param>
-    void SlowDown(float slowPercentage);
-    void SetSlowDownColor(Color newColor);
-
-    /// <summary>
-    /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
-    /// </summary>
-    void RestoreNormalTime();
-}
-</file>
-
 <file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
 // Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
 
@@ -2439,10 +2646,13 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         }
     }
 
-    private void OnEnable()
+    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
+    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
+    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
+    private void Start()
     {
         // Se registra no manager para receber os eventos de tempo.
-        TimeManipulationManager.Instance?.Register(this);
+        TimeManipulationManager.Instance.Register(this);
     }
 
     private void OnDisable()
@@ -2452,8 +2662,13 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         {
             RestoreNormalTime();
         }
-        // Remove o registro do manager para evitar referências nulas.
-        TimeManipulationManager.Instance?.Unregister(this);
+        
+        // Remove o registro do manager para evitar referências nulas,
+        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
     }
 
     private void FixedUpdate()
@@ -2519,12 +2734,11 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
             objectRenderer.material.color = _originalColor;
         }
     }
+    
     public void SetSlowDownColor(Color newColor)
     {
         slowDownColor = newColor;
     }
-
-
 }
 </file>
 
@@ -2543,6 +2757,9 @@ public class AudioManager : MonoBehaviour
     public AudioSource masterSource, musicSource, sfxSource, ambientSource;
     private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
     [SerializeField] private AudioMixer audioMixer;
+    [SerializeField] private float sfxPitchVariation = 0.1f;
+    float minPitch = 0.95f;
+    float maxPitch = 1.05f;
 
     private void Awake()
     {
@@ -2565,7 +2782,7 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        PlayMusic("");
+        PlayMusic("Menu");
     }
 
 
@@ -2618,12 +2835,18 @@ public class AudioManager : MonoBehaviour
     {
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            sfxSource.pitch = randomPitch;
             sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+
+            
         }
         else
         {
             Debug.Log("Sound Not Found: " + name);
         }
+
+       
     }
 
     public void ToggleMusic()
@@ -2667,7 +2890,10 @@ public class AudioManager : MonoBehaviour
         musicSource.mute = masterSource.mute;
         sfxSource.mute = masterSource.mute;
     }
-}//
+
+
+
+}
 </file>
 
 <file path="Assets/Scripts/PlayerLookController.cs">
@@ -2675,19 +2901,17 @@ public class AudioManager : MonoBehaviour
 
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.InputSystem; // Adicione esta linha
 
 /// <summary>
-/// Controla a orientação de movimento e a rotação visual do jogador com base na câmera.
-/// A câmera em si é controlada diretamente pelo Cinemachine.
+/// Controla a orientação de movimento do jogador e conecta a instância de input correta ao Cinemachine.
 /// </summary>
 public class PlayerLookController : MonoBehaviour
 {
     [Header("Configurações")]
-    [SerializeField] private float playerRotationSpeed = 1;
-        [SerializeField] private float mouseSensitibityX = 4;
-        [SerializeField] private float mouseSensitibityY = 4;
-
-
+    [SerializeField] private float playerRotationSpeed = 10f; // Aumentei um pouco para um feel melhor
+    [SerializeField] private float mouseSensitivityX = 4f;
+    [SerializeField] private float mouseSensitivityY = 4f;
 
     [Header("Referências")]
     [Tooltip("O modelo visual do jogador que deve rotacionar.")]
@@ -2696,28 +2920,69 @@ public class PlayerLookController : MonoBehaviour
     [SerializeField] private Transform orientation;
     [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
     [SerializeField] private Transform cameraTransform;
+    [Tooltip("Referência ao controlador de eixos da câmera virtual.")]
     [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
 
     private void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
-
-        foreach (var c in cinemachineInputAxisController.Controllers)
+        // Garante que o InputManager esteja pronto.
+        if (InputManager.Instance == null)
         {
-            if (c.Name == "Look Orbit X")
-            { c.Input.Gain = mouseSensitibityX; }
-            if (c.Name == "Look Orbit Y")
-            { c.Input.Gain = -mouseSensitibityY; }
-        } 
+            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
+            return;
+        }
+
+        // --- PONTO CRÍTICO DA SOLUÇÃO ---
+        // Conecta o Cinemachine à instância de PlayerControls gerenciada pelo InputManager.
+        ConnectCinemachineToInputManager();
+        // --- FIM DO PONTO CRÍTICO ---
     }
 
     private void Update()
     {
-        HandleRotation();
+        HandlePlayerModelRotation();
     }
 
-    private void HandleRotation()
+    /// <summary>
+    /// Conecta os eixos do CinemachineInputAxisController diretamente às ações
+    /// da instância PlayerControls que vive no nosso InputManager.
+    /// Isso garante que, quando o InputStateManager desativa o mapa de ações 'Player',
+    /// o Cinemachine para de receber input.
+    /// </summary>
+    private void ConnectCinemachineToInputManager()
+    {
+        // Obtém a ação 'Look' da nossa instância única de PlayerControls.
+        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
+
+        // Itera por cada controlador de eixo (X e Y) no componente do Cinemachine.
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            // Cria uma referência para a ação de input.
+            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
+
+            // Atribui a ação de input correta.
+            controller.Input.InputAction = lookActionReference;
+
+            // Configura a sensibilidade (exemplo de como fazer isso aqui).
+            if (controller.Name == "Look Orbit X")
+            {
+                controller.Input.Gain = mouseSensitivityX;
+            }
+            if (controller.Name == "Look Orbit Y")
+            {
+                // O eixo Y geralmente é invertido.
+                controller.Input.Gain = -mouseSensitivityY;
+            }
+        }
+        
+        Debug.Log("<color=cyan>CinemachineInputAxisController foi conectado com sucesso ao InputManager.</color>");
+    }
+
+    /// <summary>
+    /// Gerencia a rotação do modelo do jogador para alinhar com a câmera.
+    /// A rotação da câmera em si é 100% controlada pelo Cinemachine.
+    /// </summary>
+    private void HandlePlayerModelRotation()
     {
         if (cameraTransform == null || orientation == null || playerModel == null) return;
 
@@ -2729,132 +2994,9 @@ public class PlayerLookController : MonoBehaviour
         }
 
         // O modelo do jogador gira suavemente para se alinhar com a orientação.
+        // Usando Slerp para uma rotação mais suave.
         playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
-}
-</file>
-
-<file path="Assets/Scripts/InputManager.cs">
-// Local: Assets/Scripts/InputManager.cs
-
-using System;
-using UnityEngine;
-using UnityEngine.InputSystem;
-
-/// <summary>
-/// Gerencia todas as entradas do jogador usando o novo Input System.
-/// Implementa um padrão Singleton para fácil acesso e desacopla a lógica do jogo.
-/// </summary>
-/// 
-[RequireComponent(typeof(InputStateManager))]
-public class InputManager : MonoBehaviour
-{
-    public static InputManager Instance { get; private set; }
-
-    // Eventos de Ações do Jogador
-    public event Action<Vector2> OnMove;
-    public event Action<Vector2> OnLook;
-    public event Action OnJump;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-
-    public event Action OnLevelFinished;
-    public event Action OnLevelRestarted;
-
-
-
-    // --- NOVO ---
-    public event Action OnSlowTimeStarted;
-    public event Action OnSlowTimeCanceled;
-    // --- FIM NOVO ---
-
-    private PlayerControls _playerControls;
-
- private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        _playerControls = new PlayerControls();
-        
-        // Encontra ou cria o InputStateManager e o inicializa
-        InputStateManager stateManager = GetComponent<InputStateManager>();
-
-        stateManager.Initialize(_playerControls);
-    }
-
-    private void Start()
-    {
-        // Define o estado inicial do jogo para Gameplay
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
-    }
-
-    private void OnEnable()
-    {
-        _playerControls.Enable();
-
-        // Movimento e Câmera
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-        _playerControls.Player.Look.performed += HandleLook;
-        _playerControls.Player.Look.canceled += HandleLook;
-
-        // Ações
-        _playerControls.Player.Jump.performed += HandleJump;
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-
-        // --- NOVO ---
-        // Certifique-se de ter criado uma ação chamada "SlowTime" no seu Input Actions Asset.
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
-
-        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
-
-        _playerControls.Player.Pause.performed += HandlePauseGame;
-        _playerControls.UI.Unpause.performed += HandleResumeGame;
-        // --- FIM NOVO ---
-    }
-
-    private void OnDisable()
-    {
-        if (_playerControls == null) return;
-        _playerControls.Disable();
-
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-        _playerControls.Player.Look.performed -= HandleLook;
-        _playerControls.Player.Look.canceled -= HandleLook;
-        _playerControls.Player.Jump.performed -= HandleJump;
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-
-        // --- NOVO ---
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
-        // --- FIM NOVO ---
-    }
-
-    // Métodos de manipulação de eventos
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
-    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-
-    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
-    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
-    
-    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
-    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
-    private void HandlePauseGame(InputAction.CallbackContext context) => InputStateManager.Instance.SwitchState(InputState.UI);
-    private void HandleResumeGame(InputAction.CallbackContext context) => InputStateManager.Instance.SwitchState(InputState.Gameplay);
 }
 </file>
 
@@ -3098,6 +3240,114 @@ public class GrapplingHookController : MonoBehaviour
             hasGrappleAvailable = true;
         }
     }
+}
+</file>
+
+<file path="Assets/Scripts/InputManager.cs">
+// Local: Assets/Scripts/InputManager.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(InputStateManager))]
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    // --- NOVA LINHA ---
+    // Propriedade pública para que outros sistemas possam acessar a instância gerenciada.
+    public PlayerControls PlayerControls => _playerControls;
+    // --- FIM DA NOVA LINHA ---
+
+    // Eventos de Ações do Jogador
+    public event Action<Vector2> OnMove;
+    public event Action<Vector2> OnLook;
+    public event Action OnJump;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+    public event Action OnLevelFinished;
+    public event Action OnLevelRestarted;
+    public event Action OnSlowTimeStarted;
+    public event Action OnSlowTimeCanceled;
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        
+        InputStateManager stateManager = GetComponent<InputStateManager>();
+        stateManager.Initialize(_playerControls);
+    }
+
+    private void Start()
+    {
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
+    }
+
+    private void OnEnable()
+    {
+        // _playerControls.Enable() não é mais necessário aqui, o StateManager cuida disso.
+
+        // Movimento e Câmera
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+        _playerControls.Player.Look.performed += HandleLook;
+        _playerControls.Player.Look.canceled += HandleLook;
+
+        // Ações
+        _playerControls.Player.Jump.performed += HandleJump;
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
+        _playerControls.Player.Pause.performed += HandlePauseGame;
+        _playerControls.UI.Unpause.performed += HandleResumeGame;
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+        _playerControls.Disable();
+
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        _playerControls.Player.Look.performed -= HandleLook;
+        _playerControls.Player.Look.canceled -= HandleLook;
+        _playerControls.Player.Jump.performed -= HandleJump;
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
+        _playerControls.Player.Pause.performed -= HandlePauseGame;
+        _playerControls.UI.Unpause.performed -= HandleResumeGame;
+    }
+
+    // Métodos de manipulação de eventos (sem alterações)
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
+    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
+    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+    private void HandlePauseGame(InputAction.CallbackContext context) => InputStateManager.Instance.SwitchState(InputState.UI);
+    private void HandleResumeGame(InputAction.CallbackContext context) => InputStateManager.Instance.SwitchState(InputState.Gameplay);
 }
 </file>
 
