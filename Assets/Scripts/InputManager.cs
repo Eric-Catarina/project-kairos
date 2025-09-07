@@ -15,7 +15,7 @@ public class InputManager : MonoBehaviour
     public event Action<Vector2> OnMove;
     public event Action<Vector2> OnLook;
     public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled; // NOVO EVENTO
+    public event Action OnJumpCanceled;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
     public event Action OnLevelFinished;
@@ -54,7 +54,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Look.canceled += HandleLook;
 
         _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled; // NOVA INSCRIÇÃO
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
         
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
@@ -77,7 +77,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Look.canceled -= HandleLook;
         
         _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled; // NOVA REMOÇÃO
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
         
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;

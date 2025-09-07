@@ -44,9 +44,10 @@ public class PlayerMovementController : MonoBehaviour
     [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
     [SerializeField] private float bunnyHopWindow = 0.1f;
     
-    [Header("Ajuste Fino do Controle Aéreo")]
-    [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
-    [SerializeField] private float airControlTargetSpeed = 7f;
+    // Removido o airControlTargetSpeed pois a nova lógica não o utiliza mais.
+    // [Header("Ajuste Fino do Controle Aéreo")]
+    // [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
+    // [SerializeField] private float airControlTargetSpeed = 7f;
 
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
@@ -72,7 +73,6 @@ public class PlayerMovementController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
-        airControlTargetSpeed = moveSpeed * 2; // Garante que o valor inicial seja o mesmo da velocidade de movimento
     }
 
     private void OnEnable()
@@ -137,13 +137,9 @@ public class PlayerMovementController : MonoBehaviour
         bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
         
-        if (isGrounded)
-        {
-            isJumping = false;
-        }
-
         if (!wasGrounded && isGrounded)
         {
+            isJumping = false;
             timeSinceLanded = 0f;
             canDoubleJump = false;
             OnGroundLanded?.Invoke();
@@ -186,39 +182,31 @@ public class PlayerMovementController : MonoBehaviour
 
         if (isGrounded)
         {
-            // No chão, a lógica é simples: aplicamos força, e o atrito alto a equilibra.
             rb.AddForce(moveDirection * moveSpeed * 10f, ForceMode.Force);
         }
         else // No Ar
         {
-            // PONTO-CHAVE DA SOLUÇÃO:
-            // Verificamos a velocidade atual na direção do input.
-            Vector3 currentVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
-            float speedInInputDirection = Vector3.Dot(currentVelocity, moveDirection);
-
-            // Só aplicamos força se a velocidade na direção do input for menor que a nossa velocidade alvo.
-            // Isso previne a aceleração extra ao pular, mas ainda permite que o jogador mude de direção no ar (air-strafe).
-            if (speedInInputDirection < airControlTargetSpeed)
-            {
-                // A força aplicada aqui é calculada para ser forte o suficiente para dar bom controle.
-                rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
-            }
+            // CORREÇÃO: Removemos a verificação 'if (speedInInputDirection < airControlTargetSpeed)'.
+            // Agora, aplicamos a força de controle aéreo consistentemente.
+            // A função LimitVelocity() já previne que o jogador acelere indefinidamente.
+            rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
     }
 
     private void LimitVelocity()
     {
         float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
-        float currentSpeedInKm = rb.linearVelocity.magnitude * 3.6f;
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
 
-        if (currentSpeedInKm > currentMaxSpeed)
+        if (horizontalVelocity.magnitude > (currentMaxSpeed / 3.6f))
         {
-            rb.linearVelocity = rb.linearVelocity.normalized * (currentMaxSpeed / 3.6f);
+            Vector3 limitedVelocity = horizontalVelocity.normalized * (currentMaxSpeed / 3.6f);
+            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
         }
 
         if (velocityParticle != null)
         {
-            velocityParticle.SetActive(rb.linearVelocity.magnitude > vfxMinMoveSpeed);
+            velocityParticle.SetActive(rb.linearVelocity.magnitude > (vfxMinMoveSpeed / 3.6f));
         }
     }
 
@@ -259,7 +247,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded)
+        if (!isGrounded && !grapplingHookController.IsGrappling)
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }
