@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
 public class AudioManager : MonoBehaviour
 {
@@ -146,6 +147,27 @@ public class AudioManager : MonoBehaviour
         sfxSource.mute = masterSource.mute;
     }
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
 
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Aqui você escolhe a música com base no nome da cena
+        if (scene.name == "Menu")
+        {
+            PlayMusic("Menu");
+        }
+        else if (scene.name == "BasicMovement")
+        {
+            PlayMusic("Gameplay"); // nome que você deu no array de músicas
+        }
+    }
 
 }
