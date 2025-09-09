@@ -14513,8 +14513,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
   playerRotationSpeed: 5
-  mouseSensitibityX: 30
-  mouseSensitibityY: 30
+  mouseSensitibityX: 60
+  mouseSensitibityY: 60
   playerModel: {fileID: 2135841690}
   orientation: {fileID: 1457126761}
   cameraTransform: {fileID: 963194228}
@@ -14533,6 +14533,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   isGrounded: 0
   canDoubleJump: 0
+  isSliding: 0
   moveSpeed: 7
   maxMoveSpeed: 2000
   vfxMinMoveSpeed: 140
@@ -14545,6 +14546,12 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
+  slideThresholdSpeed: 20
+  slideDuration: 1
+  slideDrag: 1
+  slideControlForce: 5
+  slideBoostWindow: 0.1
+  slideBoostForce: 25
   orientation: {fileID: 1457126761}
   grapplingHookController: {fileID: 818554843}
   velocityParticle: {fileID: 982827512}
