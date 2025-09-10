@@ -22186,29 +22186,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   isGrounded: 0
   canDoubleJump: 0
-  canDashSlide: 0
-  isSliding: 0
-  moveSpeed: 6
+  moveSpeed: 7
   maxMoveSpeed: 140
   maxGrappleMoveSpeed: 150
   vfxMinMoveSpeed: 110
-  groundDrag: 3.8
+  airMultiplier: 0.4
+  groundDrag: 4
   airDrag: 1.66
   grappleAirDrag: 0.68
-  airMultiplier: 0.88
   jumpForce: 40
   doubleJumpForce: 100
   gravityMultiplier: 7.85
+  jumpReleaseMultiplier: 0.5
+  coyoteTimeDuration: 0.5
+  jumpBufferDuration: 0.5
+  bunnyHopWindow: 0.1
+  airControlTargetSpeed: 12
   playerHeight: 2
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
-  slideThresholdSpeed: 20
-  slideDuration: 1
-  slideDrag: 1
-  slideControlForce: 5
-  slideBoostWindow: 0.1
-  slideBoostForce: 25
   orientation: {fileID: 1457126761}
   grapplingHookController: {fileID: 818554843}
   velocityParticle: {fileID: 982827512}
@@ -22517,12 +22514,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerMovementController: {fileID: 818554840}
   playerModel: {fileID: 2135841690}
-  slideRotation: {x: -40, y: 0, z: 0}
-  slideAnimDuration: 0.2
-  slideShakeStrength: 10
-  slideShakeVibrato: 10
-  boostJumpRotation: {x: 350, y: 0, z: 0}
-  boostAnimDuration: 1
 --- !u!114 &818554849
 MonoBehaviour:
   m_ObjectHideFlags: 0
