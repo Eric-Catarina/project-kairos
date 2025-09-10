@@ -247,7 +247,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
-        if (!isGrounded && !grapplingHookController.IsGrappling)
+        if (!isGrounded)
         {
             rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
         }
