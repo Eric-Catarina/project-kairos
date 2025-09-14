@@ -14,8 +14,9 @@ public class AudioManager : MonoBehaviour
     private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
-    float minPitch = 0.95f;
-    float maxPitch = 1.05f;
+    [Header("Configurações de Cena")]
+    [SerializeField] private string gameplaySceneName = "BasicMovement";
+
 
     private void Awake()
     {
@@ -159,14 +160,13 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Aqui você escolhe a música com base no nome da cena
         if (scene.name == "Menu")
         {
             PlayMusic("Menu");
         }
-        else if (scene.name == "BasicMovement")
+        else if (scene.name == gameplaySceneName)
         {
-            PlayMusic("Gameplay"); // nome que você deu no array de músicas
+            PlayMusic("Gameplay");
         }
     }
 

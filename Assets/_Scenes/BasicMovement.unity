@@ -5913,8 +5913,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
   playerRotationSpeed: 5
-  mouseSensitibityX: 60
-  mouseSensitibityY: 60
+  mouseSensitibityX: 10
+  mouseSensitibityY: 10
   playerModel: {fileID: 2135841690}
   orientation: {fileID: 1457126761}
   cameraTransform: {fileID: 963194228}
@@ -6282,10 +6282,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   jumpSfx: Jump
+  doubleJumpSfx: DoubleJump
   landSfx: Landing
   footstepSfx: Footstep
+  wallHitSfx: WallHit
+  deathSfx: Death
+  respawnSfx: Respawn
+  timeSkillOnSfx: TimeOn
+  timeSkillOffSfx: TimeOff
+  grappleShootSfx: GrappleShoot
+  grappleAttachSfx: GrappleAttach
+  grappleReleaseSfx: GrappleRelease
   stepInterval: 0.35
   minStepSpeed: 2
+  wallHitMinForce: 5
 --- !u!1 &852655025
 GameObject:
   m_ObjectHideFlags: 0
