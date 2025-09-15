@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
 public class AudioManager : MonoBehaviour
 {
@@ -13,8 +14,9 @@ public class AudioManager : MonoBehaviour
     private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
-    float minPitch = 0.95f;
-    float maxPitch = 1.05f;
+    [Header("Configurações de Cena")]
+    [SerializeField] private string gameplaySceneName = "BasicMovement";
+
 
     private void Awake()
     {
@@ -146,6 +148,26 @@ public class AudioManager : MonoBehaviour
         sfxSource.mute = masterSource.mute;
     }
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
 
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "Menu")
+        {
+            PlayMusic("Menu");
+        }
+        else if (scene.name == gameplaySceneName)
+        {
+            PlayMusic("Gameplay");
+        }
+    }
 
 }
