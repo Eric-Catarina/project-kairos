@@ -622,79 +622,6 @@ public class PatrolMovement : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PlayerAudioHandler.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour
-{
-    private PlayerMovementController movement;
-
-    [Header("Sons")]
-    [SerializeField] private string jumpSfx = "Jump";
-    [SerializeField] private string landSfx = "Land";
-    [SerializeField] private string footstepSfx = "Step";
-
-    [Header("Parâmetros")]
-    [SerializeField] private float stepInterval = 0.35f;
-    [SerializeField] private float minStepSpeed = 2f;
-
-    private float stepTimer;
-    private bool wasGrounded;
-
-    private void Awake()
-    {
-        movement = GetComponent<PlayerMovementController>();
-        wasGrounded = movement.isGrounded;
-        stepTimer = stepInterval;
-    }
-
-    private void OnEnable()
-    {
-        movement.OnGroundLanded += PlayLand;
-    }
-
-    private void OnDisable()
-    {
-        movement.OnGroundLanded -= PlayLand;
-    }
-
-    private void Update()
-    {
-        HandleJumpDetection();
-        HandleFootsteps();
-    }
-
-    private void HandleJumpDetection()
-    {
-        if (wasGrounded && !movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(jumpSfx);
-        }
-
-        wasGrounded = movement.isGrounded;
-    }
-
-    private void HandleFootsteps()
-    {
-        if (!movement.isGrounded || movement.Rb.linearVelocity.magnitude < minStepSpeed)
-        {
-            stepTimer = stepInterval;
-            return;
-        }
-
-        stepTimer -= Time.deltaTime;
-        if (stepTimer <= 0f)
-        {
-            AudioManager.instance.PlaySFX(footstepSfx);
-            stepTimer = stepInterval;
-        }
-    }
-
-    private void PlayLand() => AudioManager.instance.PlaySFX(landSfx);
-}
-</file>
-
 <file path="Assets/Scripts/SceneManagerLogic.cs">
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -830,6 +757,172 @@ public class WinLogic : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour
+{
+    private PlayerMovementController movement;
+    private GrapplingHookController grapple;
+    private Rigidbody rb;
+
+    [Header("Sons - Movimento")]
+    [SerializeField] private string jumpSfx = "Jump";
+    [SerializeField] private string doubleJumpSfx = "DoubleJump";
+    [SerializeField] private string landSfx = "Land";
+    [SerializeField] private string footstepSfx = "Step";
+    [SerializeField] private string wallHitSfx = "WallHit";
+
+    [Header("Sons - Estado do Player")]
+    [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string respawnSfx = "Respawn";
+    [SerializeField] private string timeSkillOnSfx = "TimeOn";
+    [SerializeField] private string timeSkillOffSfx = "TimeOff";
+
+    [Header("Sons - Grappling Hook")]
+    [SerializeField] private string grappleShootSfx = "GrappleShoot";
+    [SerializeField] private string grappleAttachSfx = "GrappleAttach";
+    [SerializeField] private string grappleReleaseSfx = "GrappleRelease";
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+    [SerializeField] private float wallHitMinForce = 5f;
+
+    private float stepTimer;
+    private bool wasGrounded;
+    private bool didDoubleJump;
+    private Vector3 lastPosition;
+
+    private bool wasGrappling; // estado anterior do grapple
+    private bool grappleJustStarted;
+
+    private void Awake()
+    {
+        movement = GetComponent<PlayerMovementController>();
+        grapple = GetComponent<GrapplingHookController>();
+        rb = movement.Rb;
+
+        wasGrounded = movement.isGrounded;
+        stepTimer = stepInterval;
+        lastPosition = transform.position;
+    }
+
+    private void OnEnable()
+    {
+        movement.OnGroundLanded += PlayLand;
+    }
+
+    private void OnDisable()
+    {
+        movement.OnGroundLanded -= PlayLand;
+    }
+
+    private void Update()
+    {
+        HandleJumpDetection();
+        HandleDoubleJumpDetection();
+        HandleFootsteps();
+        DetectRespawn();
+        HandleGrappleAudio();
+    }
+
+    private void HandleJumpDetection()
+    {
+        if (wasGrounded && !movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(jumpSfx);
+            didDoubleJump = false;
+        }
+        wasGrounded = movement.isGrounded;
+    }
+
+    private void HandleDoubleJumpDetection()
+    {
+        if (!movement.isGrounded && !didDoubleJump)
+        {
+            if (rb.linearVelocity.y > 1f )
+            {
+                AudioManager.instance.PlaySFX(doubleJumpSfx);
+                didDoubleJump = true;
+            }
+        }
+    }
+
+    private void HandleFootsteps()
+    {
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
+        {
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            AudioManager.instance.PlaySFX(footstepSfx);
+            stepTimer = stepInterval;
+        }
+    }
+
+    private void DetectRespawn()
+    {
+        float distance = Vector3.Distance(transform.position, lastPosition);
+        if (distance > 10f && wasGrounded && movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(respawnSfx);
+        }
+        lastPosition = transform.position;
+    }
+
+    private void HandleGrappleAudio()
+    {
+        if (grapple == null) return;
+
+        if (!wasGrappling && grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleShootSfx);
+            grappleJustStarted = true;
+        }
+
+       
+        if (grappleJustStarted && grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleAttachSfx);
+            grappleJustStarted = false;
+        }
+
+        if (wasGrappling && !grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleReleaseSfx);
+        }
+
+        wasGrappling = grapple.IsGrappling;
+    }
+
+    private void PlayLand() => AudioManager.instance.PlaySFX(landSfx);
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f)
+        {
+            if (collision.relativeVelocity.magnitude > wallHitMinForce)
+            {
+                AudioManager.instance.PlaySFX(wallHitSfx);
+            }
+        }
+    }
+
+    // Chamadas externas
+    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
+    public void PlayRespawnManual() => AudioManager.instance.PlaySFX(respawnSfx);
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
+}
+</file>
+
 <file path="Assets/Scripts/PlayerVisualController.cs">
 // Local: Assets/Scripts/PlayerVisualController.cs
 
@@ -876,157 +969,6 @@ public class PlayerVisualController : MonoBehaviour
     private void OnDestroy()
     {
         KillAllTweens();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/TimeManipulation/ITimeSlowable.cs">
-// Local: Assets/Scripts/TimeManipulation/ITimeSlowable.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Define uma interface para objetos que podem ter seu tempo localmente desacelerado.
-/// Implementa o Padrão de Estratégia, onde cada objeto define sua própria lógica
-/// de como desacelerar e restaurar o tempo.
-/// </summary>
-public interface ITimeSlowable
-{
-    /// <summary>
-    /// Salva o estado atual do objeto e inicia o efeito de desaceleração.
-    /// </summary>
-    /// <param name="slowPercentage">A porcentagem de lentidão (0-100). 100 significa parada total.</param>
-    void SlowDown(float slowPercentage);
-    void SetSlowDownColor(Color newColor);
-
-    /// <summary>
-    /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
-    /// </summary>
-    void RestoreNormalTime();
-}
-</file>
-
-<file path="Assets/Scripts/TimeManipulation/TimeManipulationManager.cs">
-// Local: Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
-
-using System.Collections.Generic;
-using UnityEngine;
-
-/// <summary>
-/// Gerencia o estado global da manipulação do tempo para objetos específicos.
-/// Implementa o padrão Singleton para ser o ponto central de controle.
-/// Ouve o InputManager para ativar/desativar o efeito em todos os objetos registrados.
-/// </summary>
-public class TimeManipulationManager : MonoBehaviour
-{
-    public static TimeManipulationManager Instance { get; private set; }
-
-    [Header("Configurações da Habilidade")]
-    [Tooltip("A porcentagem de lentidão a ser aplicada. 0 = sem efeito, 50 = 50% da velocidade, 100 = completamente parado.")]
-    [Range(0f, 100f)]
-    [SerializeField] private float slowPercentage = 50f;
-    [SerializeField] private Color slowDownColor = Color.cyan;
-
-    // Lista de todos os objetos que podem ser desacelerados na cena.
-    private readonly List<ITimeSlowable> _slowableObjects = new List<ITimeSlowable>();
-    private bool _isTimeSlowed = false;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Debug.LogWarning($"[TimeManipulationManager] Mais de uma instância encontrada. Destruindo a nova em '{gameObject.name}'.");
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    private void OnEnable()
-    {
-        // Garante que o InputManager exista antes de se inscrever.
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
-            InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
-        }
-        else
-        {
-            Debug.LogError("[TimeManipulationManager] Não foi possível encontrar a instância do InputManager para se inscrever nos eventos.");
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnSlowTimeStarted -= HandleSlowTimeStarted;
-        InputManager.Instance.OnSlowTimeCanceled -= HandleSlowTimeCanceled;
-
-        // Garante que o tempo seja restaurado se o manager for desativado.
-        if (_isTimeSlowed)
-        {
-            HandleSlowTimeCanceled();
-        }
-    }
-    
-    /// <summary>
-    /// Registra um objeto na lista para que ele possa ser afetado pela manipulação do tempo.
-    /// </summary>
-    public void Register(ITimeSlowable slowable)
-    {
-        // Verificação de segurança adicional.
-        if (Instance == null)
-        {
-            Debug.LogError($"[TimeManipulationManager] Um objeto tentou se registrar antes que a instância do Manager estivesse pronta. Isso não deveria acontecer.");
-            return;
-        }
-
-        if (!_slowableObjects.Contains(slowable))
-        {
-            _slowableObjects.Add(slowable);
-            slowable.SetSlowDownColor(slowDownColor);
-        }
-    }
-
-    /// <summary>
-    /// Remove um objeto da lista, geralmente quando ele é destruído.
-    /// </summary>
-    public void Unregister(ITimeSlowable slowable)
-    {
-        if (_slowableObjects.Contains(slowable))
-        {
-            _slowableObjects.Remove(slowable);
-        }
-    }
-
-    private void HandleSlowTimeStarted()
-    {
-        if (_isTimeSlowed) return;
-        _isTimeSlowed = true;
-        
-        // Percorre a lista de trás para frente para evitar problemas se um objeto for removido durante a iteração.
-        for (int i = _slowableObjects.Count - 1; i >= 0; i--)
-        {
-            // Adicionado null-check para o caso de um objeto ser destruído e não se desregistrar a tempo
-            if (_slowableObjects[i] != null)
-            {
-                _slowableObjects[i].SlowDown(slowPercentage);
-            }
-        }
-    }
-
-    private void HandleSlowTimeCanceled()
-    {
-        if (!_isTimeSlowed) return;
-        _isTimeSlowed = false;
-        
-        for (int i = _slowableObjects.Count - 1; i >= 0; i--)
-        {
-            if (_slowableObjects[i] != null)
-            {
-                _slowableObjects[i].RestoreNormalTime();
-            }
-        }
     }
 }
 </file>
@@ -2526,6 +2468,261 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
 }
 </file>
 
+<file path="Assets/Scripts/TimeManipulation/ITimeSlowable.cs">
+// Local: Assets/Scripts/TimeManipulation/ITimeSlowable.cs
+
+using UnityEngine;
+
+/// <summary>
+/// Define uma interface para objetos que podem ter seu tempo localmente desacelerado.
+/// Implementa o Padrão de Estratégia, onde cada objeto define sua própria lógica
+/// de como desacelerar e restaurar o tempo.
+/// </summary>
+public interface ITimeSlowable
+{
+    /// <summary>
+    /// Salva o estado atual do objeto e inicia o efeito de desaceleração.
+    /// </summary>
+    /// <param name="slowPercentage">A porcentagem de lentidão (0-100). 100 significa parada total.</param>
+    void SlowDown(float slowPercentage);
+    void SetSlowDownColor(Color newColor);
+
+    /// <summary>
+    /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
+    /// </summary>
+    void RestoreNormalTime();
+}
+</file>
+
+<file path="Assets/Scripts/TimeManipulation/TimeManipulationManager.cs">
+// Local: Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
+
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Gerencia o estado global da manipulação do tempo para objetos específicos.
+/// Implementa o padrão Singleton para ser o ponto central de controle.
+/// Ouve o InputManager para ativar/desativar o efeito em todos os objetos registrados.
+/// </summary>
+public class TimeManipulationManager : MonoBehaviour
+{
+    public static TimeManipulationManager Instance { get; private set; }
+
+    [Header("Configurações da Habilidade")]
+    [Tooltip("A porcentagem de lentidão a ser aplicada. 0 = sem efeito, 50 = 50% da velocidade, 100 = completamente parado.")]
+    [Range(0f, 100f)]
+    [SerializeField] private float slowPercentage = 50f;
+    [SerializeField] private Color slowDownColor = Color.cyan;
+
+    // Lista de todos os objetos que podem ser desacelerados na cena.
+    private readonly List<ITimeSlowable> _slowableObjects = new List<ITimeSlowable>();
+    private bool _isTimeSlowed = false;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning($"[TimeManipulationManager] Mais de uma instância encontrada. Destruindo a nova em '{gameObject.name}'.");
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    private void OnEnable()
+    {
+        // Garante que o InputManager exista antes de se inscrever.
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
+            InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
+        }
+        else
+        {
+            Debug.LogError("[TimeManipulationManager] Não foi possível encontrar a instância do InputManager para se inscrever nos eventos.");
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnSlowTimeStarted -= HandleSlowTimeStarted;
+        InputManager.Instance.OnSlowTimeCanceled -= HandleSlowTimeCanceled;
+
+        // Garante que o tempo seja restaurado se o manager for desativado.
+        if (_isTimeSlowed)
+        {
+            HandleSlowTimeCanceled();
+        }
+    }
+    
+    /// <summary>
+    /// Registra um objeto na lista para que ele possa ser afetado pela manipulação do tempo.
+    /// </summary>
+    public void Register(ITimeSlowable slowable)
+    {
+        // Verificação de segurança adicional.
+        if (Instance == null)
+        {
+            Debug.LogError($"[TimeManipulationManager] Um objeto tentou se registrar antes que a instância do Manager estivesse pronta. Isso não deveria acontecer.");
+            return;
+        }
+
+        if (!_slowableObjects.Contains(slowable))
+        {
+            _slowableObjects.Add(slowable);
+            slowable.SetSlowDownColor(slowDownColor);
+        }
+    }
+
+    /// <summary>
+    /// Remove um objeto da lista, geralmente quando ele é destruído.
+    /// </summary>
+    public void Unregister(ITimeSlowable slowable)
+    {
+        if (_slowableObjects.Contains(slowable))
+        {
+            _slowableObjects.Remove(slowable);
+        }
+    }
+
+    private void HandleSlowTimeStarted()
+    {
+        if (_isTimeSlowed) return;
+        _isTimeSlowed = true;
+        
+        // Percorre a lista de trás para frente para evitar problemas se um objeto for removido durante a iteração.
+        for (int i = _slowableObjects.Count - 1; i >= 0; i--)
+        {
+            // Adicionado null-check para o caso de um objeto ser destruído e não se desregistrar a tempo
+            if (_slowableObjects[i] != null)
+            {
+                _slowableObjects[i].SlowDown(slowPercentage);
+            }
+        }
+    }
+
+    private void HandleSlowTimeCanceled()
+    {
+        if (!_isTimeSlowed) return;
+        _isTimeSlowed = false;
+        
+        for (int i = _slowableObjects.Count - 1; i >= 0; i--)
+        {
+            if (_slowableObjects[i] != null)
+            {
+                _slowableObjects[i].RestoreNormalTime();
+            }
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerLookController.cs">
+// Local: Assets/Scripts/PlayerLookController.cs
+
+using Unity.Cinemachine;
+using UnityEngine;
+using UnityEngine.InputSystem; // Adicione esta linha
+
+/// <summary>
+/// Controla a orientação de movimento do jogador e conecta a instância de input correta ao Cinemachine.
+/// </summary>
+public class PlayerLookController : MonoBehaviour
+{
+    [Header("Configurações")]
+    [SerializeField] private float playerRotationSpeed = 10f; // Aumentei um pouco para um feel melhor
+    [SerializeField] private float mouseSensitivityX = 4f;
+    [SerializeField] private float mouseSensitivityY = 4f;
+
+    [Header("Referências")]
+    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
+    [SerializeField] private Transform playerModel;
+    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
+    [SerializeField] private Transform orientation;
+    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
+    [SerializeField] private Transform cameraTransform;
+    [Tooltip("Referência ao controlador de eixos da câmera virtual.")]
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
+
+    private void Start()
+    {
+        // Garante que o InputManager esteja pronto.
+        if (InputManager.Instance == null)
+        {
+            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
+            return;
+        }
+
+        // --- PONTO CRÍTICO DA SOLUÇÃO ---
+        // Conecta o Cinemachine à instância de PlayerControls gerenciada pelo InputManager.
+        ConnectCinemachineToInputManager();
+        // --- FIM DO PONTO CRÍTICO ---
+    }
+
+    private void Update()
+    {
+        HandlePlayerModelRotation();
+    }
+
+    /// <summary>
+    /// Conecta os eixos do CinemachineInputAxisController diretamente às ações
+    /// da instância PlayerControls que vive no nosso InputManager.
+    /// Isso garante que, quando o InputStateManager desativa o mapa de ações 'Player',
+    /// o Cinemachine para de receber input.
+    /// </summary>
+    private void ConnectCinemachineToInputManager()
+    {
+        // Obtém a ação 'Look' da nossa instância única de PlayerControls.
+        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
+
+        // Itera por cada controlador de eixo (X e Y) no componente do Cinemachine.
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            // Cria uma referência para a ação de input.
+            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
+
+            // Atribui a ação de input correta.
+            controller.Input.InputAction = lookActionReference;
+
+            // Configura a sensibilidade (exemplo de como fazer isso aqui).
+            if (controller.Name == "Look Orbit X")
+            {
+                controller.Input.Gain = mouseSensitivityX;
+            }
+            if (controller.Name == "Look Orbit Y")
+            {
+                // O eixo Y geralmente é invertido.
+                controller.Input.Gain = -mouseSensitivityY;
+            }
+        }
+        
+        Debug.Log("<color=cyan>CinemachineInputAxisController foi conectado com sucesso ao InputManager.</color>");
+    }
+
+    /// <summary>
+    /// Gerencia a rotação do modelo do jogador para alinhar com a câmera.
+    /// A rotação da câmera em si é 100% controlada pelo Cinemachine.
+    /// </summary>
+    private void HandlePlayerModelRotation()
+    {
+        if (cameraTransform == null || orientation == null || playerModel == null) return;
+
+        // A orientação de movimento espelha a direção da câmera no plano horizontal.
+        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+        if (viewDirection != Vector3.zero)
+        {
+            orientation.forward = viewDirection;
+        }
+
+        // O modelo do jogador gira suavemente para se alinhar com a orientação.
+        // Usando Slerp para uma rotação mais suave.
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+    }
+}
+</file>
+
 <file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
 // Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
 
@@ -2657,264 +2854,6 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
     public void SetSlowDownColor(Color newColor)
     {
         slowDownColor = newColor;
-    }
-}
-</file>
-
-<file path="Assets/Scripts/AudioManager.cs">
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Audio;
-
-public class AudioManager : MonoBehaviour
-{
-    public static AudioManager instance;
-
-    public Sound[] musicSounds, ambientSounds, sfxSounds;
-    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
-    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
-    [SerializeField] private AudioMixer audioMixer;
-    [SerializeField] private float sfxPitchVariation = 0.1f;
-    float minPitch = 0.95f;
-    float maxPitch = 1.05f;
-
-    private void Awake()
-    {
-
-        AddSoundsToDictionary(sfxSounds);
-        AddSoundsToDictionary(musicSounds);
-        AddSoundsToDictionary(ambientSounds);
-
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
-    }
-
-    private void Start()
-    {
-        PlayMusic("Menu");
-    }
-
-
-    private void AddSoundsToDictionary(Sound[] soundArray)
-    {
-        foreach (Sound s in soundArray)
-        {
-            if (!sfxDictionary.ContainsKey(s.name))
-            {
-                sfxDictionary.Add(s.name, s.clip);
-            }
-        }
-    }
-
-    public void PlayMusic(string name)
-    {
-        Sound s = Array.Find(musicSounds, x => x.name == name);
-
-        if (s == null)
-        {
-            Debug.Log("Sound Not Found");
-        }
-
-        else
-        {
-            musicSource.clip = s.clip;
-            musicSource.volume = musicSource.volume * masterSource.volume;
-            musicSource.Play();
-        }
-    }
-
-    public void PlayAmbient(string name)
-    {
-        Sound s = Array.Find(ambientSounds, x => x.name == name);
-        if (s == null)
-        {
-            Debug.Log("Ambient sound not found: " + name);
-        }
-        else
-        {
-            ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
-            ambientSource.loop = true;
-            ambientSource.Play();
-
-        }
-    }
-
-    public void PlaySFX(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-            sfxSource.pitch = randomPitch;
-            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
-
-            
-        }
-        else
-        {
-            Debug.Log("Sound Not Found: " + name);
-        }
-
-       
-    }
-
-    public void ToggleMusic()
-    {
-        musicSource.mute = !musicSource.mute;
-    }
-
-    public void ToggleSFX()
-    {
-        sfxSource.mute = !sfxSource.mute;
-    }
-
-    public void ToggleAmbient()
-    {
-        ambientSource.mute = !ambientSource.mute;
-    }
-
-    public void MusicVolume(float volume)
-    {
-        musicSource.volume = volume * masterSource.volume;
-    }
-
-    public void AmbientVolume(float volume)
-    {
-        ambientSource.volume = volume * masterSource.volume;
-    }
-
-    public void SFXVolume(float volume)
-    {
-        sfxSource.volume = volume * masterSource.volume;
-    }
-
-    public void MasterVolume(float volume)
-    {
-        audioMixer.SetFloat("MasterVolume", volume);
-    }
-
-    public void ToggleMaster()
-    {
-        masterSource.mute = !masterSource.mute;
-        musicSource.mute = masterSource.mute;
-        sfxSource.mute = masterSource.mute;
-    }
-
-
-
-}
-</file>
-
-<file path="Assets/Scripts/PlayerLookController.cs">
-// Local: Assets/Scripts/PlayerLookController.cs
-
-using Unity.Cinemachine;
-using UnityEngine;
-using UnityEngine.InputSystem; // Adicione esta linha
-
-/// <summary>
-/// Controla a orientação de movimento do jogador e conecta a instância de input correta ao Cinemachine.
-/// </summary>
-public class PlayerLookController : MonoBehaviour
-{
-    [Header("Configurações")]
-    [SerializeField] private float playerRotationSpeed = 10f; // Aumentei um pouco para um feel melhor
-    [SerializeField] private float mouseSensitivityX = 4f;
-    [SerializeField] private float mouseSensitivityY = 4f;
-
-    [Header("Referências")]
-    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
-    [SerializeField] private Transform playerModel;
-    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
-    [SerializeField] private Transform orientation;
-    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
-    [SerializeField] private Transform cameraTransform;
-    [Tooltip("Referência ao controlador de eixos da câmera virtual.")]
-    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
-
-    private void Start()
-    {
-        // Garante que o InputManager esteja pronto.
-        if (InputManager.Instance == null)
-        {
-            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
-            return;
-        }
-
-        // --- PONTO CRÍTICO DA SOLUÇÃO ---
-        // Conecta o Cinemachine à instância de PlayerControls gerenciada pelo InputManager.
-        ConnectCinemachineToInputManager();
-        // --- FIM DO PONTO CRÍTICO ---
-    }
-
-    private void Update()
-    {
-        HandlePlayerModelRotation();
-    }
-
-    /// <summary>
-    /// Conecta os eixos do CinemachineInputAxisController diretamente às ações
-    /// da instância PlayerControls que vive no nosso InputManager.
-    /// Isso garante que, quando o InputStateManager desativa o mapa de ações 'Player',
-    /// o Cinemachine para de receber input.
-    /// </summary>
-    private void ConnectCinemachineToInputManager()
-    {
-        // Obtém a ação 'Look' da nossa instância única de PlayerControls.
-        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
-
-        // Itera por cada controlador de eixo (X e Y) no componente do Cinemachine.
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            // Cria uma referência para a ação de input.
-            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
-
-            // Atribui a ação de input correta.
-            controller.Input.InputAction = lookActionReference;
-
-            // Configura a sensibilidade (exemplo de como fazer isso aqui).
-            if (controller.Name == "Look Orbit X")
-            {
-                controller.Input.Gain = mouseSensitivityX;
-            }
-            if (controller.Name == "Look Orbit Y")
-            {
-                // O eixo Y geralmente é invertido.
-                controller.Input.Gain = -mouseSensitivityY;
-            }
-        }
-        
-        Debug.Log("<color=cyan>CinemachineInputAxisController foi conectado com sucesso ao InputManager.</color>");
-    }
-
-    /// <summary>
-    /// Gerencia a rotação do modelo do jogador para alinhar com a câmera.
-    /// A rotação da câmera em si é 100% controlada pelo Cinemachine.
-    /// </summary>
-    private void HandlePlayerModelRotation()
-    {
-        if (cameraTransform == null || orientation == null || playerModel == null) return;
-
-        // A orientação de movimento espelha a direção da câmera no plano horizontal.
-        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-        if (viewDirection != Vector3.zero)
-        {
-            orientation.forward = viewDirection;
-        }
-
-        // O modelo do jogador gira suavemente para se alinhar com a orientação.
-        // Usando Slerp para uma rotação mais suave.
-        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
 }
 </file>
@@ -3162,6 +3101,182 @@ public class GrapplingHookController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/AudioManager.cs">
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager instance;
+
+    public Sound[] musicSounds, ambientSounds, sfxSounds;
+    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
+    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    [SerializeField] private AudioMixer audioMixer;
+    [SerializeField] private float sfxPitchVariation = 0.1f;
+    float minPitch = 0.95f;
+    float maxPitch = 1.05f;
+
+    private void Awake()
+    {
+
+        AddSoundsToDictionary(sfxSounds);
+        AddSoundsToDictionary(musicSounds);
+        AddSoundsToDictionary(ambientSounds);
+
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
+    }
+
+    private void Start()
+    {
+        PlayMusic("Menu");
+    }
+
+
+    private void AddSoundsToDictionary(Sound[] soundArray)
+    {
+        foreach (Sound s in soundArray)
+        {
+            if (!sfxDictionary.ContainsKey(s.name))
+            {
+                sfxDictionary.Add(s.name, s.clip);
+            }
+        }
+    }
+
+    public void PlayMusic(string name)
+    {
+        Sound s = Array.Find(musicSounds, x => x.name == name);
+
+        if (s == null)
+        {
+            Debug.Log("Sound Not Found");
+        }
+
+        else
+        {
+            musicSource.clip = s.clip;
+            musicSource.volume = musicSource.volume * masterSource.volume;
+            musicSource.Play();
+        }
+    }
+
+    public void PlayAmbient(string name)
+    {
+        Sound s = Array.Find(ambientSounds, x => x.name == name);
+        if (s == null)
+        {
+            Debug.Log("Ambient sound not found: " + name);
+        }
+        else
+        {
+            ambientSource.clip = s.clip;
+            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            ambientSource.loop = true;
+            ambientSource.Play();
+
+        }
+    }
+
+    public void PlaySFX(string name)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            sfxSource.pitch = randomPitch;
+            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+
+            
+        }
+        else
+        {
+            Debug.Log("Sound Not Found: " + name);
+        }
+
+       
+    }
+
+    public void ToggleMusic()
+    {
+        musicSource.mute = !musicSource.mute;
+    }
+
+    public void ToggleSFX()
+    {
+        sfxSource.mute = !sfxSource.mute;
+    }
+
+    public void ToggleAmbient()
+    {
+        ambientSource.mute = !ambientSource.mute;
+    }
+
+    public void MusicVolume(float volume)
+    {
+        musicSource.volume = volume * masterSource.volume;
+    }
+
+    public void AmbientVolume(float volume)
+    {
+        ambientSource.volume = volume * masterSource.volume;
+    }
+
+    public void SFXVolume(float volume)
+    {
+        sfxSource.volume = volume * masterSource.volume;
+    }
+
+    public void MasterVolume(float volume)
+    {
+        audioMixer.SetFloat("MasterVolume", volume);
+    }
+
+    public void ToggleMaster()
+    {
+        masterSource.mute = !masterSource.mute;
+        musicSource.mute = masterSource.mute;
+        sfxSource.mute = masterSource.mute;
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Aqui você escolhe a música com base no nome da cena
+        if (scene.name == "Menu")
+        {
+            PlayMusic("Menu");
+        }
+        else if (scene.name == "BasicMovement")
+        {
+            PlayMusic("Gameplay"); // nome que você deu no array de músicas
+        }
+    }
+
+}
+</file>
+
 <file path="Assets/Scripts/InputManager.cs">
 // Local: Assets/Scripts/InputManager.cs
 
@@ -3180,7 +3295,7 @@ public class InputManager : MonoBehaviour
     public event Action<Vector2> OnMove;
     public event Action<Vector2> OnLook;
     public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled; // NOVO EVENTO
+    public event Action OnJumpCanceled;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
     public event Action OnLevelFinished;
@@ -3219,7 +3334,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Look.canceled += HandleLook;
 
         _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled; // NOVA INSCRIÇÃO
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
         
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
@@ -3242,7 +3357,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Look.canceled -= HandleLook;
         
         _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled; // NOVA REMOÇÃO
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
         
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
@@ -3316,9 +3431,10 @@ public class PlayerMovementController : MonoBehaviour
     [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
     [SerializeField] private float bunnyHopWindow = 0.1f;
     
-    [Header("Ajuste Fino do Controle Aéreo")]
-    [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
-    [SerializeField] private float airControlTargetSpeed = 7f;
+    // Removido o airControlTargetSpeed pois a nova lógica não o utiliza mais.
+    // [Header("Ajuste Fino do Controle Aéreo")]
+    // [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
+    // [SerializeField] private float airControlTargetSpeed = 7f;
 
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
@@ -3344,7 +3460,6 @@ public class PlayerMovementController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
-        airControlTargetSpeed = moveSpeed * 2; // Garante que o valor inicial seja o mesmo da velocidade de movimento
     }
 
     private void OnEnable()
@@ -3409,13 +3524,9 @@ public class PlayerMovementController : MonoBehaviour
         bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
         
-        if (isGrounded)
-        {
-            isJumping = false;
-        }
-
         if (!wasGrounded && isGrounded)
         {
+            isJumping = false;
             timeSinceLanded = 0f;
             canDoubleJump = false;
             OnGroundLanded?.Invoke();
@@ -3458,39 +3569,31 @@ public class PlayerMovementController : MonoBehaviour
 
         if (isGrounded)
         {
-            // No chão, a lógica é simples: aplicamos força, e o atrito alto a equilibra.
             rb.AddForce(moveDirection * moveSpeed * 10f, ForceMode.Force);
         }
         else // No Ar
         {
-            // PONTO-CHAVE DA SOLUÇÃO:
-            // Verificamos a velocidade atual na direção do input.
-            Vector3 currentVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
-            float speedInInputDirection = Vector3.Dot(currentVelocity, moveDirection);
-
-            // Só aplicamos força se a velocidade na direção do input for menor que a nossa velocidade alvo.
-            // Isso previne a aceleração extra ao pular, mas ainda permite que o jogador mude de direção no ar (air-strafe).
-            if (speedInInputDirection < airControlTargetSpeed)
-            {
-                // A força aplicada aqui é calculada para ser forte o suficiente para dar bom controle.
-                rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
-            }
+            // CORREÇÃO: Removemos a verificação 'if (speedInInputDirection < airControlTargetSpeed)'.
+            // Agora, aplicamos a força de controle aéreo consistentemente.
+            // A função LimitVelocity() já previne que o jogador acelere indefinidamente.
+            rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
     }
 
     private void LimitVelocity()
     {
         float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
-        float currentSpeedInKm = rb.linearVelocity.magnitude * 3.6f;
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
 
-        if (currentSpeedInKm > currentMaxSpeed)
+        if (horizontalVelocity.magnitude > (currentMaxSpeed / 3.6f))
         {
-            rb.linearVelocity = rb.linearVelocity.normalized * (currentMaxSpeed / 3.6f);
+            Vector3 limitedVelocity = horizontalVelocity.normalized * (currentMaxSpeed / 3.6f);
+            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
         }
 
         if (velocityParticle != null)
         {
-            velocityParticle.SetActive(rb.linearVelocity.magnitude > vfxMinMoveSpeed);
+            velocityParticle.SetActive(rb.linearVelocity.magnitude > (vfxMinMoveSpeed / 3.6f));
         }
     }
 

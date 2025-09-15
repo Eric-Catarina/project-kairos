@@ -7954,7 +7954,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!82 &346331383
 AudioSource:
   m_ObjectHideFlags: 0
@@ -22166,8 +22166,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
   playerRotationSpeed: 5
-  mouseSensitivityX: 40
-  mouseSensitivityY: 40
+  mouseSensitivityX: 10
+  mouseSensitivityY: 10
   playerModel: {fileID: 2135841690}
   orientation: {fileID: 1457126761}
   cameraTransform: {fileID: 963194228}
@@ -22201,7 +22201,6 @@ MonoBehaviour:
   coyoteTimeDuration: 0.5
   jumpBufferDuration: 0.5
   bunnyHopWindow: 0.1
-  airControlTargetSpeed: 12
   playerHeight: 2
   groundLayer:
     serializedVersion: 2
@@ -34396,7 +34395,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96d8600d249de746daf259d86d847c5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  slowPercentage: 74.2
+  slowPercentage: 100
   slowDownColor: {r: 0, g: 1, b: 1, a: 1}
 --- !u!4 &1237921765
 Transform:

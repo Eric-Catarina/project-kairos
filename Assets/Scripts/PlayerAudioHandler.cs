@@ -82,7 +82,7 @@ public class PlayerAudioHandler : MonoBehaviour
     {
         if (!movement.isGrounded && !didDoubleJump)
         {
-            if (rb.linearVelocity.y > 1f && Input.GetButtonDown("Jump"))
+            if (rb.linearVelocity.y > 1f )
             {
                 AudioManager.instance.PlaySFX(doubleJumpSfx);
                 didDoubleJump = true;
