@@ -3,6 +3,7 @@
 using TMPro;
 using System;
 using UnityEngine;
+using Unity.VisualScripting;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
@@ -18,11 +19,12 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
     [SerializeField] private float vfxMinMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f;
+    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
 
     [Header("Configurações de Atrito (Drag)")]
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 2f;
+    private float baseAirDrag;
     [SerializeField] private float grappleAirDrag = 0.5f;
 
     [Header("Configurações de Pulo")]
@@ -73,6 +75,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+        baseAirDrag =  airDrag;
     }
 
     private void OnEnable()
@@ -182,7 +185,7 @@ public class PlayerMovementController : MonoBehaviour
 
         if (isGrounded)
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f, ForceMode.Force);
+            rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
         }
         else // No Ar
         {
@@ -197,6 +200,12 @@ public class PlayerMovementController : MonoBehaviour
     {
         float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        if(horizontalVelocity.magnitude > 200 /3.6f){
+            airDrag = baseAirDrag * 1.2f;
+        }
+        else{
+            airDrag = baseAirDrag;
+        }
 
         if (horizontalVelocity.magnitude > (currentMaxSpeed / 3.6f))
         {

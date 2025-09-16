@@ -13408,8 +13408,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
   playerRotationSpeed: 5
-  mouseSensitivityX: 40
-  mouseSensitivityY: 40
+  mouseSensitivityX: 50
+  mouseSensitivityY: 50
   playerModel: {fileID: 2135841690}
   orientation: {fileID: 1457126761}
   cameraTransform: {fileID: 963194228}
@@ -13428,12 +13428,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   isGrounded: 0
   canDoubleJump: 0
-  moveSpeed: 4
-  maxMoveSpeed: 2000
-  maxGrappleMoveSpeed: 999
+  moveSpeed: 6
+  maxMoveSpeed: 300
+  maxGrappleMoveSpeed: 300
   vfxMinMoveSpeed: 140
-  airMultiplier: 0.5
-  groundDrag: 3
+  airMultiplier: 0.3
+  groundMultiplier: 2
+  groundDrag: 6
   airDrag: 0.5
   grappleAirDrag: 0.5
   jumpForce: 35
@@ -13442,7 +13443,7 @@ MonoBehaviour:
   jumpReleaseMultiplier: 0.5
   coyoteTimeDuration: 0.1
   jumpBufferDuration: 0.1
-  bunnyHopWindow: 0.1
+  bunnyHopWindow: 0
   playerHeight: 2
   groundLayer:
     serializedVersion: 2
@@ -22103,13 +22104,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1556270683}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.6289537, z: -0, w: 0.77744275}
-  m_LocalPosition: {x: -83.934204, y: 115.399994, z: 603.8771}
+  m_LocalRotation: {x: 0.00014305302, y: 0.62796885, z: 0.007672801, w: 0.7782007}
+  m_LocalPosition: {x: -83.97765, y: 115.27578, z: 603.8873}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1212262306}
-  m_LocalEulerAnglesHint: {x: 0, y: 77.946, z: 0}
+  m_LocalEulerAnglesHint: {x: -0.539, y: 77.8, z: 0.695}
 --- !u!1 &1572607384
 GameObject:
   m_ObjectHideFlags: 0
