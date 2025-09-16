@@ -173,6 +173,7 @@ public class GrapplingHookController : MonoBehaviour
 
         joint = gameObject.AddComponent<SpringJoint>();
         joint.autoConfigureConnectedAnchor = false;
+        joint.anchor = Vector3.zero;
         joint.connectedAnchor = grapplePoint;
 
         float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
@@ -184,11 +185,24 @@ public class GrapplingHookController : MonoBehaviour
         joint.massScale = massScale;
 
         lineRenderer.positionCount = 2;
+        Debug.DrawLine(grappleTip.position, grapplePoint, Color.red, 1f);
+
 
         // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
         if (!canDoMultipleGrapple && !groundedOverride)
             hasGrappleAvailable = false;
-    }
+        // Printa todos os dados do joint/grapple, incluindo posição do jogador e do grapple
+        // Debug.Log($"Grapple Started:\n" +
+        //           $"- Player Position: {transform.position}\n" +
+        //           $"- Grapple Point: {grapplePoint}\n" +
+        //           $"- Distance From Point: {distanceFromPoint}\n" +
+        //           $"- Joint Max Distance: {joint.maxDistance}\n" +
+        //           $"- Joint Min Distance: {joint.minDistance}\n" +
+        //           $"- Spring Force: {springForce}\n" +
+        //           $"- Damper: {damper}\n" +
+        //           $"- Mass Scale: {massScale}");    
+                  
+            }
 
     private void ApplySwingForce()
     {
