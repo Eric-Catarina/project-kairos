@@ -222,7 +222,7 @@ public class GrapplingHookController : MonoBehaviour
     private void DrawRope()
     {
         if (!joint) return;
-        currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
+        currentGrapplePosition = predictedPoint;
 
 
         lineRenderer.SetPosition(0, grappleTip.position);
