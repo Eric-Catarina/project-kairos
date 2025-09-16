@@ -75,6 +75,57 @@ Assets/
 <files>
 This section contains the contents of the repository's files.
 
+<file path="Assets/Scripts/ShadowFollow.cs">
+using UnityEngine;
+
+public class ShadowFollow : MonoBehaviour
+{
+    public Transform target; // O objeto do player que a sombra deve seguir
+    public float maxDistance = 100f; // Alcance máximo do raio
+    public LayerMask groundLayer; // Camada que representa o chão
+
+    void Update()
+    {
+        if (target != null)
+        {
+            // Lança um raio para baixo a partir da posição do player
+            Ray ray = new Ray(target.position, Vector3.down);
+            RaycastHit hit;
+
+            // Verifica se o raio atingiu algo dentro da distância máxima
+            if (Physics.Raycast(ray, out hit, maxDistance, groundLayer))
+            {
+                // Posiciona a sombra no ponto de impacto do raio
+                transform.position = hit.point;
+                // Opcional: Alinha a sombra com a superfície do chão
+                transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                // Mantém a sombra plana no chão
+                // sobe um pouco a sombra para evitar z-fighting
+                transform.position += Vector3.up * 0.01f;
+            }
+            else
+            {
+                // Se o raio não atingir nada, posiciona a sombra a uma distância fixa abaixo do player
+                transform.position = target.position + Vector3.down * maxDistance;
+            }
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Sound.cs">
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+[System.Serializable]
+public class Sound
+{
+    public string name;
+    public AudioClip clip;
+}
+</file>
+
 <file path="Assets/Scripts/UIJuice.cs">
 using UnityEngine;
 using UnityEngine.Events;
@@ -666,57 +717,6 @@ public class SceneManagerLogic : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/ShadowFollow.cs">
-using UnityEngine;
-
-public class ShadowFollow : MonoBehaviour
-{
-    public Transform target; // O objeto do player que a sombra deve seguir
-    public float maxDistance = 100f; // Alcance máximo do raio
-    public LayerMask groundLayer; // Camada que representa o chão
-
-    void Update()
-    {
-        if (target != null)
-        {
-            // Lança um raio para baixo a partir da posição do player
-            Ray ray = new Ray(target.position, Vector3.down);
-            RaycastHit hit;
-
-            // Verifica se o raio atingiu algo dentro da distância máxima
-            if (Physics.Raycast(ray, out hit, maxDistance, groundLayer))
-            {
-                // Posiciona a sombra no ponto de impacto do raio
-                transform.position = hit.point;
-                // Opcional: Alinha a sombra com a superfície do chão
-                transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
-                // Mantém a sombra plana no chão
-                // sobe um pouco a sombra para evitar z-fighting
-                transform.position += Vector3.up * 0.01f;
-            }
-            else
-            {
-                // Se o raio não atingir nada, posiciona a sombra a uma distância fixa abaixo do player
-                transform.position = target.position + Vector3.down * maxDistance;
-            }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Sound.cs">
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
-[System.Serializable]
-public class Sound
-{
-    public string name;
-    public AudioClip clip;
-}
-</file>
-
 <file path="Assets/Scripts/TemporaryBGmusic.cs">
 using UnityEngine;
 
@@ -754,172 +754,6 @@ public class WinLogic : MonoBehaviour
             sceneManager.LoadNextScene();
         }
     }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerAudioHandler.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour
-{
-    private PlayerMovementController movement;
-    private GrapplingHookController grapple;
-    private Rigidbody rb;
-
-    [Header("Sons - Movimento")]
-    [SerializeField] private string jumpSfx = "Jump";
-    [SerializeField] private string doubleJumpSfx = "DoubleJump";
-    [SerializeField] private string landSfx = "Land";
-    [SerializeField] private string footstepSfx = "Step";
-    [SerializeField] private string wallHitSfx = "WallHit";
-
-    [Header("Sons - Estado do Player")]
-    [SerializeField] private string deathSfx = "Death";
-    [SerializeField] private string respawnSfx = "Respawn";
-    [SerializeField] private string timeSkillOnSfx = "TimeOn";
-    [SerializeField] private string timeSkillOffSfx = "TimeOff";
-
-    [Header("Sons - Grappling Hook")]
-    [SerializeField] private string grappleShootSfx = "GrappleShoot";
-    [SerializeField] private string grappleAttachSfx = "GrappleAttach";
-    [SerializeField] private string grappleReleaseSfx = "GrappleRelease";
-
-    [Header("Parâmetros")]
-    [SerializeField] private float stepInterval = 0.35f;
-    [SerializeField] private float minStepSpeed = 2f;
-    [SerializeField] private float wallHitMinForce = 5f;
-
-    private float stepTimer;
-    private bool wasGrounded;
-    private bool didDoubleJump;
-    private Vector3 lastPosition;
-
-    private bool wasGrappling; // estado anterior do grapple
-    private bool grappleJustStarted;
-
-    private void Awake()
-    {
-        movement = GetComponent<PlayerMovementController>();
-        grapple = GetComponent<GrapplingHookController>();
-        rb = movement.Rb;
-
-        wasGrounded = movement.isGrounded;
-        stepTimer = stepInterval;
-        lastPosition = transform.position;
-    }
-
-    private void OnEnable()
-    {
-        movement.OnGroundLanded += PlayLand;
-    }
-
-    private void OnDisable()
-    {
-        movement.OnGroundLanded -= PlayLand;
-    }
-
-    private void Update()
-    {
-        HandleJumpDetection();
-        HandleDoubleJumpDetection();
-        HandleFootsteps();
-        DetectRespawn();
-        HandleGrappleAudio();
-    }
-
-    private void HandleJumpDetection()
-    {
-        if (wasGrounded && !movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(jumpSfx);
-            didDoubleJump = false;
-        }
-        wasGrounded = movement.isGrounded;
-    }
-
-    private void HandleDoubleJumpDetection()
-    {
-        if (!movement.isGrounded && !didDoubleJump)
-        {
-            if (rb.linearVelocity.y > 1f )
-            {
-                AudioManager.instance.PlaySFX(doubleJumpSfx);
-                didDoubleJump = true;
-            }
-        }
-    }
-
-    private void HandleFootsteps()
-    {
-        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
-        {
-            stepTimer = stepInterval;
-            return;
-        }
-
-        stepTimer -= Time.deltaTime;
-        if (stepTimer <= 0f)
-        {
-            AudioManager.instance.PlaySFX(footstepSfx);
-            stepTimer = stepInterval;
-        }
-    }
-
-    private void DetectRespawn()
-    {
-        float distance = Vector3.Distance(transform.position, lastPosition);
-        if (distance > 10f && wasGrounded && movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(respawnSfx);
-        }
-        lastPosition = transform.position;
-    }
-
-    private void HandleGrappleAudio()
-    {
-        if (grapple == null) return;
-
-        if (!wasGrappling && grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleShootSfx);
-            grappleJustStarted = true;
-        }
-
-       
-        if (grappleJustStarted && grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleAttachSfx);
-            grappleJustStarted = false;
-        }
-
-        if (wasGrappling && !grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleReleaseSfx);
-        }
-
-        wasGrappling = grapple.IsGrappling;
-    }
-
-    private void PlayLand() => AudioManager.instance.PlaySFX(landSfx);
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        Vector3 normal = collision.contacts[0].normal;
-        if (Vector3.Dot(normal, Vector3.up) < 0.5f)
-        {
-            if (collision.relativeVelocity.magnitude > wallHitMinForce)
-            {
-                AudioManager.instance.PlaySFX(wallHitSfx);
-            }
-        }
-    }
-
-    // Chamadas externas
-    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual() => AudioManager.instance.PlaySFX(respawnSfx);
-    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
-    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
@@ -2619,6 +2453,172 @@ public class TimeManipulationManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour
+{
+    private PlayerMovementController movement;
+    private GrapplingHookController grapple;
+    private Rigidbody rb;
+
+    [Header("Sons - Movimento")]
+    [SerializeField] private string jumpSfx = "Jump";
+    [SerializeField] private string doubleJumpSfx = "DoubleJump";
+    [SerializeField] private string landSfx = "Land";
+    [SerializeField] private string footstepSfx = "Step";
+    [SerializeField] private string wallHitSfx = "WallHit";
+
+    [Header("Sons - Estado do Player")]
+    [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string respawnSfx = "Respawn";
+    [SerializeField] private string timeSkillOnSfx = "TimeOn";
+    [SerializeField] private string timeSkillOffSfx = "TimeOff";
+
+    [Header("Sons - Grappling Hook")]
+    [SerializeField] private string grappleShootSfx = "GrappleShoot";
+    [SerializeField] private string grappleAttachSfx = "GrappleAttach";
+    [SerializeField] private string grappleReleaseSfx = "GrappleRelease";
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+    [SerializeField] private float wallHitMinForce = 5f;
+
+    private float stepTimer;
+    private bool wasGrounded;
+    private bool didDoubleJump;
+    private Vector3 lastPosition;
+
+    private bool wasGrappling; // estado anterior do grapple
+    private bool grappleJustStarted;
+
+    private void Awake()
+    {
+        movement = GetComponent<PlayerMovementController>();
+        grapple = GetComponent<GrapplingHookController>();
+        rb = movement.Rb;
+
+        wasGrounded = movement.isGrounded;
+        stepTimer = stepInterval;
+        lastPosition = transform.position;
+    }
+
+    private void OnEnable()
+    {
+        movement.OnGroundLanded += PlayLand;
+    }
+
+    private void OnDisable()
+    {
+        movement.OnGroundLanded -= PlayLand;
+    }
+
+    private void Update()
+    {
+        HandleJumpDetection();
+        HandleDoubleJumpDetection();
+        HandleFootsteps();
+        DetectRespawn();
+        HandleGrappleAudio();
+    }
+
+    private void HandleJumpDetection()
+    {
+        if (wasGrounded && !movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(jumpSfx);
+            didDoubleJump = false;
+        }
+        wasGrounded = movement.isGrounded;
+    }
+
+    private void HandleDoubleJumpDetection()
+    {
+        if (!movement.isGrounded && !didDoubleJump)
+        {
+            if (rb.linearVelocity.y > 1f )
+            {
+                AudioManager.instance.PlaySFX(doubleJumpSfx);
+                didDoubleJump = true;
+            }
+        }
+    }
+
+    private void HandleFootsteps()
+    {
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
+        {
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            AudioManager.instance.PlaySFX(footstepSfx);
+            stepTimer = stepInterval;
+        }
+    }
+
+    private void DetectRespawn()
+    {
+        float distance = Vector3.Distance(transform.position, lastPosition);
+        if (distance > 10f && wasGrounded && movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(respawnSfx);
+        }
+        lastPosition = transform.position;
+    }
+
+    private void HandleGrappleAudio()
+    {
+        if (grapple == null) return;
+
+        if (!wasGrappling && grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleShootSfx);
+            grappleJustStarted = true;
+        }
+
+       
+        if (grappleJustStarted && grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleAttachSfx);
+            grappleJustStarted = false;
+        }
+
+        if (wasGrappling && !grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleReleaseSfx);
+        }
+
+        wasGrappling = grapple.IsGrappling;
+    }
+
+    private void PlayLand() => AudioManager.instance.PlaySFX(landSfx);
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f)
+        {
+            if (collision.relativeVelocity.magnitude > wallHitMinForce)
+            {
+                AudioManager.instance.PlaySFX(wallHitSfx);
+            }
+        }
+    }
+
+    // Chamadas externas
+    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
+    public void PlayRespawnManual() => AudioManager.instance.PlaySFX(respawnSfx);
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
+}
+</file>
+
 <file path="Assets/Scripts/PlayerLookController.cs">
 // Local: Assets/Scripts/PlayerLookController.cs
 
@@ -2858,249 +2858,6 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
 }
 </file>
 
-<file path="Assets/Scripts/GrapplingHookController.cs">
-// Local: Assets/Scripts/GrapplingHookController.cs
-
-using DG.Tweening;
-using UnityEngine;
-
-public class GrapplingHookController : MonoBehaviour
-{
-    [Header("Estado")]
-    [SerializeField] private bool canDoMultipleGrapple = false;
-    [SerializeField] private bool isGrappling = false;
-    [SerializeField] private float maximumTimeGrappling = 3f;
-    public bool IsGrappling => isGrappling;
-    private bool hasGrappleAvailable = true;
-
-    [Header("Configurações do Gancho")]
-    [SerializeField] private float maxGrappleDistance = 50f;
-    [SerializeField] private float grappleCooldown = 1f;
-    [SerializeField] private LayerMask grappleLayer;
-
-    [Header("Configurações da Junta (Puxão)")]
-    [SerializeField] private float springForce = 8f;
-    [SerializeField] private float damper = 7f;
-    [SerializeField] private float massScale = 4.5f;
-    [SerializeField] private float minSpringSize = .1f;
-
-    [SerializeField] private float maxSpringSize = .8f;
-
-
-    [Header("Configurações do Pêndulo")]
-    [SerializeField] private float swingForce = 50f;
-
-
-    [Header("Referências")]
-    [SerializeField] private Transform grappleTip;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private GameObject predictionPointPrefab;
-
-    private PlayerMovementController playerMovement;
-    private SpringJoint joint;
-    private Vector3 grapplePoint, currentGrapplePosition;
-    private Vector2 moveInput;
-    private float cooldownTimer;
-    private GameObject currentPredictionPoint;
-    public float grappleDistance;
-
-    private Vector3 predictedPoint;
-    private bool hasPredictedPoint;
-
-    private float grappleTimer;
-    private void Awake()
-    {
-        playerMovement = GetComponent<PlayerMovementController>();
-        hasGrappleAvailable = true;
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnGrappleStarted += StartGrapple;
-        InputManager.Instance.OnGrappleCanceled += StopGrapple;
-        InputManager.Instance.OnMove += SetMoveInput;
-        // Inscreve no evento de aterrissagem
-        if (playerMovement != null)
-            playerMovement.OnGroundLanded += OnGroundLanded;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= StartGrapple;
-        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        // Remove inscrição do evento
-        if (playerMovement != null)
-            playerMovement.OnGroundLanded -= OnGroundLanded;
-    }
-
-    private void Update()
-    {
-        if (cooldownTimer > 0)
-        {
-            cooldownTimer -= Time.deltaTime;
-        }
-
-        if (grappleTimer > 0)
-        {
-            grappleTimer -= Time.deltaTime;
-        }
-
-        if (grappleTimer <= 0 && isGrappling)
-        {
-            StopGrapple();
-        }
-
-        // Se só pode usar uma vez, cooldown não recarrega sozinho
-        if (canDoMultipleGrapple && cooldownTimer <= 0)
-        {
-            hasGrappleAvailable = true;
-        }
-
-        UpdatePredictionPoint();
-    }
-
-    private void LateUpdate()
-    {
-        DrawRope();
-    }
-
-    private void FixedUpdate()
-    {
-        ApplySwingForce();
-    }
-
-    private void SetMoveInput(Vector2 input)
-    {
-        moveInput = input;
-    }
-
-    private void UpdatePredictionPoint()
-    {
-        if (isGrappling)
-        {
-            if (currentPredictionPoint != null)
-                currentPredictionPoint.SetActive(false);
-            hasPredictedPoint = false;
-            return;
-        }
-
-        RaycastHit hit;
-        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-        if (!hitFound)
-        {
-            hitFound = Physics.SphereCast(cameraTransform.position, 10f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-        }
-
-        if (hitFound)
-        {
-            predictedPoint = hit.point;
-            hasPredictedPoint = true;
-            grappleDistance = hit.distance;
-
-            if (currentPredictionPoint == null)
-            {
-                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
-            }
-            else
-            {
-                currentPredictionPoint.SetActive(true);
-                currentPredictionPoint.transform.position = predictedPoint;
-            }
-        }
-        else
-        {
-            hasPredictedPoint = false;
-            if (currentPredictionPoint != null)
-                currentPredictionPoint.SetActive(false);
-            grappleDistance = 0f;
-
-        }
-    }
-
-    private void StartGrapple()
-    {
-        // Permite usar o grapple se estiver no chão, mesmo que hasGrappleAvailable seja false
-        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
-        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
-        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
-
-        isGrappling = true;
-        grapplePoint = predictedPoint;
-
-        grappleTimer = maximumTimeGrappling; // Usa o valor configurado
-
-        joint = gameObject.AddComponent<SpringJoint>();
-        joint.autoConfigureConnectedAnchor = false;
-        joint.connectedAnchor = grapplePoint;
-
-        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
-
-        joint.maxDistance = distanceFromPoint * maxSpringSize;
-        joint.minDistance = distanceFromPoint * minSpringSize;
-        joint.spring = springForce;
-        joint.damper = damper;
-        joint.massScale = massScale;
-
-        lineRenderer.positionCount = 2;
-
-        // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
-        if (!canDoMultipleGrapple && !groundedOverride)
-            hasGrappleAvailable = false;
-    }
-
-    private void ApplySwingForce()
-    {
-        if (!joint) return;
-
-        Vector3 viewDirection = cameraTransform.forward;
-        Vector3 rightDirection = cameraTransform.right;
-
-        playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
-        playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
-    }
-
-    public void StopGrapple()
-    {
-        if (!isGrappling) return;
-
-        isGrappling = false;
-        cooldownTimer = grappleCooldown;
-        lineRenderer.positionCount = 0;
-        Destroy(joint);
-
-        playerMovement.EnableDoubleJump();
-
-        // Prediction point volta a aparecer após o grapple
-        if (currentPredictionPoint != null)
-        {
-            currentPredictionPoint.SetActive(true);
-        }
-    }
-
-    private void DrawRope()
-    {
-        if (!joint) return;
-        currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
-
-
-        lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, currentGrapplePosition);
-    }
-
-    // Novo método para resetar grapple ao tocar o chão
-    private void OnGroundLanded()
-    {
-        if (!canDoMultipleGrapple && !hasGrappleAvailable)
-        {
-            hasGrappleAvailable = true;
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/AudioManager.cs">
 using System;
 using System.Collections;
@@ -3277,6 +3034,263 @@ public class AudioManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/GrapplingHookController.cs">
+// Local: Assets/Scripts/GrapplingHookController.cs
+
+using DG.Tweening;
+using UnityEngine;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    [Header("Estado")]
+    [SerializeField] private bool canDoMultipleGrapple = false;
+    [SerializeField] private bool isGrappling = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
+    public bool IsGrappling => isGrappling;
+    private bool hasGrappleAvailable = true;
+
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleLayer;
+
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+
+    [SerializeField] private float maxSpringSize = .8f;
+
+
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+
+
+    [Header("Referências")]
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+
+    private PlayerMovementController playerMovement;
+    private SpringJoint joint;
+    private Vector3 grapplePoint, currentGrapplePosition;
+    private Vector2 moveInput;
+    private float cooldownTimer;
+    private GameObject currentPredictionPoint;
+    public float grappleDistance;
+
+    private Vector3 predictedPoint;
+    private bool hasPredictedPoint;
+
+    private float grappleTimer;
+    private void Awake()
+    {
+        playerMovement = GetComponent<PlayerMovementController>();
+        hasGrappleAvailable = true;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += StartGrapple;
+        InputManager.Instance.OnGrappleCanceled += StopGrapple;
+        InputManager.Instance.OnMove += SetMoveInput;
+        // Inscreve no evento de aterrissagem
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded += OnGroundLanded;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= StartGrapple;
+        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        // Remove inscrição do evento
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded -= OnGroundLanded;
+    }
+
+    private void Update()
+    {
+        if (cooldownTimer > 0)
+        {
+            cooldownTimer -= Time.deltaTime;
+        }
+
+        if (grappleTimer > 0)
+        {
+            grappleTimer -= Time.deltaTime;
+        }
+
+        if (grappleTimer <= 0 && isGrappling)
+        {
+            StopGrapple();
+        }
+
+        // Se só pode usar uma vez, cooldown não recarrega sozinho
+        if (canDoMultipleGrapple && cooldownTimer <= 0)
+        {
+            hasGrappleAvailable = true;
+        }
+
+        UpdatePredictionPoint();
+    }
+
+    private void LateUpdate()
+    {
+        DrawRope();
+    }
+
+    private void FixedUpdate()
+    {
+        ApplySwingForce();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void UpdatePredictionPoint()
+    {
+        if (isGrappling)
+        {
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+            hasPredictedPoint = false;
+            return;
+        }
+
+        RaycastHit hit;
+        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        if (!hitFound)
+        {
+            hitFound = Physics.SphereCast(cameraTransform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        }
+
+        if (hitFound)
+        {
+            predictedPoint = hit.point;
+            hasPredictedPoint = true;
+            grappleDistance = hit.distance;
+
+            if (currentPredictionPoint == null)
+            {
+                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
+            }
+            else
+            {
+                currentPredictionPoint.SetActive(true);
+                currentPredictionPoint.transform.position = predictedPoint;
+            }
+        }
+        else
+        {
+            hasPredictedPoint = false;
+            if (currentPredictionPoint != null)
+                currentPredictionPoint.SetActive(false);
+            grappleDistance = 0f;
+
+        }
+    }
+
+    private void StartGrapple()
+    {
+        // Permite usar o grapple se estiver no chão, mesmo que hasGrappleAvailable seja false
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
+        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
+        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
+
+        isGrappling = true;
+        grapplePoint = predictedPoint;
+
+        grappleTimer = maximumTimeGrappling; // Usa o valor configurado
+
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.anchor = Vector3.zero;
+        joint.connectedAnchor = grapplePoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+
+        lineRenderer.positionCount = 2;
+        Debug.DrawLine(grappleTip.position, grapplePoint, Color.red, 1f);
+
+
+        // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
+        if (!canDoMultipleGrapple && !groundedOverride)
+            hasGrappleAvailable = false;
+        // Printa todos os dados do joint/grapple, incluindo posição do jogador e do grapple
+        // Debug.Log($"Grapple Started:\n" +
+        //           $"- Player Position: {transform.position}\n" +
+        //           $"- Grapple Point: {grapplePoint}\n" +
+        //           $"- Distance From Point: {distanceFromPoint}\n" +
+        //           $"- Joint Max Distance: {joint.maxDistance}\n" +
+        //           $"- Joint Min Distance: {joint.minDistance}\n" +
+        //           $"- Spring Force: {springForce}\n" +
+        //           $"- Damper: {damper}\n" +
+        //           $"- Mass Scale: {massScale}");    
+                  
+            }
+
+    private void ApplySwingForce()
+    {
+        if (!joint) return;
+
+        Vector3 viewDirection = cameraTransform.forward;
+        Vector3 rightDirection = cameraTransform.right;
+
+        playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
+    }
+
+    public void StopGrapple()
+    {
+        if (!isGrappling) return;
+
+        isGrappling = false;
+        cooldownTimer = grappleCooldown;
+        lineRenderer.positionCount = 0;
+        Destroy(joint);
+
+        playerMovement.EnableDoubleJump();
+
+        // Prediction point volta a aparecer após o grapple
+        if (currentPredictionPoint != null)
+        {
+            currentPredictionPoint.SetActive(true);
+        }
+    }
+
+    private void DrawRope()
+    {
+        if (!joint) return;
+        currentGrapplePosition = predictedPoint;
+
+
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, currentGrapplePosition);
+    }
+
+    // Novo método para resetar grapple ao tocar o chão
+    private void OnGroundLanded()
+    {
+        if (!canDoMultipleGrapple && !hasGrappleAvailable)
+        {
+            hasGrappleAvailable = true;
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/InputManager.cs">
 // Local: Assets/Scripts/InputManager.cs
 
@@ -3390,6 +3404,7 @@ public class InputManager : MonoBehaviour
 using TMPro;
 using System;
 using UnityEngine;
+using Unity.VisualScripting;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
@@ -3405,11 +3420,12 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
     [SerializeField] private float vfxMinMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f;
+    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
 
     [Header("Configurações de Atrito (Drag)")]
     [SerializeField] private float groundDrag = 6f;
     [SerializeField] private float airDrag = 2f;
+    private float baseAirDrag;
     [SerializeField] private float grappleAirDrag = 0.5f;
 
     [Header("Configurações de Pulo")]
@@ -3460,6 +3476,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+        baseAirDrag =  airDrag;
     }
 
     private void OnEnable()
@@ -3569,7 +3586,7 @@ public class PlayerMovementController : MonoBehaviour
 
         if (isGrounded)
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f, ForceMode.Force);
+            rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
         }
         else // No Ar
         {
@@ -3584,6 +3601,12 @@ public class PlayerMovementController : MonoBehaviour
     {
         float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        if(horizontalVelocity.magnitude > 200 /3.6f){
+            airDrag = baseAirDrag * 1.2f;
+        }
+        else{
+            airDrag = baseAirDrag;
+        }
 
         if (horizontalVelocity.magnitude > (currentMaxSpeed / 3.6f))
         {
@@ -3593,7 +3616,7 @@ public class PlayerMovementController : MonoBehaviour
 
         if (velocityParticle != null)
         {
-            velocityParticle.SetActive(rb.linearVelocity.magnitude > (vfxMinMoveSpeed / 3.6f));
+            velocityParticle.SetActive(horizontalVelocity.magnitude > (vfxMinMoveSpeed / 3.6f));
         }
     }
 

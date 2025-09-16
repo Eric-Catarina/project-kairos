@@ -9,6 +9,7 @@ using Unity.VisualScripting;
 public class PlayerMovementController : MonoBehaviour
 {
     public event Action OnGroundLanded;
+    public event Action<float> OnHorizontalVelocityChanged;
 
     [Header("Estado Atual")]
     public bool isGrounded;
@@ -18,7 +19,6 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
 
     [Header("Configurações de Atrito (Drag)")]
@@ -46,11 +46,6 @@ public class PlayerMovementController : MonoBehaviour
     [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
     [SerializeField] private float bunnyHopWindow = 0.1f;
     
-    // Removido o airControlTargetSpeed pois a nova lógica não o utiliza mais.
-    // [Header("Ajuste Fino do Controle Aéreo")]
-    // [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
-    // [SerializeField] private float airControlTargetSpeed = 7f;
-
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
@@ -58,7 +53,6 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
-    public GameObject velocityParticle;
     public TextMeshProUGUI velocityText, distanceText;
 
     private Rigidbody rb;
@@ -187,11 +181,8 @@ public class PlayerMovementController : MonoBehaviour
         {
             rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
         }
-        else // No Ar
+        else 
         {
-            // CORREÇÃO: Removemos a verificação 'if (speedInInputDirection < airControlTargetSpeed)'.
-            // Agora, aplicamos a força de controle aéreo consistentemente.
-            // A função LimitVelocity() já previne que o jogador acelere indefinidamente.
             rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
     }
@@ -213,10 +204,7 @@ public class PlayerMovementController : MonoBehaviour
             rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
         }
 
-        if (velocityParticle != null)
-        {
-            velocityParticle.SetActive(rb.linearVelocity.magnitude > (vfxMinMoveSpeed / 3.6f));
-        }
+        OnHorizontalVelocityChanged?.Invoke(horizontalVelocity.magnitude);
     }
 
     private void HandleJumpInput()
