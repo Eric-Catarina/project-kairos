@@ -13408,8 +13408,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
   playerRotationSpeed: 5
-  mouseSensitivityX: 10
-  mouseSensitivityY: 10
+  mouseSensitivityX: 40
+  mouseSensitivityY: 40
   playerModel: {fileID: 2135841690}
   orientation: {fileID: 1457126761}
   cameraTransform: {fileID: 963194228}
@@ -13430,7 +13430,7 @@ MonoBehaviour:
   canDoubleJump: 0
   moveSpeed: 4
   maxMoveSpeed: 2000
-  maxGrappleMoveSpeed: 150
+  maxGrappleMoveSpeed: 999
   vfxMinMoveSpeed: 140
   airMultiplier: 0.5
   groundDrag: 3
