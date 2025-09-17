@@ -55,10 +55,18 @@ public class ScoreUIController : MonoBehaviour
         {
             rankText.text = $"Ranque: {finalRank}";
         }
-        
+
         if (resultsPanel != null)
         {
             resultsPanel.SetActive(true);
+        }
+    }
+    
+    public void UpdateTime(float newTime)
+    {
+        if (finalTimeText != null)
+        {
+            finalTimeText.text = $"Tempo: {newTime:F2}s";
         }
     }
 }

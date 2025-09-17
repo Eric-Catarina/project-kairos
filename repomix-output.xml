@@ -69,6 +69,7 @@ Assets/
     Sound.cs
     TemporaryBGmusic.cs
     UIJuice.cs
+    VelocityParticleController.cs
     WinLogic.cs
 </directory_structure>
 
@@ -733,6 +734,110 @@ public class TemporaryBGmusic : MonoBehaviour
             return;
         }
         if (cooldown < 0 && !played) { AudioManager.instance.PlayMusic("Level 1");  played = true; }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/VelocityParticleController.cs">
+// Local: Assets/Scripts/VelocityParticleController.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(ParticleSystem))]
+public class VelocityParticleController : MonoBehaviour
+{
+    [Header("Referências")]
+    [Tooltip("Referência ao controlador de movimento do jogador para ouvir os eventos de velocidade.")]
+    private PlayerMovementController playerMovementController;
+
+    [Header("Configurações do Efeito")]
+    [Tooltip("A velocidade horizontal mínima (em m/s) para o efeito começar a aparecer.")]
+    [SerializeField] private float minSpeedThreshold = 41.67f; // Equivalente a 150 km/h
+
+    [Tooltip("A velocidade horizontal máxima (em m/s) onde o efeito atinge sua intensidade total.")]
+    [SerializeField] private float maxSpeedThreshold = 83.33f; // Equivalente a 300 km/h
+
+    [Tooltip("A opacidade (alpha) mínima do efeito quando a velocidade mínima é atingida.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float minAlpha = 0.1f;
+
+    [Tooltip("A opacidade (alpha) máxima do efeito quando a velocidade máxima é atingida.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float maxAlpha = 1.0f;
+
+    private ParticleSystem _particleSystem;
+    private ParticleSystem.MainModule _mainModule;
+
+    private void Awake()
+    {
+        _particleSystem = GetComponent<ParticleSystem>();
+        _mainModule = _particleSystem.main;
+
+        playerMovementController = FindObjectOfType<PlayerMovementController>();
+        
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não foi atribuído no VelocityParticleController.", this);
+            enabled = false;
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        }
+    }
+
+    /// <summary>
+    /// Manipula o evento de mudança de velocidade, ajustando a visibilidade e a opacidade das partículas.
+    /// </summary>
+    /// <param name="currentHorizontalSpeed">A velocidade horizontal atual do jogador em m/s.</param>
+    private void HandleVelocityChanged(float currentHorizontalSpeed)
+    {
+        if (currentHorizontalSpeed >= minSpeedThreshold / 3.6f)
+        {
+            if (!_particleSystem.isPlaying)
+            {
+                _particleSystem.Play();
+            }
+            
+            UpdateParticleAlpha(currentHorizontalSpeed);
+        }
+        else
+        {
+            if (_particleSystem.isPlaying)
+            {
+                _particleSystem.Stop();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calcula e aplica a nova opacidade (alpha) à cor inicial das partículas.
+    /// </summary>
+    /// <param name="speed">A velocidade atual do jogador.</param>
+    private void UpdateParticleAlpha(float speed)
+    {
+        // Calcula um valor normalizado (0 a 1) com base na velocidade atual entre o mínimo e o máximo.
+        float normalizedSpeed = Mathf.InverseLerp(minSpeedThreshold / 3.6f, maxSpeedThreshold/ 3.6f, speed);
+
+        // Mapeia o valor normalizado para o intervalo de alpha desejado (ex: 0.1 a 1.0).
+        float newAlpha = Mathf.Lerp(minAlpha, maxAlpha, normalizedSpeed);
+
+        // Obtém a cor inicial, atualiza seu alpha e a reaplica.
+        Color startColor = _mainModule.startColor.color;
+        startColor.a = newAlpha;
+        _mainModule.startColor = startColor;
     }
 }
 </file>
@@ -2453,6 +2558,182 @@ public class TimeManipulationManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/AudioManager.cs">
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager instance;
+
+    public Sound[] musicSounds, ambientSounds, sfxSounds;
+    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
+    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    [SerializeField] private AudioMixer audioMixer;
+    [SerializeField] private float sfxPitchVariation = 0.1f;
+    float minPitch = 0.95f;
+    float maxPitch = 1.05f;
+
+    private void Awake()
+    {
+
+        AddSoundsToDictionary(sfxSounds);
+        AddSoundsToDictionary(musicSounds);
+        AddSoundsToDictionary(ambientSounds);
+
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
+    }
+
+    private void Start()
+    {
+        PlayMusic("Menu");
+    }
+
+
+    private void AddSoundsToDictionary(Sound[] soundArray)
+    {
+        foreach (Sound s in soundArray)
+        {
+            if (!sfxDictionary.ContainsKey(s.name))
+            {
+                sfxDictionary.Add(s.name, s.clip);
+            }
+        }
+    }
+
+    public void PlayMusic(string name)
+    {
+        Sound s = Array.Find(musicSounds, x => x.name == name);
+
+        if (s == null)
+        {
+            Debug.Log("Sound Not Found");
+        }
+
+        else
+        {
+            musicSource.clip = s.clip;
+            musicSource.volume = musicSource.volume * masterSource.volume;
+            musicSource.Play();
+        }
+    }
+
+    public void PlayAmbient(string name)
+    {
+        Sound s = Array.Find(ambientSounds, x => x.name == name);
+        if (s == null)
+        {
+            Debug.Log("Ambient sound not found: " + name);
+        }
+        else
+        {
+            ambientSource.clip = s.clip;
+            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            ambientSource.loop = true;
+            ambientSource.Play();
+
+        }
+    }
+
+    public void PlaySFX(string name)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            sfxSource.pitch = randomPitch;
+            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+
+            
+        }
+        else
+        {
+            Debug.Log("Sound Not Found: " + name);
+        }
+
+       
+    }
+
+    public void ToggleMusic()
+    {
+        musicSource.mute = !musicSource.mute;
+    }
+
+    public void ToggleSFX()
+    {
+        sfxSource.mute = !sfxSource.mute;
+    }
+
+    public void ToggleAmbient()
+    {
+        ambientSource.mute = !ambientSource.mute;
+    }
+
+    public void MusicVolume(float volume)
+    {
+        musicSource.volume = volume * masterSource.volume;
+    }
+
+    public void AmbientVolume(float volume)
+    {
+        ambientSource.volume = volume * masterSource.volume;
+    }
+
+    public void SFXVolume(float volume)
+    {
+        sfxSource.volume = volume * masterSource.volume;
+    }
+
+    public void MasterVolume(float volume)
+    {
+        audioMixer.SetFloat("MasterVolume", volume);
+    }
+
+    public void ToggleMaster()
+    {
+        masterSource.mute = !masterSource.mute;
+        musicSource.mute = masterSource.mute;
+        sfxSource.mute = masterSource.mute;
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Aqui você escolhe a música com base no nome da cena
+        if (scene.name == "Menu")
+        {
+            PlayMusic("Menu");
+        }
+        else if (scene.name == "BasicMovement")
+        {
+            PlayMusic("Gameplay"); // nome que você deu no array de músicas
+        }
+    }
+
+}
+</file>
+
 <file path="Assets/Scripts/PlayerAudioHandler.cs">
 using UnityEngine;
 
@@ -2858,182 +3139,6 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
 }
 </file>
 
-<file path="Assets/Scripts/AudioManager.cs">
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Audio;
-using UnityEngine.SceneManagement;
-
-public class AudioManager : MonoBehaviour
-{
-    public static AudioManager instance;
-
-    public Sound[] musicSounds, ambientSounds, sfxSounds;
-    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
-    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
-    [SerializeField] private AudioMixer audioMixer;
-    [SerializeField] private float sfxPitchVariation = 0.1f;
-    float minPitch = 0.95f;
-    float maxPitch = 1.05f;
-
-    private void Awake()
-    {
-
-        AddSoundsToDictionary(sfxSounds);
-        AddSoundsToDictionary(musicSounds);
-        AddSoundsToDictionary(ambientSounds);
-
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
-    }
-
-    private void Start()
-    {
-        PlayMusic("Menu");
-    }
-
-
-    private void AddSoundsToDictionary(Sound[] soundArray)
-    {
-        foreach (Sound s in soundArray)
-        {
-            if (!sfxDictionary.ContainsKey(s.name))
-            {
-                sfxDictionary.Add(s.name, s.clip);
-            }
-        }
-    }
-
-    public void PlayMusic(string name)
-    {
-        Sound s = Array.Find(musicSounds, x => x.name == name);
-
-        if (s == null)
-        {
-            Debug.Log("Sound Not Found");
-        }
-
-        else
-        {
-            musicSource.clip = s.clip;
-            musicSource.volume = musicSource.volume * masterSource.volume;
-            musicSource.Play();
-        }
-    }
-
-    public void PlayAmbient(string name)
-    {
-        Sound s = Array.Find(ambientSounds, x => x.name == name);
-        if (s == null)
-        {
-            Debug.Log("Ambient sound not found: " + name);
-        }
-        else
-        {
-            ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
-            ambientSource.loop = true;
-            ambientSource.Play();
-
-        }
-    }
-
-    public void PlaySFX(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-            sfxSource.pitch = randomPitch;
-            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
-
-            
-        }
-        else
-        {
-            Debug.Log("Sound Not Found: " + name);
-        }
-
-       
-    }
-
-    public void ToggleMusic()
-    {
-        musicSource.mute = !musicSource.mute;
-    }
-
-    public void ToggleSFX()
-    {
-        sfxSource.mute = !sfxSource.mute;
-    }
-
-    public void ToggleAmbient()
-    {
-        ambientSource.mute = !ambientSource.mute;
-    }
-
-    public void MusicVolume(float volume)
-    {
-        musicSource.volume = volume * masterSource.volume;
-    }
-
-    public void AmbientVolume(float volume)
-    {
-        ambientSource.volume = volume * masterSource.volume;
-    }
-
-    public void SFXVolume(float volume)
-    {
-        sfxSource.volume = volume * masterSource.volume;
-    }
-
-    public void MasterVolume(float volume)
-    {
-        audioMixer.SetFloat("MasterVolume", volume);
-    }
-
-    public void ToggleMaster()
-    {
-        masterSource.mute = !masterSource.mute;
-        musicSource.mute = masterSource.mute;
-        sfxSource.mute = masterSource.mute;
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        // Aqui você escolhe a música com base no nome da cena
-        if (scene.name == "Menu")
-        {
-            PlayMusic("Menu");
-        }
-        else if (scene.name == "BasicMovement")
-        {
-            PlayMusic("Gameplay"); // nome que você deu no array de músicas
-        }
-    }
-
-}
-</file>
-
 <file path="Assets/Scripts/GrapplingHookController.cs">
 // Local: Assets/Scripts/GrapplingHookController.cs
 
@@ -3410,6 +3515,7 @@ using Unity.VisualScripting;
 public class PlayerMovementController : MonoBehaviour
 {
     public event Action OnGroundLanded;
+    public event Action<float> OnHorizontalVelocityChanged;
 
     [Header("Estado Atual")]
     public bool isGrounded;
@@ -3419,7 +3525,6 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float vfxMinMoveSpeed = 150f;
     [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
 
     [Header("Configurações de Atrito (Drag)")]
@@ -3447,11 +3552,6 @@ public class PlayerMovementController : MonoBehaviour
     [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
     [SerializeField] private float bunnyHopWindow = 0.1f;
     
-    // Removido o airControlTargetSpeed pois a nova lógica não o utiliza mais.
-    // [Header("Ajuste Fino do Controle Aéreo")]
-    // [Tooltip("A velocidade que o input do jogador tenta atingir no ar. Impede que o input acelere o jogador além da velocidade base de corrida.")]
-    // [SerializeField] private float airControlTargetSpeed = 7f;
-
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
@@ -3459,7 +3559,6 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
-    public GameObject velocityParticle;
     public TextMeshProUGUI velocityText, distanceText;
 
     private Rigidbody rb;
@@ -3588,11 +3687,8 @@ public class PlayerMovementController : MonoBehaviour
         {
             rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
         }
-        else // No Ar
+        else 
         {
-            // CORREÇÃO: Removemos a verificação 'if (speedInInputDirection < airControlTargetSpeed)'.
-            // Agora, aplicamos a força de controle aéreo consistentemente.
-            // A função LimitVelocity() já previne que o jogador acelere indefinidamente.
             rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
     }
@@ -3614,10 +3710,7 @@ public class PlayerMovementController : MonoBehaviour
             rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
         }
 
-        if (velocityParticle != null)
-        {
-            velocityParticle.SetActive(horizontalVelocity.magnitude > (vfxMinMoveSpeed / 3.6f));
-        }
+        OnHorizontalVelocityChanged?.Invoke(horizontalVelocity.magnitude);
     }
 
     private void HandleJumpInput()

@@ -3,7 +3,6 @@
 using TMPro;
 using System;
 using UnityEngine;
-using Unity.VisualScripting;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
@@ -49,7 +48,7 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
-
+    
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
@@ -62,6 +61,8 @@ public class PlayerMovementController : MonoBehaviour
     private float jumpBufferCounter;
     private float timeSinceLanded;
     private bool isJumping;
+
+    private Vector3 _groundVelocity;
 
     public Rigidbody Rb => rb;
 
@@ -101,7 +102,7 @@ public class PlayerMovementController : MonoBehaviour
         MovePlayer();
         ApplyExtraGravity();
     }
-
+    
     private void SetMoveInput(Vector2 input)
     {
         moveInput = input;
@@ -132,8 +133,20 @@ public class PlayerMovementController : MonoBehaviour
     private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
         
+        RaycastHit hitInfo;
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, out hitInfo, playerHeight * 0.5f + 0.2f, groundLayer);
+
+        if (isGrounded && hitInfo.rigidbody != null)
+        {
+            _groundVelocity = hitInfo.rigidbody.linearVelocity;
+            
+        }
+        else
+        {
+            _groundVelocity = Vector3.zero;
+        }
+
         if (!wasGrounded && isGrounded)
         {
             isJumping = false;
@@ -238,7 +251,7 @@ public class PlayerMovementController : MonoBehaviour
         jumpBufferCounter = 0f;
         isJumping = true;
 
-        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) + _groundVelocity;
         rb.AddForce(transform.up * jumpStrength, ForceMode.Impulse);
     }
 
