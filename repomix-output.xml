@@ -59,6 +59,7 @@ Assets/
     InputManager.cs
     InputStateManager.cs
     LevelData.cs
+    MovingPlatform.cs
     PatrolMovement.cs
     PlayerAudioHandler.cs
     PlayerLookController.cs
@@ -280,165 +281,6 @@ public class UIJuice : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/Scoring/ScoreManager.cs">
-// Local: Assets/Scripts/Scoring/ScoreManager.cs
-
-using System;
-using UnityEngine;
-
-/// <summary>
-/// Gerencia o cronômetro, estado do nível e cálculo de pontuação.
-/// Utiliza o padrão Singleton para acesso global fácil.
-/// Dispara um evento OnLevelCompleted para desacoplar a lógica da UI. (Observer Pattern)
-/// </summary>
-public class ScoreManager : MonoBehaviour
-{
-    public static ScoreManager Instance { get; private set; }
-
-    // Evento que a UI e outros sistemas podem ouvir para saber quando o nível terminou.
-    public static event Action<float, Rank> OnLevelCompleted;
-
-    [Header("Configuração do Nível")]
-    [Tooltip("Os dados de pontuação para o nível atual (tempos para ranques S, A, B, etc.).")]
-    [SerializeField] private LevelData currentLevelData;
-
-    private float _levelTimer;
-    private bool _isTimerRunning;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    private void Update()
-    {
-        if (_isTimerRunning)
-        {
-            _levelTimer += Time.deltaTime;
-        }
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnLevelFinished += EndLevelTimer;
-        InputManager.Instance.OnLevelRestarted += StartLevelTimer;
-    }
-    
-    private void OnDisable()
-    {
-        InputManager.Instance.OnLevelFinished -= EndLevelTimer;
-        InputManager.Instance.OnLevelRestarted -= StartLevelTimer;
-    }
-
-    /// <summary>
-    /// Inicia ou reinicia o cronômetro do nível.
-    /// Chame isso quando o jogador começar a fase.
-    /// </summary>
-    public void StartLevelTimer()
-    {
-        _levelTimer = 0f;
-        _isTimerRunning = true;
-        Debug.Log("Cronômetro do nível iniciado!");
-    }
-
-    /// <summary>
-    /// Para o cronômetro, calcula o ranque e notifica os ouvintes.
-    /// Chame isso quando o jogador cruzar a linha de chegada.
-    /// </summary>
-    public void EndLevelTimer()
-    {
-        if (!_isTimerRunning) return;
-
-        _isTimerRunning = false;
-        
-        if (currentLevelData == null)
-        {
-            Debug.LogError("LevelData não está configurado no ScoreManager!");
-            return;
-        }
-
-        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
-        
-        Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
-
-        // Dispara o evento com os resultados finais.
-        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
-// Local: Assets/Scripts/Scoring/ScoreUIController.cs
-
-using TMPro;
-using UnityEngine;
-
-/// <summary>
-/// Controla a exibição da UI de resultados do final do nível.
-/// Ouve o evento OnLevelCompleted do ScoreManager para se atualizar.
-/// </summary>
-public class ScoreUIController : MonoBehaviour
-{
-    [Header("Referências da UI")]
-    [SerializeField] private TextMeshProUGUI finalTimeText;
-    [SerializeField] private TextMeshProUGUI rankText;
-    [SerializeField] private GameObject resultsPanel; // O painel pai que contém os textos
-
-    private void OnEnable()
-    {
-        // Inscreve-se no evento para ser notificado quando o nível terminar.
-        ScoreManager.OnLevelCompleted += HandleLevelCompleted;
-    }
-
-
-
-    private void OnDisable()
-    {
-        // Remove a inscrição para evitar erros e memory leaks.
-        ScoreManager.OnLevelCompleted -= HandleLevelCompleted;
-    }
-
-    private void Start()
-    {
-        // Garante que o painel esteja escondido no início.
-        if (resultsPanel != null)
-        {
-            // resultsPanel.SetActive(false);
-        }
-    }
-
-    /// <summary>
-    /// Método chamado pelo evento OnLevelCompleted.
-    /// Atualiza os textos e exibe o painel de resultados.
-    /// </summary>
-    /// <param name="finalTime">O tempo final do jogador.</param>
-    /// <param name="finalRank">O ranque final do jogador.</param>
-    private void HandleLevelCompleted(float finalTime, Rank finalRank)
-    {
-        if (finalTimeText != null)
-        {
-            // Formata o tempo para ter duas casas decimais (ex: 34.56s).
-            finalTimeText.text = $"Tempo: {finalTime:F2}s";
-        }
-
-        if (rankText != null)
-        {
-            rankText.text = $"Ranque: {finalRank}";
-        }
-        
-        if (resultsPanel != null)
-        {
-            resultsPanel.SetActive(true);
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/DeathFogLogic.cs">
 using Unity.VisualScripting;
 using UnityEngine;
@@ -582,6 +424,124 @@ public class LevelData : ScriptableObject
         }
         // Se o tempo do jogador for maior que todos os tempos da lista, retorna o pior ranque possível.
         return Rank.D; 
+    }
+}
+</file>
+
+<file path="Assets/Scripts/MovingPlatform.cs">
+// Local: Assets/Scripts/MovingPlatform.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class MovingPlatform : MonoBehaviour, ITimeSlowable
+{
+    [Header("Configurações de Patrulha")]
+    [Tooltip("O ponto de partida da patrulha.")]
+    [SerializeField] private Transform targetA;
+    [Tooltip("O ponto final da patrulha.")]
+    [SerializeField] private Transform targetB;
+    [Tooltip("A velocidade de movimento da plataforma.")]
+    [SerializeField] private float speed = 3f;
+
+    [Header("Visual")]
+    [SerializeField] private Color slowDownColor = Color.cyan;
+    
+    private Rigidbody _rb;
+    private Transform _currentTarget;
+    private Vector3 _savedVelocity;
+    private Renderer _renderer;
+    private Color _originalColor;
+
+    private bool _isSlowed = false;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        _renderer = GetComponent<Renderer>();
+
+        if (_renderer != null) _originalColor = _renderer.material.color;
+
+        // Configuração crucial do Rigidbody para plataformas
+        _rb.useGravity = false;
+        _rb.freezeRotation = true;
+        _rb.isKinematic = false; // Deve ser dinâmico para interagir com o jogador
+    }
+
+    private void Start()
+    {
+        if (targetA == null || targetB == null)
+        {
+            Debug.LogError("Alvos de patrulha não configurados!", this);
+            enabled = false;
+            return;
+        }
+        _currentTarget = targetB;
+        TimeManipulationManager.Instance.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        if (_isSlowed) RestoreNormalTime();
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (_isSlowed) return; // O movimento é controlado pelos métodos de slow
+
+        MoveTowardsTarget();
+    }
+
+    private void MoveTowardsTarget()
+    {
+        Vector3 direction = (_currentTarget.position - _rb.position).normalized;
+        _rb.linearVelocity = direction * speed;
+
+        if (Vector3.Distance(_rb.position, _currentTarget.position) < 0.5f)
+        {
+            _currentTarget = (_currentTarget == targetA) ? targetB : targetA;
+        }
+    }
+
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+
+        _savedVelocity = _rb.linearVelocity;
+        float slowFactor = 1.0f - (slowPercentage / 100.0f);
+        _rb.linearVelocity = _savedVelocity * slowFactor;
+
+        if (_renderer != null) _renderer.material.color = slowDownColor;
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+
+        // A velocidade é recalculada no próximo FixedUpdate, ou podemos restaurar a salva
+        _rb.linearVelocity = _savedVelocity;
+
+        if (_renderer != null) _renderer.material.color = _originalColor;
+    }
+
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+    
+    private void OnDrawGizmos()
+    {
+        if (targetA != null && targetB != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(targetA.position, targetB.position);
+        }
     }
 }
 </file>
@@ -857,6 +817,190 @@ public class WinLogic : MonoBehaviour
         {
             Destroy(collision.gameObject);
             sceneManager.LoadNextScene();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreManager.cs">
+// Local: Assets/Scripts/Scoring/ScoreManager.cs
+
+using System;
+using System.Collections;
+using UnityEngine;
+
+/// <summary>
+/// Gerencia o cronômetro, estado do nível e cálculo de pontuação.
+/// Utiliza o padrão Singleton para acesso global fácil.
+/// Dispara um evento OnLevelCompleted para desacoplar a lógica da UI. (Observer Pattern)
+/// </summary>
+public class ScoreManager : MonoBehaviour
+{
+    public static ScoreManager Instance { get; private set; }
+
+    // Evento que a UI e outros sistemas podem ouvir para saber quando o nível terminou.
+    public static event Action<float, Rank> OnLevelCompleted;
+
+    [Header("Configuração do Nível")]
+    [Tooltip("Os dados de pontuação para o nível atual (tempos para ranques S, A, B, etc.).")]
+    [SerializeField] private LevelData currentLevelData;
+    private ScoreUIController scoreUIController;
+
+    private float _levelTimer;
+    private bool _isTimerRunning = false;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        scoreUIController = FindObjectOfType<ScoreUIController>();
+    }
+
+    private void Start()
+    {
+
+        StartCoroutine(WaitAndStartTimer(1f)); // Espera 1 segundo antes de iniciar o cronômetro
+
+    }
+
+    private void Update()
+    {
+        if (_isTimerRunning)
+        {
+            _levelTimer += Time.deltaTime;
+            scoreUIController?.UpdateTime(_levelTimer);
+        }
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnLevelFinished += EndLevelTimer;
+        InputManager.Instance.OnLevelRestarted += StartLevelTimer;
+    }
+
+    private void OnDisable()
+    {
+        InputManager.Instance.OnLevelFinished -= EndLevelTimer;
+        InputManager.Instance.OnLevelRestarted -= StartLevelTimer;
+    }
+
+    /// <summary>
+    /// Inicia ou reinicia o cronômetro do nível.
+    /// Chame isso quando o jogador começar a fase.
+    /// </summary>
+    public void StartLevelTimer()
+    {
+        _levelTimer = 0f;
+        _isTimerRunning = true;
+        Debug.Log("Cronômetro do nível iniciado!");
+    }
+
+    /// <summary>
+    /// Para o cronômetro, calcula o ranque e notifica os ouvintes.
+    /// Chame isso quando o jogador cruzar a linha de chegada.
+    /// </summary>
+    public void EndLevelTimer()
+    {
+        if (!_isTimerRunning) return;
+
+        _isTimerRunning = false;
+
+        if (currentLevelData == null)
+        {
+            Debug.LogError("LevelData não está configurado no ScoreManager!");
+            return;
+        }
+
+        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
+
+        Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
+
+        // Dispara o evento com os resultados finais.
+        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
+    }
+    
+    IEnumerator WaitAndStartTimer(float waitTime)
+    {
+        yield return new WaitForSeconds(waitTime);
+        StartLevelTimer();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
+// Local: Assets/Scripts/Scoring/ScoreUIController.cs
+
+using TMPro;
+using UnityEngine;
+
+/// <summary>
+/// Controla a exibição da UI de resultados do final do nível.
+/// Ouve o evento OnLevelCompleted do ScoreManager para se atualizar.
+/// </summary>
+public class ScoreUIController : MonoBehaviour
+{
+    [Header("Referências da UI")]
+    [SerializeField] private TextMeshProUGUI finalTimeText;
+    [SerializeField] private TextMeshProUGUI rankText;
+    [SerializeField] private GameObject resultsPanel; // O painel pai que contém os textos
+
+    private void OnEnable()
+    {
+        // Inscreve-se no evento para ser notificado quando o nível terminar.
+        ScoreManager.OnLevelCompleted += HandleLevelCompleted;
+    }
+
+
+
+    private void OnDisable()
+    {
+        // Remove a inscrição para evitar erros e memory leaks.
+        ScoreManager.OnLevelCompleted -= HandleLevelCompleted;
+    }
+
+    private void Start()
+    {
+        // Garante que o painel esteja escondido no início.
+        if (resultsPanel != null)
+        {
+            // resultsPanel.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Método chamado pelo evento OnLevelCompleted.
+    /// Atualiza os textos e exibe o painel de resultados.
+    /// </summary>
+    /// <param name="finalTime">O tempo final do jogador.</param>
+    /// <param name="finalRank">O ranque final do jogador.</param>
+    private void HandleLevelCompleted(float finalTime, Rank finalRank)
+    {
+        if (finalTimeText != null)
+        {
+            // Formata o tempo para ter duas casas decimais (ex: 34.56s).
+            finalTimeText.text = $"Tempo: {finalTime:F2}s";
+        }
+
+        if (rankText != null)
+        {
+            rankText.text = $"Ranque: {finalRank}";
+        }
+
+        if (resultsPanel != null)
+        {
+            resultsPanel.SetActive(true);
+        }
+    }
+    
+    public void UpdateTime(float newTime)
+    {
+        if (finalTimeText != null)
+        {
+            finalTimeText.text = $"Tempo: {newTime:F2}s";
         }
     }
 }
@@ -2914,8 +3058,16 @@ public class PlayerLookController : MonoBehaviour
 {
     [Header("Configurações")]
     [SerializeField] private float playerRotationSpeed = 10f; // Aumentei um pouco para um feel melhor
-    [SerializeField] private float mouseSensitivityX = 4f;
-    [SerializeField] private float mouseSensitivityY = 4f;
+    [SerializeField] private float mouseSensitivityX = 1f;
+    private float minimumMouseSensitivityX = 0.1f;
+    private float maximumMouseSensitivityX = 10f;
+    [SerializeField] private float mouseSensitivityY = 1f;
+    private float minimumMouseSensitivityY = 0.1f;
+    private float maximumMouseSensitivityY = 10f;
+    [SerializeField] private float mouseSensitivityMultiplier = 20f;
+    private float minimumMouseSensitivityMultiplier = 1f;
+    private float maximumMouseSensitivityMultiplier = 50f;
+
 
     [Header("Referências")]
     [Tooltip("O modelo visual do jogador que deve rotacionar.")]
@@ -2939,6 +3091,7 @@ public class PlayerLookController : MonoBehaviour
         // --- PONTO CRÍTICO DA SOLUÇÃO ---
         // Conecta o Cinemachine à instância de PlayerControls gerenciada pelo InputManager.
         ConnectCinemachineToInputManager();
+        UpdateMouseSensibility(mouseSensitivityX, mouseSensitivityY);
         // --- FIM DO PONTO CRÍTICO ---
     }
 
@@ -2966,19 +3119,8 @@ public class PlayerLookController : MonoBehaviour
 
             // Atribui a ação de input correta.
             controller.Input.InputAction = lookActionReference;
-
-            // Configura a sensibilidade (exemplo de como fazer isso aqui).
-            if (controller.Name == "Look Orbit X")
-            {
-                controller.Input.Gain = mouseSensitivityX;
-            }
-            if (controller.Name == "Look Orbit Y")
-            {
-                // O eixo Y geralmente é invertido.
-                controller.Input.Gain = -mouseSensitivityY;
-            }
         }
-        
+
         Debug.Log("<color=cyan>CinemachineInputAxisController foi conectado com sucesso ao InputManager.</color>");
     }
 
@@ -3000,6 +3142,23 @@ public class PlayerLookController : MonoBehaviour
         // O modelo do jogador gira suavemente para se alinhar com a orientação.
         // Usando Slerp para uma rotação mais suave.
         playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+    }
+    
+public void UpdateMouseSensibility(float newSensitivityX, float newSensitivityY)
+    {
+ foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+                      // Configura a sensibilidade (exemplo de como fazer isso aqui).
+            if (controller.Name == "Look Orbit X")
+            {
+                controller.Input.Gain = mouseSensitivityX * mouseSensitivityMultiplier;
+            }
+            if (controller.Name == "Look Orbit Y")
+            {
+                // O eixo Y geralmente é invertido.
+                controller.Input.Gain = -mouseSensitivityY * mouseSensitivityMultiplier;
+            }
+        }
     }
 }
 </file>
@@ -3164,13 +3323,10 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private float damper = 7f;
     [SerializeField] private float massScale = 4.5f;
     [SerializeField] private float minSpringSize = .1f;
-
     [SerializeField] private float maxSpringSize = .8f;
-
 
     [Header("Configurações do Pêndulo")]
     [SerializeField] private float swingForce = 50f;
-
 
     [Header("Referências")]
     [SerializeField] private Transform grappleTip;
@@ -3180,7 +3336,7 @@ public class GrapplingHookController : MonoBehaviour
 
     private PlayerMovementController playerMovement;
     private SpringJoint joint;
-    private Vector3 grapplePoint, currentGrapplePosition;
+    private Vector3 grapplePoint;
     private Vector2 moveInput;
     private float cooldownTimer;
     private GameObject currentPredictionPoint;
@@ -3188,8 +3344,11 @@ public class GrapplingHookController : MonoBehaviour
 
     private Vector3 predictedPoint;
     private bool hasPredictedPoint;
-
     private float grappleTimer;
+
+    private Rigidbody _grappleAnchorRigidbody;
+    private Vector3 _grapplePointRelativeOffset;
+
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovementController>();
@@ -3201,7 +3360,6 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted += StartGrapple;
         InputManager.Instance.OnGrappleCanceled += StopGrapple;
         InputManager.Instance.OnMove += SetMoveInput;
-        // Inscreve no evento de aterrissagem
         if (playerMovement != null)
             playerMovement.OnGroundLanded += OnGroundLanded;
     }
@@ -3212,34 +3370,18 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted -= StartGrapple;
         InputManager.Instance.OnGrappleCanceled -= StopGrapple;
         InputManager.Instance.OnMove -= SetMoveInput;
-        // Remove inscrição do evento
         if (playerMovement != null)
             playerMovement.OnGroundLanded -= OnGroundLanded;
     }
 
     private void Update()
     {
-        if (cooldownTimer > 0)
-        {
-            cooldownTimer -= Time.deltaTime;
-        }
+        if (cooldownTimer > 0) cooldownTimer -= Time.deltaTime;
+        if (grappleTimer > 0) grappleTimer -= Time.deltaTime;
+        if (grappleTimer <= 0 && isGrappling) StopGrapple();
 
-        if (grappleTimer > 0)
-        {
-            grappleTimer -= Time.deltaTime;
-        }
-
-        if (grappleTimer <= 0 && isGrappling)
-        {
-            StopGrapple();
-        }
-
-        // Se só pode usar uma vez, cooldown não recarrega sozinho
-        if (canDoMultipleGrapple && cooldownTimer <= 0)
-        {
-            hasGrappleAvailable = true;
-        }
-
+        if (canDoMultipleGrapple && cooldownTimer <= 0) hasGrappleAvailable = true;
+        
         UpdatePredictionPoint();
     }
 
@@ -3262,8 +3404,7 @@ public class GrapplingHookController : MonoBehaviour
     {
         if (isGrappling)
         {
-            if (currentPredictionPoint != null)
-                currentPredictionPoint.SetActive(false);
+            if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
             hasPredictedPoint = false;
             return;
         }
@@ -3294,24 +3435,36 @@ public class GrapplingHookController : MonoBehaviour
         else
         {
             hasPredictedPoint = false;
-            if (currentPredictionPoint != null)
-                currentPredictionPoint.SetActive(false);
+            if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
             grappleDistance = 0f;
-
         }
     }
 
     private void StartGrapple()
     {
-        // Permite usar o grapple se estiver no chão, mesmo que hasGrappleAvailable seja false
         bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
         if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
         if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
 
         isGrappling = true;
-        grapplePoint = predictedPoint;
+        grappleTimer = maximumTimeGrappling;
 
-        grappleTimer = maximumTimeGrappling; // Usa o valor configurado
+        RaycastHit hit;
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
+        {
+            grapplePoint = hit.point;
+            _grappleAnchorRigidbody = hit.rigidbody;
+            if (_grappleAnchorRigidbody != null)
+            {
+                _grapplePointRelativeOffset = hit.transform.InverseTransformPoint(grapplePoint);
+            }
+        }
+        else // Se o SphereCast acertou
+        {
+            // Para simplicidade, não vamos lidar com anchor móvel do spherecast, mas a lógica seria similar
+            grapplePoint = predictedPoint;
+            _grappleAnchorRigidbody = null;
+        }
 
         joint = gameObject.AddComponent<SpringJoint>();
         joint.autoConfigureConnectedAnchor = false;
@@ -3327,24 +3480,10 @@ public class GrapplingHookController : MonoBehaviour
         joint.massScale = massScale;
 
         lineRenderer.positionCount = 2;
-        Debug.DrawLine(grappleTip.position, grapplePoint, Color.red, 1f);
-
-
-        // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
+        
         if (!canDoMultipleGrapple && !groundedOverride)
             hasGrappleAvailable = false;
-        // Printa todos os dados do joint/grapple, incluindo posição do jogador e do grapple
-        // Debug.Log($"Grapple Started:\n" +
-        //           $"- Player Position: {transform.position}\n" +
-        //           $"- Grapple Point: {grapplePoint}\n" +
-        //           $"- Distance From Point: {distanceFromPoint}\n" +
-        //           $"- Joint Max Distance: {joint.maxDistance}\n" +
-        //           $"- Joint Min Distance: {joint.minDistance}\n" +
-        //           $"- Spring Force: {springForce}\n" +
-        //           $"- Damper: {damper}\n" +
-        //           $"- Mass Scale: {massScale}");    
-                  
-            }
+    }
 
     private void ApplySwingForce()
     {
@@ -3366,26 +3505,24 @@ public class GrapplingHookController : MonoBehaviour
         lineRenderer.positionCount = 0;
         Destroy(joint);
 
+        _grappleAnchorRigidbody = null;
         playerMovement.EnableDoubleJump();
-
-        // Prediction point volta a aparecer após o grapple
-        if (currentPredictionPoint != null)
-        {
-            currentPredictionPoint.SetActive(true);
-        }
     }
 
     private void DrawRope()
     {
         if (!joint) return;
-        currentGrapplePosition = predictedPoint;
 
+        if (_grappleAnchorRigidbody != null)
+        {
+            grapplePoint = _grappleAnchorRigidbody.transform.TransformPoint(_grapplePointRelativeOffset);
+            joint.connectedAnchor = grapplePoint;
+        }
 
         lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, currentGrapplePosition);
+        lineRenderer.SetPosition(1, grapplePoint);
     }
 
-    // Novo método para resetar grapple ao tocar o chão
     private void OnGroundLanded()
     {
         if (!canDoMultipleGrapple && !hasGrappleAvailable)
@@ -3509,7 +3646,6 @@ public class InputManager : MonoBehaviour
 using TMPro;
 using System;
 using UnityEngine;
-using Unity.VisualScripting;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
@@ -3555,7 +3691,7 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
-
+    
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
@@ -3568,6 +3704,8 @@ public class PlayerMovementController : MonoBehaviour
     private float jumpBufferCounter;
     private float timeSinceLanded;
     private bool isJumping;
+
+    private Vector3 _groundVelocity;
 
     public Rigidbody Rb => rb;
 
@@ -3607,7 +3745,7 @@ public class PlayerMovementController : MonoBehaviour
         MovePlayer();
         ApplyExtraGravity();
     }
-
+    
     private void SetMoveInput(Vector2 input)
     {
         moveInput = input;
@@ -3638,8 +3776,20 @@ public class PlayerMovementController : MonoBehaviour
     private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
         
+        RaycastHit hitInfo;
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, out hitInfo, playerHeight * 0.5f + 0.2f, groundLayer);
+
+        if (isGrounded && hitInfo.rigidbody != null)
+        {
+            _groundVelocity = hitInfo.rigidbody.linearVelocity;
+            
+        }
+        else
+        {
+            _groundVelocity = Vector3.zero;
+        }
+
         if (!wasGrounded && isGrounded)
         {
             isJumping = false;
@@ -3744,7 +3894,7 @@ public class PlayerMovementController : MonoBehaviour
         jumpBufferCounter = 0f;
         isJumping = true;
 
-        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) + _groundVelocity;
         rb.AddForce(transform.up * jumpStrength, ForceMode.Impulse);
     }
 
