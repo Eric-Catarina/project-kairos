@@ -12,6 +12,8 @@ public class AudioManager : MonoBehaviour
     public Sound[] musicSounds, ambientSounds, sfxSounds;
     public AudioSource masterSource, musicSource, sfxSource, ambientSource;
     private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
+
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
     [Header("Configurações de Cena")]
@@ -158,6 +160,59 @@ public class AudioManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    /*public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("LoopingSFX_" + name);
+            obj.transform.parent = transform; // mantém como filho do AudioManager
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+
+            newSource.Play(); // toca imediatamente
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Looping Sound Not Found: " + name);
+            return null;
+        }
+    }*/
+
+    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
+    {
+        // Se já existe, só retorna
+        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
+            return existingSource;
+
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("LoopingSFX_" + name);
+            obj.transform.parent = transform;
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+
+            newSource.Play();
+
+            loopingSources.Add(name, newSource);
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Looping Sound Not Found: " + name);
+            return null;
+        }
+    }
+
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         if (scene.name == "Menu")
@@ -169,5 +224,6 @@ public class AudioManager : MonoBehaviour
             PlayMusic("Gameplay");
         }
     }
+
 
 }

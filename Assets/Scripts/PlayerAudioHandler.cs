@@ -16,6 +16,7 @@ public class PlayerAudioHandler : MonoBehaviour
 
     [Header("Sons - Estado do Player")]
     [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string deathFallSFX = "DeathFall";
     [SerializeField] private string respawnSfx = "Respawn";
     [SerializeField] private string timeSkillOnSfx = "TimeOn";
     [SerializeField] private string timeSkillOffSfx = "TimeOff";
@@ -30,6 +31,12 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private float minStepSpeed = 2f;
     [SerializeField] private float wallHitMinForce = 5f;
 
+    [Header("Som - Vento")]
+    [SerializeField] private string windSfx = "Wind";
+    [SerializeField] private float windMinSpeed = 20f;
+    [SerializeField] private float windMaxSpeed = 60f;
+    [SerializeField] private float windFadeSpeed = 5f;
+
     private float stepTimer;
     private bool wasGrounded;
     private bool didDoubleJump;
@@ -41,6 +48,8 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private bool hasLandedOnce = false;
 
+    private AudioSource windSource;
+
 
     private void Awake()
     {
@@ -51,6 +60,8 @@ public class PlayerAudioHandler : MonoBehaviour
         wasGrounded = movement.isGrounded;
         stepTimer = stepInterval;
         lastPosition = transform.position;
+
+        windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
     }
 
     private void OnEnable()
@@ -84,6 +95,7 @@ public class PlayerAudioHandler : MonoBehaviour
         HandleFootsteps();
         DetectRespawn();
         HandleGrappleAudio();
+        HandleWindAudio();
     }
 
 
@@ -124,9 +136,17 @@ public class PlayerAudioHandler : MonoBehaviour
         if (distance > 10f && wasGrounded && movement.isGrounded)
         {
             AudioManager.instance.PlaySFX(respawnSfx);
+
+            if (windSource != null)
+            {
+                windSource.Stop();
+                windSource.Play(); // reinicia o loop, com volume zerado
+            }
         }
         lastPosition = transform.position;
     }
+
+
 
     private void HandleGrappleAudio()
     {
@@ -153,6 +173,25 @@ public class PlayerAudioHandler : MonoBehaviour
         wasGrappling = grapple.IsGrappling;
     }
 
+
+    private void HandleWindAudio()
+    {
+        if (windSource == null || rb == null) return;
+
+        float speed = rb.linearVelocity.magnitude;
+        float targetVolume = 0f;
+
+        if (speed > windMinSpeed)
+        {
+            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+        }
+
+        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+    }
+
+
+
+
     private void PlayLand()
     {
         if (!hasLandedOnce)
@@ -177,7 +216,13 @@ public class PlayerAudioHandler : MonoBehaviour
     }
 
     public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual() => AudioManager.instance.PlaySFX(respawnSfx);
+    public void PlayRespawnManual()
+    {
+        AudioManager.instance.PlaySFX(respawnSfx);
+
+        if (windSource != null)
+            windSource.volume = 0f; // resetar o vento
+    }
     public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
     public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
