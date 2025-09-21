@@ -1,6 +1,7 @@
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
 using System;
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -18,9 +19,10 @@ public class ScoreManager : MonoBehaviour
     [Header("Configuração do Nível")]
     [Tooltip("Os dados de pontuação para o nível atual (tempos para ranques S, A, B, etc.).")]
     [SerializeField] private LevelData currentLevelData;
+    private ScoreUIController scoreUIController;
 
     private float _levelTimer;
-    private bool _isTimerRunning;
+    private bool _isTimerRunning = false;
 
     private void Awake()
     {
@@ -30,6 +32,14 @@ public class ScoreManager : MonoBehaviour
             return;
         }
         Instance = this;
+        scoreUIController = FindObjectOfType<ScoreUIController>();
+    }
+
+    private void Start()
+    {
+
+        StartCoroutine(WaitAndStartTimer(1f)); // Espera 1 segundo antes de iniciar o cronômetro
+
     }
 
     private void Update()
@@ -37,6 +47,7 @@ public class ScoreManager : MonoBehaviour
         if (_isTimerRunning)
         {
             _levelTimer += Time.deltaTime;
+            scoreUIController?.UpdateTime(_levelTimer);
         }
     }
 
@@ -45,7 +56,7 @@ public class ScoreManager : MonoBehaviour
         InputManager.Instance.OnLevelFinished += EndLevelTimer;
         InputManager.Instance.OnLevelRestarted += StartLevelTimer;
     }
-    
+
     private void OnDisable()
     {
         InputManager.Instance.OnLevelFinished -= EndLevelTimer;
@@ -72,7 +83,7 @@ public class ScoreManager : MonoBehaviour
         if (!_isTimerRunning) return;
 
         _isTimerRunning = false;
-        
+
         if (currentLevelData == null)
         {
             Debug.LogError("LevelData não está configurado no ScoreManager!");
@@ -80,10 +91,16 @@ public class ScoreManager : MonoBehaviour
         }
 
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
-        
+
         Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
 
         // Dispara o evento com os resultados finais.
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
+    }
+    
+    IEnumerator WaitAndStartTimer(float waitTime)
+    {
+        yield return new WaitForSeconds(waitTime);
+        StartLevelTimer();
     }
 }

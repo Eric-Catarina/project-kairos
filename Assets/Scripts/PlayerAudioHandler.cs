@@ -108,9 +108,11 @@ public class PlayerAudioHandler : MonoBehaviour
         }
         else if (canDoubleJumpSound && !didDoubleJump)
         {
-            AudioManager.instance.PlaySFX(doubleJumpSfx);
-            didDoubleJump = true;
-            canDoubleJumpSound = false;
+            if (rb.linearVelocity.y > 1f )
+            {
+                AudioManager.instance.PlaySFX(doubleJumpSfx);
+                didDoubleJump = true;
+            }
         }
     }
 
