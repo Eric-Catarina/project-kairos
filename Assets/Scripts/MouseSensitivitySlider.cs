@@ -1,4 +1,4 @@
-// Local: Assets/Scripts/UI/MouseSensitivitySlider.cs
+// Local: Assets/Scripts/MouseSensitivitySlider.cs
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,6 +6,12 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Slider))]
 public class MouseSensitivitySlider : MonoBehaviour
 {
+    // Enum para selecionar o eixo no Inspector
+    public enum Axis { X, Y }
+
+    [Tooltip("Define qual eixo de sensibilidade este slider irá controlar.")]
+    [SerializeField] private Axis controlledAxis = Axis.X;
+    
     private Slider _slider;
 
     private void Awake()
@@ -15,7 +21,6 @@ public class MouseSensitivitySlider : MonoBehaviour
 
     private void Start()
     {
-        // Garante que o GameSettingsManager exista.
         if (GameSettingsManager.Instance == null)
         {
             Debug.LogError("GameSettingsManager não encontrado na cena! O slider de sensibilidade não funcionará.");
@@ -23,19 +28,34 @@ public class MouseSensitivitySlider : MonoBehaviour
             return;
         }
 
-        // Define o valor inicial do slider com base na configuração salva.
-        _slider.value = GameSettingsManager.Instance.MouseSensitivity;
-
-        // Adiciona um listener para chamar o GameSettingsManager quando o valor do slider mudar.
-        _slider.onValueChanged.AddListener(GameSettingsManager.Instance.SetMouseSensitivity);
+        // Configura o valor inicial e o listener com base no eixo selecionado
+        switch (controlledAxis)
+        {
+            case Axis.X:
+                _slider.value = GameSettingsManager.Instance.MouseSensitivityX;
+                _slider.onValueChanged.AddListener(GameSettingsManager.Instance.SetMouseSensitivityX);
+                break;
+            case Axis.Y:
+                _slider.value = GameSettingsManager.Instance.MouseSensitivityY;
+                _slider.onValueChanged.AddListener(GameSettingsManager.Instance.SetMouseSensitivityY);
+                break;
+        }
     }
 
     private void OnDestroy()
     {
-        // Remove o listener para evitar erros se o objeto for destruído.
-        if (_slider != null)
+        // Remove o listener correto para evitar erros
+        if (_slider != null && GameSettingsManager.Instance != null)
         {
-            _slider.onValueChanged.RemoveListener(GameSettingsManager.Instance.SetMouseSensitivity);
+            switch (controlledAxis)
+            {
+                case Axis.X:
+                    _slider.onValueChanged.RemoveListener(GameSettingsManager.Instance.SetMouseSensitivityX);
+                    break;
+                case Axis.Y:
+                    _slider.onValueChanged.RemoveListener(GameSettingsManager.Instance.SetMouseSensitivityY);
+                    break;
+            }
         }
     }
 }

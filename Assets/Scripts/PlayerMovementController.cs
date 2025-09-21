@@ -127,7 +127,11 @@ public class PlayerMovementController : MonoBehaviour
         }
 
         float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
-        velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+        if (velocityText != null)
+        {
+            velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+            
+        }
     }
 
     private void CheckGroundedStatus()
