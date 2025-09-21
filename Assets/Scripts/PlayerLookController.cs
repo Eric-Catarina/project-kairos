@@ -10,33 +10,39 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class PlayerLookController : MonoBehaviour
 {
-    [Header("Configurações de Sensibilidade")]
-    [Tooltip("A 'gain' mínima da câmera quando o slider está em 0.")]
-    [SerializeField] private float minSensitivityGain = 0.5f;
-    [Tooltip("A 'gain' máxima da câmera quando o slider está em 1.")]
-    [SerializeField] private float maxSensitivityGain = 10f;
-    
+    [Header("Sensibilidade - Eixo X")]
+    [Tooltip("A 'gain' mínima da câmera no eixo X quando o slider está em 0.")]
+    [SerializeField] private float minSensitivityGainX = 0.5f;
+    [Tooltip("A 'gain' máxima da câmera no eixo X quando o slider está em 1.")]
+    [SerializeField] private float maxSensitivityGainX = 10f;
+
+    [Header("Sensibilidade - Eixo Y")]
+    [Tooltip("A 'gain' mínima da câmera no eixo Y quando o slider está em 0.")]
+    [SerializeField] private float minSensitivityGainY = 0.5f;
+    [Tooltip("A 'gain' máxima da câmera no eixo Y quando o slider está em 1.")]
+    [SerializeField] private float maxSensitivityGainY = 10f;
+
     [Header("Outras Configurações")]
     [SerializeField] private float playerRotationSpeed = 10f;
 
     [Header("Referências")]
-    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
     [SerializeField] private Transform playerModel;
-    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
     [SerializeField] private Transform orientation;
-    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
     [SerializeField] private Transform cameraTransform;
-    [Tooltip("Referência ao controlador de eixos da câmera virtual.")]
     [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
 
     private void OnEnable()
     {
-        GameSettingsManager.OnMouseSensitivityChanged += HandleMouseSensitivityChanged;
+        // Inscreve-se nos novos eventos
+        GameSettingsManager.OnMouseSensitivityXChanged += HandleMouseSensitivityXChanged;
+        GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
     }
 
     private void OnDisable()
     {
-        GameSettingsManager.OnMouseSensitivityChanged -= HandleMouseSensitivityChanged;
+        // Remove a inscrição dos novos eventos
+        GameSettingsManager.OnMouseSensitivityXChanged -= HandleMouseSensitivityXChanged;
+        GameSettingsManager.OnMouseSensitivityYChanged -= HandleMouseSensitivityYChanged;
     }
 
     private void Start()
@@ -49,10 +55,11 @@ public class PlayerLookController : MonoBehaviour
 
         ConnectCinemachineToInputManager();
         
-        // Aplica a sensibilidade inicial salva ao iniciar o jogo.
+        // Aplica as sensibilidades iniciais salvas ao iniciar o jogo.
         if (GameSettingsManager.Instance != null)
         {
-            HandleMouseSensitivityChanged(GameSettingsManager.Instance.MouseSensitivity);
+            HandleMouseSensitivityXChanged(GameSettingsManager.Instance.MouseSensitivityX);
+            HandleMouseSensitivityYChanged(GameSettingsManager.Instance.MouseSensitivityY);
         }
     }
 
@@ -62,13 +69,11 @@ public class PlayerLookController : MonoBehaviour
     }
     
     /// <summary>
-    /// Manipula o evento de mudança de sensibilidade vindo do GameSettingsManager.
+    /// Manipula o evento de mudança de sensibilidade para o eixo X.
     /// </summary>
-    /// <param name="normalizedValue">O valor da sensibilidade de 0 a 1.</param>
-    private void HandleMouseSensitivityChanged(float normalizedValue)
+    private void HandleMouseSensitivityXChanged(float normalizedValue)
     {
-        // Mapeia o valor normalizado (0-1) para o intervalo de ganho desejado (min-max).
-        float newGain = Mathf.Lerp(minSensitivityGain, maxSensitivityGain, normalizedValue);
+        float newGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, normalizedValue);
 
         foreach (var controller in cinemachineInputAxisController.Controllers)
         {
@@ -76,6 +81,18 @@ public class PlayerLookController : MonoBehaviour
             {
                 controller.Input.Gain = newGain;
             }
+        }
+    }
+
+    /// <summary>
+    /// Manipula o evento de mudança de sensibilidade para o eixo Y.
+    /// </summary>
+    private void HandleMouseSensitivityYChanged(float normalizedValue)
+    {
+        float newGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, normalizedValue);
+        
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
             if (controller.Name == "Look Orbit Y")
             {
                 // O eixo Y geralmente é invertido.

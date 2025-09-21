@@ -55,10 +55,12 @@ Assets/
       TimeManipulationManager.cs
     AudioManager.cs
     DeathFogLogic.cs
+    GameSettingsManager.cs
     GrapplingHookController.cs
     InputManager.cs
     InputStateManager.cs
     LevelData.cs
+    MouseSensitivitySlider.cs
     MovingPlatform.cs
     PatrolMovement.cs
     PlayerAudioHandler.cs
@@ -303,6 +305,64 @@ public class DeathFogLogic : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/GameSettingsManager.cs">
+// Local: Assets/Scripts/GameSettingsManager.cs
+
+using System;
+using UnityEngine;
+
+/// <summary>
+/// Gerencia as configurações globais do jogo, como sensibilidade do mouse.
+/// Implementa o padrão Singleton para acesso centralizado e persiste entre as cenas.
+/// Dispara eventos quando as configurações são alteradas para que outros sistemas possam reagir.
+/// </summary>
+public class GameSettingsManager : MonoBehaviour
+{
+    public static GameSettingsManager Instance { get; private set; }
+
+    // Evento disparado quando a sensibilidade do mouse é alterada.
+    // O float representa o novo valor normalizado (0 a 1).
+    public static event Action<float> OnMouseSensitivityChanged;
+
+    // Propriedade para armazenar o valor de sensibilidade atual (normalizado de 0 a 1).
+    // Usamos PlayerPrefs para persistir a configuração entre as sessões de jogo.
+    public float MouseSensitivity
+    {
+        get => PlayerPrefs.GetFloat("MouseSensitivity", 0.5f); // Valor padrão é 0.5
+        private set => PlayerPrefs.SetFloat("MouseSensitivity", value);
+    }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    /// <summary>
+    /// Define um novo valor para a sensibilidade do mouse.
+    /// Este método é chamado pela UI (por exemplo, um slider).
+    /// </summary>
+    /// <param name="normalizedValue">O novo valor de sensibilidade, de 0.0 a 1.0.</param>
+    public void SetMouseSensitivity(float normalizedValue)
+    {
+        // Garante que o valor esteja dentro do intervalo [0, 1]
+        float clampedValue = Mathf.Clamp01(normalizedValue);
+        
+        MouseSensitivity = clampedValue;
+        
+        // Notifica todos os ouvintes sobre a mudança.
+        OnMouseSensitivityChanged?.Invoke(clampedValue);
+        
+        Debug.Log($"Sensibilidade do mouse alterada para: {clampedValue}");
+    }
+}
+</file>
+
 <file path="Assets/Scripts/InputStateManager.cs">
 // Local: Assets/Scripts/InputStateManager.cs
 
@@ -424,6 +484,50 @@ public class LevelData : ScriptableObject
         }
         // Se o tempo do jogador for maior que todos os tempos da lista, retorna o pior ranque possível.
         return Rank.D; 
+    }
+}
+</file>
+
+<file path="Assets/Scripts/MouseSensitivitySlider.cs">
+// Local: Assets/Scripts/UI/MouseSensitivitySlider.cs
+
+using UnityEngine;
+using UnityEngine.UI;
+
+[RequireComponent(typeof(Slider))]
+public class MouseSensitivitySlider : MonoBehaviour
+{
+    private Slider _slider;
+
+    private void Awake()
+    {
+        _slider = GetComponent<Slider>();
+    }
+
+    private void Start()
+    {
+        // Garante que o GameSettingsManager exista.
+        if (GameSettingsManager.Instance == null)
+        {
+            Debug.LogError("GameSettingsManager não encontrado na cena! O slider de sensibilidade não funcionará.");
+            gameObject.SetActive(false);
+            return;
+        }
+
+        // Define o valor inicial do slider com base na configuração salva.
+        _slider.value = GameSettingsManager.Instance.MouseSensitivity;
+
+        // Adiciona um listener para chamar o GameSettingsManager quando o valor do slider mudar.
+        _slider.onValueChanged.AddListener(GameSettingsManager.Instance.SetMouseSensitivity);
+    }
+
+    private void OnDestroy()
+    {
+        // Remove o listener para evitar erros se o objeto for destruído.
+        if (_slider != null)
+        {
+            _slider.onValueChanged.RemoveListener(GameSettingsManager.Instance.SetMouseSensitivity);
+        }
     }
 }
 </file>
@@ -630,6 +734,56 @@ public class PatrolMovement : MonoBehaviour
             Gizmos.DrawWireSphere(targetA.position, reachThreshold);
             Gizmos.DrawWireSphere(targetB.position, reachThreshold);
         }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerVisualController.cs">
+// Local: Assets/Scripts/PlayerVisualController.cs
+
+using UnityEngine;
+using DG.Tweening;
+
+/// <summary>
+/// Gerencia todas as animações e efeitos visuais procedurais do jogador.
+/// Ouve eventos do PlayerMovementController para acionar as animações corretas.
+/// (Lógica de slide removida para corresponder às novas mecânicas)
+/// </summary>
+public class PlayerVisualController : MonoBehaviour
+{
+    [Header("Referências")]
+    [Tooltip("Referência ao script de movimento para se inscrever nos eventos.")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+    [Tooltip("O transform do modelo visual do jogador que será animado.")]
+    [SerializeField] private Transform playerModel;
+
+    private void OnEnable()
+    {
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não está atribuído no PlayerVisualsController.");
+            return;
+        }
+
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController == null) return;
+        
+    }
+
+    /// <summary>
+    /// Para e limpa todas as animações DOTween ativas neste objeto.
+    /// </summary>
+    private void KillAllTweens()
+    {
+        playerModel.DOKill();
+    }
+
+    private void OnDestroy()
+    {
+        KillAllTweens();
     }
 }
 </file>
@@ -1006,52 +1160,115 @@ public class ScoreUIController : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PlayerVisualController.cs">
-// Local: Assets/Scripts/PlayerVisualController.cs
+<file path="Assets/Scripts/PlayerLookController.cs">
+// Local: Assets/Scripts/PlayerLookController.cs
 
+using Unity.Cinemachine;
 using UnityEngine;
-using DG.Tweening;
+using UnityEngine.InputSystem;
 
 /// <summary>
-/// Gerencia todas as animações e efeitos visuais procedurais do jogador.
-/// Ouve eventos do PlayerMovementController para acionar as animações corretas.
-/// (Lógica de slide removida para corresponder às novas mecânicas)
+/// Controla a orientação de movimento do jogador e a sensibilidade da câmera.
+/// Ouve o GameSettingsManager para atualizações de sensibilidade.
 /// </summary>
-public class PlayerVisualController : MonoBehaviour
+public class PlayerLookController : MonoBehaviour
 {
+    [Header("Configurações de Sensibilidade")]
+    [Tooltip("A 'gain' mínima da câmera quando o slider está em 0.")]
+    [SerializeField] private float minSensitivityGain = 0.5f;
+    [Tooltip("A 'gain' máxima da câmera quando o slider está em 1.")]
+    [SerializeField] private float maxSensitivityGain = 10f;
+    
+    [Header("Outras Configurações")]
+    [SerializeField] private float playerRotationSpeed = 10f;
+
     [Header("Referências")]
-    [Tooltip("Referência ao script de movimento para se inscrever nos eventos.")]
-    [SerializeField] private PlayerMovementController playerMovementController;
-    [Tooltip("O transform do modelo visual do jogador que será animado.")]
+    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
     [SerializeField] private Transform playerModel;
+    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
+    [SerializeField] private Transform orientation;
+    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
+    [SerializeField] private Transform cameraTransform;
+    [Tooltip("Referência ao controlador de eixos da câmera virtual.")]
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
 
     private void OnEnable()
     {
-        if (playerMovementController == null)
-        {
-            Debug.LogError("PlayerMovementController não está atribuído no PlayerVisualsController.");
-            return;
-        }
-
+        GameSettingsManager.OnMouseSensitivityChanged += HandleMouseSensitivityChanged;
     }
 
     private void OnDisable()
     {
-        if (playerMovementController == null) return;
+        GameSettingsManager.OnMouseSensitivityChanged -= HandleMouseSensitivityChanged;
+    }
+
+    private void Start()
+    {
+        if (InputManager.Instance == null)
+        {
+            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
+            return;
+        }
+
+        ConnectCinemachineToInputManager();
         
+        // Aplica a sensibilidade inicial salva ao iniciar o jogo.
+        if (GameSettingsManager.Instance != null)
+        {
+            HandleMouseSensitivityChanged(GameSettingsManager.Instance.MouseSensitivity);
+        }
     }
 
+    private void Update()
+    {
+        HandlePlayerModelRotation();
+    }
+    
     /// <summary>
-    /// Para e limpa todas as animações DOTween ativas neste objeto.
+    /// Manipula o evento de mudança de sensibilidade vindo do GameSettingsManager.
     /// </summary>
-    private void KillAllTweens()
+    /// <param name="normalizedValue">O valor da sensibilidade de 0 a 1.</param>
+    private void HandleMouseSensitivityChanged(float normalizedValue)
     {
-        playerModel.DOKill();
+        // Mapeia o valor normalizado (0-1) para o intervalo de ganho desejado (min-max).
+        float newGain = Mathf.Lerp(minSensitivityGain, maxSensitivityGain, normalizedValue);
+
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit X")
+            {
+                controller.Input.Gain = newGain;
+            }
+            if (controller.Name == "Look Orbit Y")
+            {
+                // O eixo Y geralmente é invertido.
+                controller.Input.Gain = -newGain;
+            }
+        }
     }
 
-    private void OnDestroy()
+    private void ConnectCinemachineToInputManager()
     {
-        KillAllTweens();
+        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
+            controller.Input.InputAction = lookActionReference;
+        }
+        Debug.Log("<color=cyan>CinemachineInputAxisController foi conectado com sucesso ao InputManager.</color>");
+    }
+    
+    private void HandlePlayerModelRotation()
+    {
+        if (cameraTransform == null || orientation == null || playerModel == null) return;
+
+        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+        if (viewDirection != Vector3.zero)
+        {
+            orientation.forward = viewDirection;
+        }
+
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
 }
 </file>
@@ -2702,6 +2919,141 @@ public class TimeManipulationManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
+// Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
+
+using UnityEngine;
+
+/// <summary>
+/// Implementação concreta da interface ITimeSlowable para objetos com Rigidbody.
+/// Salva o estado de movimento (velocidades), torna o Rigidbody cinemático durante a lentidão
+/// e simula o movimento em 'FixedUpdate' com base na porcentagem de lentidão.
+/// Ao restaurar, reaplica o estado de movimento salvo.
+/// </summary>
+[RequireComponent(typeof(Rigidbody))]
+public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
+{
+    [Header("Visual Feedback")]
+    private Renderer objectRenderer;
+    private Color slowDownColor = Color.cyan;
+
+    private Rigidbody _rb;
+    private Color _originalColor;
+
+    // Variáveis para salvar o estado do Rigidbody
+    private Vector3 _savedVelocity;
+    private Vector3 _savedAngularVelocity;
+
+    private bool _isSlowed = false;
+    private float _slowFactor; // Armazena o multiplicador (ex: 0.5 para 50% de lentidão)
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        objectRenderer = GetComponent<Renderer>();
+
+        if (objectRenderer != null && objectRenderer.material != null)
+        {
+            _originalColor = objectRenderer.material.color;
+        }
+    }
+
+    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
+    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
+    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
+    private void Start()
+    {
+        // Se registra no manager para receber os eventos de tempo.
+        TimeManipulationManager.Instance.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        // Garante que o tempo seja restaurado se o objeto for desativado.
+        if (_isSlowed)
+        {
+            RestoreNormalTime();
+        }
+        
+        // Remove o registro do manager para evitar referências nulas,
+        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        // Se o tempo não está lento, a física normal do Unity cuida de tudo.
+        if (!_isSlowed) return;
+
+        // Se o slow for 100%, não fazemos nada, o objeto fica parado.
+        if (_slowFactor <= 0f) return;
+
+        // Como o Rigidbody está cinemático, precisamos simular seu movimento.
+        // Usamos MovePosition e MoveRotation para respeitar a física e colisões.
+        Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
+        _rb.MovePosition(newPosition);
+
+        Quaternion deltaRotation = Quaternion.Euler(_savedAngularVelocity * _slowFactor * Time.fixedDeltaTime);
+        _rb.MoveRotation(_rb.rotation * deltaRotation);
+    }
+
+    /// <summary>
+    /// Salva o estado de movimento, torna o Rigidbody cinemático e aplica o feedback visual.
+    /// </summary>
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+
+        // Salva o estado atual
+        _savedVelocity = _rb.linearVelocity;
+        _savedAngularVelocity = _rb.angularVelocity;
+
+        // Converte a porcentagem (0-100) para um multiplicador (1.0-0.0)
+        _slowFactor = 1.0f - (slowPercentage / 100.0f);
+
+        // Torna o Rigidbody cinemático para que possamos controlar seu movimento manualmente.
+        _rb.isKinematic = true;
+
+        // Feedback visual
+        if (objectRenderer != null && objectRenderer.material != null)
+        {
+            objectRenderer.material.color = slowDownColor;
+        }
+    }
+
+    /// <summary>
+    /// Retorna o Rigidbody ao estado dinâmico, restaura suas velocidades e o feedback visual.
+    /// </summary>
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+
+        // Retorna o Rigidbody ao controle total da física.
+        _rb.isKinematic = false;
+
+        // Restaura o estado de movimento. A física do Unity continuará a partir daqui.
+        _rb.linearVelocity = _savedVelocity;
+        _rb.angularVelocity = _savedAngularVelocity;
+
+        // Restaura feedback visual
+        if (objectRenderer != null && objectRenderer.material != null)
+        {
+            objectRenderer.material.color = _originalColor;
+        }
+    }
+    
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+}
+</file>
+
 <file path="Assets/Scripts/AudioManager.cs">
 using System;
 using System.Collections;
@@ -2717,10 +3069,13 @@ public class AudioManager : MonoBehaviour
     public Sound[] musicSounds, ambientSounds, sfxSounds;
     public AudioSource masterSource, musicSource, sfxSource, ambientSource;
     private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
+
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
-    float minPitch = 0.95f;
-    float maxPitch = 1.05f;
+    [Header("Configuraушes de Cena")]
+    [SerializeField] private string gameplaySceneName = "BasicMovement";
+
 
     private void Awake()
     {
@@ -2862,439 +3217,72 @@ public class AudioManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    /*public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("LoopingSFX_" + name);
+            obj.transform.parent = transform; // mantжm como filho do AudioManager
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+
+            newSource.Play(); // toca imediatamente
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Looping Sound Not Found: " + name);
+            return null;
+        }
+    }*/
+
+    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
+    {
+        // Se jр existe, sз retorna
+        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
+            return existingSource;
+
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("LoopingSFX_" + name);
+            obj.transform.parent = transform;
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+
+            newSource.Play();
+
+            loopingSources.Add(name, newSource);
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Looping Sound Not Found: " + name);
+            return null;
+        }
+    }
+
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Aqui você escolhe a música com base no nome da cena
         if (scene.name == "Menu")
         {
             PlayMusic("Menu");
         }
-        else if (scene.name == "BasicMovement")
+        else if (scene.name == gameplaySceneName)
         {
-            PlayMusic("Gameplay"); // nome que você deu no array de músicas
+            PlayMusic("Gameplay");
         }
     }
 
-}
-</file>
 
-<file path="Assets/Scripts/PlayerAudioHandler.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour
-{
-    private PlayerMovementController movement;
-    private GrapplingHookController grapple;
-    private Rigidbody rb;
-
-    [Header("Sons - Movimento")]
-    [SerializeField] private string jumpSfx = "Jump";
-    [SerializeField] private string doubleJumpSfx = "DoubleJump";
-    [SerializeField] private string landSfx = "Land";
-    [SerializeField] private string footstepSfx = "Step";
-    [SerializeField] private string wallHitSfx = "WallHit";
-
-    [Header("Sons - Estado do Player")]
-    [SerializeField] private string deathSfx = "Death";
-    [SerializeField] private string respawnSfx = "Respawn";
-    [SerializeField] private string timeSkillOnSfx = "TimeOn";
-    [SerializeField] private string timeSkillOffSfx = "TimeOff";
-
-    [Header("Sons - Grappling Hook")]
-    [SerializeField] private string grappleShootSfx = "GrappleShoot";
-    [SerializeField] private string grappleAttachSfx = "GrappleAttach";
-    [SerializeField] private string grappleReleaseSfx = "GrappleRelease";
-
-    [Header("Parâmetros")]
-    [SerializeField] private float stepInterval = 0.35f;
-    [SerializeField] private float minStepSpeed = 2f;
-    [SerializeField] private float wallHitMinForce = 5f;
-
-    private float stepTimer;
-    private bool wasGrounded;
-    private bool didDoubleJump;
-    private Vector3 lastPosition;
-
-    private bool wasGrappling; // estado anterior do grapple
-    private bool grappleJustStarted;
-
-    private void Awake()
-    {
-        movement = GetComponent<PlayerMovementController>();
-        grapple = GetComponent<GrapplingHookController>();
-        rb = movement.Rb;
-
-        wasGrounded = movement.isGrounded;
-        stepTimer = stepInterval;
-        lastPosition = transform.position;
-    }
-
-    private void OnEnable()
-    {
-        movement.OnGroundLanded += PlayLand;
-    }
-
-    private void OnDisable()
-    {
-        movement.OnGroundLanded -= PlayLand;
-    }
-
-    private void Update()
-    {
-        HandleJumpDetection();
-        HandleDoubleJumpDetection();
-        HandleFootsteps();
-        DetectRespawn();
-        HandleGrappleAudio();
-    }
-
-    private void HandleJumpDetection()
-    {
-        if (wasGrounded && !movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(jumpSfx);
-            didDoubleJump = false;
-        }
-        wasGrounded = movement.isGrounded;
-    }
-
-    private void HandleDoubleJumpDetection()
-    {
-        if (!movement.isGrounded && !didDoubleJump)
-        {
-            if (rb.linearVelocity.y > 1f )
-            {
-                AudioManager.instance.PlaySFX(doubleJumpSfx);
-                didDoubleJump = true;
-            }
-        }
-    }
-
-    private void HandleFootsteps()
-    {
-        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
-        {
-            stepTimer = stepInterval;
-            return;
-        }
-
-        stepTimer -= Time.deltaTime;
-        if (stepTimer <= 0f)
-        {
-            AudioManager.instance.PlaySFX(footstepSfx);
-            stepTimer = stepInterval;
-        }
-    }
-
-    private void DetectRespawn()
-    {
-        float distance = Vector3.Distance(transform.position, lastPosition);
-        if (distance > 10f && wasGrounded && movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(respawnSfx);
-        }
-        lastPosition = transform.position;
-    }
-
-    private void HandleGrappleAudio()
-    {
-        if (grapple == null) return;
-
-        if (!wasGrappling && grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleShootSfx);
-            grappleJustStarted = true;
-        }
-
-       
-        if (grappleJustStarted && grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleAttachSfx);
-            grappleJustStarted = false;
-        }
-
-        if (wasGrappling && !grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleReleaseSfx);
-        }
-
-        wasGrappling = grapple.IsGrappling;
-    }
-
-    private void PlayLand() => AudioManager.instance.PlaySFX(landSfx);
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        Vector3 normal = collision.contacts[0].normal;
-        if (Vector3.Dot(normal, Vector3.up) < 0.5f)
-        {
-            if (collision.relativeVelocity.magnitude > wallHitMinForce)
-            {
-                AudioManager.instance.PlaySFX(wallHitSfx);
-            }
-        }
-    }
-
-    // Chamadas externas
-    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual() => AudioManager.instance.PlaySFX(respawnSfx);
-    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
-    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
-}
-</file>
-
-<file path="Assets/Scripts/PlayerLookController.cs">
-// Local: Assets/Scripts/PlayerLookController.cs
-
-using Unity.Cinemachine;
-using UnityEngine;
-using UnityEngine.InputSystem; // Adicione esta linha
-
-/// <summary>
-/// Controla a orientação de movimento do jogador e conecta a instância de input correta ao Cinemachine.
-/// </summary>
-public class PlayerLookController : MonoBehaviour
-{
-    [Header("Configurações")]
-    [SerializeField] private float playerRotationSpeed = 10f; // Aumentei um pouco para um feel melhor
-    [SerializeField] private float mouseSensitivityX = 1f;
-    private float minimumMouseSensitivityX = 0.1f;
-    private float maximumMouseSensitivityX = 10f;
-    [SerializeField] private float mouseSensitivityY = 1f;
-    private float minimumMouseSensitivityY = 0.1f;
-    private float maximumMouseSensitivityY = 10f;
-    [SerializeField] private float mouseSensitivityMultiplier = 20f;
-    private float minimumMouseSensitivityMultiplier = 1f;
-    private float maximumMouseSensitivityMultiplier = 50f;
-
-
-    [Header("Referências")]
-    [Tooltip("O modelo visual do jogador que deve rotacionar.")]
-    [SerializeField] private Transform playerModel;
-    [Tooltip("Um objeto vazio filho do Player que define a direção do movimento.")]
-    [SerializeField] private Transform orientation;
-    [Tooltip("Referência à câmera principal ou à câmera virtual do Cinemachine.")]
-    [SerializeField] private Transform cameraTransform;
-    [Tooltip("Referência ao controlador de eixos da câmera virtual.")]
-    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
-
-    private void Start()
-    {
-        // Garante que o InputManager esteja pronto.
-        if (InputManager.Instance == null)
-        {
-            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
-            return;
-        }
-
-        // --- PONTO CRÍTICO DA SOLUÇÃO ---
-        // Conecta o Cinemachine à instância de PlayerControls gerenciada pelo InputManager.
-        ConnectCinemachineToInputManager();
-        UpdateMouseSensibility(mouseSensitivityX, mouseSensitivityY);
-        // --- FIM DO PONTO CRÍTICO ---
-    }
-
-    private void Update()
-    {
-        HandlePlayerModelRotation();
-    }
-
-    /// <summary>
-    /// Conecta os eixos do CinemachineInputAxisController diretamente às ações
-    /// da instância PlayerControls que vive no nosso InputManager.
-    /// Isso garante que, quando o InputStateManager desativa o mapa de ações 'Player',
-    /// o Cinemachine para de receber input.
-    /// </summary>
-    private void ConnectCinemachineToInputManager()
-    {
-        // Obtém a ação 'Look' da nossa instância única de PlayerControls.
-        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
-
-        // Itera por cada controlador de eixo (X e Y) no componente do Cinemachine.
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            // Cria uma referência para a ação de input.
-            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
-
-            // Atribui a ação de input correta.
-            controller.Input.InputAction = lookActionReference;
-        }
-
-        Debug.Log("<color=cyan>CinemachineInputAxisController foi conectado com sucesso ao InputManager.</color>");
-    }
-
-    /// <summary>
-    /// Gerencia a rotação do modelo do jogador para alinhar com a câmera.
-    /// A rotação da câmera em si é 100% controlada pelo Cinemachine.
-    /// </summary>
-    private void HandlePlayerModelRotation()
-    {
-        if (cameraTransform == null || orientation == null || playerModel == null) return;
-
-        // A orientação de movimento espelha a direção da câmera no plano horizontal.
-        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-        if (viewDirection != Vector3.zero)
-        {
-            orientation.forward = viewDirection;
-        }
-
-        // O modelo do jogador gira suavemente para se alinhar com a orientação.
-        // Usando Slerp para uma rotação mais suave.
-        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
-    }
-    
-public void UpdateMouseSensibility(float newSensitivityX, float newSensitivityY)
-    {
- foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-                      // Configura a sensibilidade (exemplo de como fazer isso aqui).
-            if (controller.Name == "Look Orbit X")
-            {
-                controller.Input.Gain = mouseSensitivityX * mouseSensitivityMultiplier;
-            }
-            if (controller.Name == "Look Orbit Y")
-            {
-                // O eixo Y geralmente é invertido.
-                controller.Input.Gain = -mouseSensitivityY * mouseSensitivityMultiplier;
-            }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
-// Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Implementação concreta da interface ITimeSlowable para objetos com Rigidbody.
-/// Salva o estado de movimento (velocidades), torna o Rigidbody cinemático durante a lentidão
-/// e simula o movimento em 'FixedUpdate' com base na porcentagem de lentidão.
-/// Ao restaurar, reaplica o estado de movimento salvo.
-/// </summary>
-[RequireComponent(typeof(Rigidbody))]
-public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
-{
-    [Header("Visual Feedback")]
-    private Renderer objectRenderer;
-    private Color slowDownColor = Color.cyan;
-
-    private Rigidbody _rb;
-    private Color _originalColor;
-
-    // Variáveis para salvar o estado do Rigidbody
-    private Vector3 _savedVelocity;
-    private Vector3 _savedAngularVelocity;
-
-    private bool _isSlowed = false;
-    private float _slowFactor; // Armazena o multiplicador (ex: 0.5 para 50% de lentidão)
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        objectRenderer = GetComponent<Renderer>();
-
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            _originalColor = objectRenderer.material.color;
-        }
-    }
-
-    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
-    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
-    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
-    private void Start()
-    {
-        // Se registra no manager para receber os eventos de tempo.
-        TimeManipulationManager.Instance.Register(this);
-    }
-
-    private void OnDisable()
-    {
-        // Garante que o tempo seja restaurado se o objeto for desativado.
-        if (_isSlowed)
-        {
-            RestoreNormalTime();
-        }
-        
-        // Remove o registro do manager para evitar referências nulas,
-        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
-        if (TimeManipulationManager.Instance != null)
-        {
-            TimeManipulationManager.Instance.Unregister(this);
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        // Se o tempo não está lento, a física normal do Unity cuida de tudo.
-        if (!_isSlowed) return;
-
-        // Se o slow for 100%, não fazemos nada, o objeto fica parado.
-        if (_slowFactor <= 0f) return;
-
-        // Como o Rigidbody está cinemático, precisamos simular seu movimento.
-        // Usamos MovePosition e MoveRotation para respeitar a física e colisões.
-        Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
-        _rb.MovePosition(newPosition);
-
-        Quaternion deltaRotation = Quaternion.Euler(_savedAngularVelocity * _slowFactor * Time.fixedDeltaTime);
-        _rb.MoveRotation(_rb.rotation * deltaRotation);
-    }
-
-    /// <summary>
-    /// Salva o estado de movimento, torna o Rigidbody cinemático e aplica o feedback visual.
-    /// </summary>
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-
-        // Salva o estado atual
-        _savedVelocity = _rb.linearVelocity;
-        _savedAngularVelocity = _rb.angularVelocity;
-
-        // Converte a porcentagem (0-100) para um multiplicador (1.0-0.0)
-        _slowFactor = 1.0f - (slowPercentage / 100.0f);
-
-        // Torna o Rigidbody cinemático para que possamos controlar seu movimento manualmente.
-        _rb.isKinematic = true;
-
-        // Feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            objectRenderer.material.color = slowDownColor;
-        }
-    }
-
-    /// <summary>
-    /// Retorna o Rigidbody ao estado dinâmico, restaura suas velocidades e o feedback visual.
-    /// </summary>
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-
-        // Retorna o Rigidbody ao controle total da física.
-        _rb.isKinematic = false;
-
-        // Restaura o estado de movimento. A física do Unity continuará a partir daqui.
-        _rb.linearVelocity = _savedVelocity;
-        _rb.angularVelocity = _savedAngularVelocity;
-
-        // Restaura feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            objectRenderer.material.color = _originalColor;
-        }
-    }
-    
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
 }
 </file>
 
@@ -3640,6 +3628,239 @@ public class InputManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour
+{
+    private PlayerMovementController movement;
+    private GrapplingHookController grapple;
+    private Rigidbody rb;
+
+    [Header("Sons - Movimento")]
+    [SerializeField] private string jumpSfx = "Jump";
+    [SerializeField] private string doubleJumpSfx = "DoubleJump";
+    [SerializeField] private string landSfx = "Land";
+    [SerializeField] private string footstepSfx = "Step";
+    [SerializeField] private string wallHitSfx = "WallHit";
+
+    [Header("Sons - Estado do Player")]
+    [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string deathFallSFX = "DeathFall";
+    [SerializeField] private string respawnSfx = "Respawn";
+    [SerializeField] private string timeSkillOnSfx = "TimeOn";
+    [SerializeField] private string timeSkillOffSfx = "TimeOff";
+
+    [Header("Sons - Grappling Hook")]
+    [SerializeField] private string grappleShootSfx = "GrappleShoot";
+    [SerializeField] private string grappleAttachSfx = "GrappleAttach";
+    [SerializeField] private string grappleReleaseSfx = "GrappleRelease";
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+    [SerializeField] private float wallHitMinForce = 5f;
+
+    [Header("Som - Vento")]
+    [SerializeField] private string windSfx = "Wind";
+    [SerializeField] private float windMinSpeed = 20f;
+    [SerializeField] private float windMaxSpeed = 60f;
+    [SerializeField] private float windFadeSpeed = 5f;
+
+    private float stepTimer;
+    private bool wasGrounded;
+    private bool didDoubleJump;
+    private bool canDoubleJumpSound;
+    private Vector3 lastPosition;
+
+    private bool wasGrappling;
+    private bool grappleJustStarted;
+
+    private bool hasLandedOnce = false;
+
+    private AudioSource windSource;
+
+
+    private void Awake()
+    {
+        movement = GetComponent<PlayerMovementController>();
+        grapple = GetComponent<GrapplingHookController>();
+        rb = movement.Rb;
+
+        wasGrounded = movement.isGrounded;
+        stepTimer = stepInterval;
+        lastPosition = transform.position;
+
+        windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+    }
+
+    private void OnEnable()
+    {
+        movement.OnGroundLanded += PlayLand;
+
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeStarted += PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeCanceled += PlayTimeSkillOff;
+
+            InputManager.Instance.OnJumpPerformed += HandleJumpAudio; // novo
+        }
+    }
+
+    private void OnDisable()
+    {
+        movement.OnGroundLanded -= PlayLand;
+
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeStarted -= PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeCanceled -= PlayTimeSkillOff;
+
+            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio; // novo
+        }
+    }
+
+    private void Update()
+    {
+        HandleFootsteps();
+        DetectRespawn();
+        HandleGrappleAudio();
+        HandleWindAudio();
+    }
+
+
+    private void HandleJumpAudio()
+    {
+        if (movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(jumpSfx);
+            didDoubleJump = false;
+        }
+        else if (canDoubleJumpSound && !didDoubleJump)
+        {
+            if (rb.linearVelocity.y > 1f )
+            {
+                AudioManager.instance.PlaySFX(doubleJumpSfx);
+                didDoubleJump = true;
+            }
+        }
+    }
+
+    private void HandleFootsteps()
+    {
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
+        {
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            AudioManager.instance.PlaySFX(footstepSfx);
+            stepTimer = stepInterval;
+        }
+    }
+
+    private void DetectRespawn()
+    {
+        float distance = Vector3.Distance(transform.position, lastPosition);
+        if (distance > 10f && wasGrounded && movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(respawnSfx);
+
+            if (windSource != null)
+            {
+                windSource.Stop();
+                windSource.Play(); // reinicia o loop, com volume zerado
+            }
+        }
+        lastPosition = transform.position;
+    }
+
+
+
+    private void HandleGrappleAudio()
+    {
+        if (grapple == null) return;
+
+        if (!wasGrappling && grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleShootSfx);
+            grappleJustStarted = true;
+        }
+
+        if (grappleJustStarted && grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleAttachSfx);
+            grappleJustStarted = false;
+        }
+
+        if (wasGrappling && !grapple.IsGrappling)
+        {
+            AudioManager.instance.PlaySFX(grappleReleaseSfx);
+            canDoubleJumpSound = true;
+        }
+
+        wasGrappling = grapple.IsGrappling;
+    }
+
+
+    private void HandleWindAudio()
+    {
+        if (windSource == null || rb == null) return;
+
+        float speed = rb.linearVelocity.magnitude;
+        float targetVolume = 0f;
+
+        if (speed > windMinSpeed)
+        {
+            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+        }
+
+        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+    }
+
+
+
+
+    private void PlayLand()
+    {
+        if (!hasLandedOnce)
+        {
+            hasLandedOnce = true;
+            return;
+        }
+
+        AudioManager.instance.PlaySFX(landSfx);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f)
+        {
+            if (collision.relativeVelocity.magnitude > wallHitMinForce)
+            {
+                AudioManager.instance.PlaySFX(wallHitSfx);
+            }
+        }
+    }
+
+    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
+    public void PlayRespawnManual()
+    {
+        AudioManager.instance.PlaySFX(respawnSfx);
+
+        if (windSource != null)
+            windSource.volume = 0f; // resetar o vento
+    }
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
+}
+</file>
+
 <file path="Assets/Scripts/PlayerMovementController.cs">
 // Local: Assets/Scripts/PlayerMovementController.cs
 
@@ -3770,7 +3991,11 @@ public class PlayerMovementController : MonoBehaviour
         }
 
         float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
-        velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+        if (velocityText != null)
+        {
+            velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
+            
+        }
     }
 
     private void CheckGroundedStatus()
