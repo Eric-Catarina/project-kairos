@@ -9,9 +9,9 @@ public class PlayerAudioHandler : MonoBehaviour
 
     [Header("Sons - Movimento")]
     [SerializeField] private string jumpSfx = "Jump";
-    [SerializeField] private string doubleJumpSfx = "DoubleJump";
+    //[SerializeField] private string doubleJumpSfx = "DoubleJump";
     [SerializeField] private string landSfx = "Land";
-    [SerializeField] private string footstepSfx = "Step";
+    [SerializeField] private string footstepSfx = "Footstep";
     [SerializeField] private string wallHitSfx = "WallHit";
 
     [Header("Sons - Estado do Player")]
@@ -53,6 +53,7 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private void Awake()
     {
+
         movement = GetComponent<PlayerMovementController>();
         grapple = GetComponent<GrapplingHookController>();
         rb = movement.Rb;
@@ -61,7 +62,14 @@ public class PlayerAudioHandler : MonoBehaviour
         stepTimer = stepInterval;
         lastPosition = transform.position;
 
-        windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        if (AudioManager.instance != null)
+        {
+            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
+        }
     }
 
     private void OnEnable()
@@ -106,14 +114,14 @@ public class PlayerAudioHandler : MonoBehaviour
             AudioManager.instance.PlaySFX(jumpSfx);
             didDoubleJump = false;
         }
-        else if (canDoubleJumpSound && !didDoubleJump)
+        /*else if (canDoubleJumpSound && !didDoubleJump)
         {
             if (rb.linearVelocity.y > 1f )
             {
                 AudioManager.instance.PlaySFX(doubleJumpSfx);
                 didDoubleJump = true;
             }
-        }
+        }*/
     }
 
     private void HandleFootsteps()
