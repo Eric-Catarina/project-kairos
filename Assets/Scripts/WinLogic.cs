@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SocialPlatforms.Impl;
 
 public class WinLogic : MonoBehaviour
 {
@@ -10,6 +11,7 @@ public class WinLogic : MonoBehaviour
 
         if (collision.gameObject.CompareTag("Player"))
         {
+            ScoreManager.Instance.EndLevelTimer();
             Destroy(collision.gameObject);
             sceneManager.LoadNextScene();
         }
