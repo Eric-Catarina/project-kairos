@@ -4625,6 +4625,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2659068723031217507, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3887213110585828035, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_Name
       value: Core
@@ -4672,6 +4676,22 @@ PrefabInstance:
     - target: {fileID: 6288892216577708504, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: maxSensitivityGainX
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: maxSensitivityGainY
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 7367121302637036677, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_ControllerManager.Controllers.Array.data[0].Input.Gain
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7367121302637036677, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_ControllerManager.Controllers.Array.data[1].Input.Gain
+      value: -2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
