@@ -38,7 +38,7 @@ public class ScoreManager : MonoBehaviour
     private void Start()
     {
 
-        StartCoroutine(WaitAndStartTimer(1f)); // Espera 1 segundo antes de iniciar o cronômetro
+        //StartCoroutine(WaitAndStartTimer(1f)); // Espera 1 segundo antes de iniciar o cronômetro
 
     }
 
@@ -69,6 +69,7 @@ public class ScoreManager : MonoBehaviour
     /// </summary>
     public void StartLevelTimer()
     {
+        if (_isTimerRunning) return;
         _levelTimer = 0f;
         _isTimerRunning = true;
         Debug.Log("Cronômetro do nível iniciado!");

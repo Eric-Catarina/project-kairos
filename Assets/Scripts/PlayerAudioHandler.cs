@@ -56,7 +56,7 @@ public class PlayerAudioHandler : MonoBehaviour
 
         movement = GetComponent<PlayerMovementController>();
         grapple = GetComponent<GrapplingHookController>();
-        rb = movement.Rb;
+        rb = GetComponent<Rigidbody>();
 
         wasGrounded = movement.isGrounded;
         stepTimer = stepInterval;
