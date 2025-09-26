@@ -10,7 +10,8 @@ public class PlayerMovementController : MonoBehaviour
 
     [Header("Estado Atual")]
     public bool isGrounded;
-    [SerializeField] private bool canDoubleJump;
+    private bool canDoubleJump;
+    
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
@@ -25,6 +26,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float grappleAirDrag = 0.5f;
 
     [Header("Configurações de Pulo")]
+    [SerializeField] private bool allowDoubleJumpFromGround = false;
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private float doubleJumpForce = 14f;
     [SerializeField] private float gravityMultiplier = 2.5f;
@@ -131,8 +133,7 @@ public class PlayerMovementController : MonoBehaviour
         {
             distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
         }
-
-        float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+        
         if (velocityText != null)
         {
             velocityText.text = "Velocidade: " + currentVelocityInKm.ToString("F2");
@@ -244,6 +245,10 @@ public class PlayerMovementController : MonoBehaviour
         if (coyoteTimeCounter > 0f || isGrounded)
         {
             Jump(jumpForce);
+            if (allowDoubleJumpFromGround)
+            {
+                canDoubleJump = true;
+            }
         }
         else if (canDoubleJump)
         {
