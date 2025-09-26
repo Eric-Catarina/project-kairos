@@ -11,7 +11,11 @@ public class WinLogic : MonoBehaviour
 
         if (collision.gameObject.CompareTag("Player"))
         {
-            ScoreManager.Instance.EndLevelTimer();
+            if (ScoreManager.Instance != null)
+            {
+                ScoreManager.Instance.EndLevelTimer();
+                
+            }
             Destroy(collision.gameObject);
             sceneManager.LoadNextScene();
         }
