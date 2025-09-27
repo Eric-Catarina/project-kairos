@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class UIManager : MonoBehaviour
+public class UIManagerOld : MonoBehaviour
 {
-    [Header("Referências de Painéis")]
+    [Header("Referï¿½ncias de Painï¿½is")]
     public GameObject[] panels;
 
     private GameObject activePanel;

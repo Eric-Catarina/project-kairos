@@ -9,7 +9,7 @@ public class UIJuice : MonoBehaviour
     [SerializeField] protected float duration = 0.5f;
     [SerializeField] protected float delay = 0f;
     [SerializeField] protected Ease easeType = Ease.OutBack;
-    [SerializeField] private Vector3 startScale = new Vector3(0.8f, 0.8f, 0.8f);
+    [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
 
     [Header("Comportamento")]
     [SerializeField] protected bool playOnEnable = false;
