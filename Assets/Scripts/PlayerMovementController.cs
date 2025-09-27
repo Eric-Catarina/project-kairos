@@ -10,7 +10,7 @@ public class PlayerMovementController : MonoBehaviour
 
     [Header("Estado Atual")]
     public bool isGrounded;
-    private bool canDoubleJump;
+    public bool canDoubleJump;
     
 
     [Header("Configurações de Movimento")]
@@ -290,6 +290,7 @@ public class PlayerMovementController : MonoBehaviour
 
     public void EnableDoubleJump()
     {
+        if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
     }
     private void ApplyLandingDampening()
