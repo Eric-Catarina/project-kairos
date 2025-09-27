@@ -9,7 +9,7 @@ public class PlayerAudioHandler : MonoBehaviour
 
     [Header("Sons - Movimento")]
     [SerializeField] private string jumpSfx = "Jump";
-    //[SerializeField] private string doubleJumpSfx = "DoubleJump";
+    [SerializeField] private string doubleJumpSfx = "DoubleJump";
     [SerializeField] private string landSfx = "Land";
     [SerializeField] private string footstepSfx = "Footstep";
     [SerializeField] private string wallHitSfx = "WallHit";
@@ -39,7 +39,6 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private float stepTimer;
     private bool wasGrounded;
-    private bool didDoubleJump;
     private bool canDoubleJumpSound;
     private Vector3 lastPosition;
 
@@ -112,16 +111,11 @@ public class PlayerAudioHandler : MonoBehaviour
         if (movement.isGrounded)
         {
             AudioManager.instance.PlaySFX(jumpSfx);
-            didDoubleJump = false;
         }
-        /*else if (canDoubleJumpSound && !didDoubleJump)
+        else if (!movement.isGrounded && doubleJumpSfx != null)
         {
-            if (rb.linearVelocity.y > 1f )
-            {
-                AudioManager.instance.PlaySFX(doubleJumpSfx);
-                didDoubleJump = true;
-            }
-        }*/
+            AudioManager.instance.PlaySFX(doubleJumpSfx);
+        }
     }
 
     private void HandleFootsteps()
