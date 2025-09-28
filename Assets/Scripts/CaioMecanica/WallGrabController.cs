@@ -16,7 +16,7 @@ public class WallGrabController : MonoBehaviour
 
     // Referências
     private Rigidbody rb;
-    private PlayerMovementController playerMovement;
+    private PlayerMovimentCaio playerMovement;
     private InputManager inputManager;
     
     // Estado da mecânica
@@ -31,7 +31,7 @@ public class WallGrabController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        playerMovement = GetComponent<PlayerMovementController>();
+        playerMovement = GetComponent<PlayerMovimentCaio>();
         inputManager = InputManager.Instance;
     }
 

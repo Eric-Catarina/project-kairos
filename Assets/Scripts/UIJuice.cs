@@ -45,12 +45,19 @@ public class UIJuice : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Deixa o painel ativo e inicia a animação de entrada.
+    /// Útil para chamar a partir de botões ou outros scripts.
+    /// </summary>
     public void SetActiveAndPlay()
     {
         gameObject.SetActive(true);
         PlayAnimation();
     }
 
+    /// <summary>
+    /// Inicia a animação de "entrada" (por exemplo, abrir uma tela).
+    /// </summary>
     public virtual void PlayAnimation()
     {
         KillExistingSequence();
@@ -64,6 +71,9 @@ public class UIJuice : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Inicia a animação de "saída" (por exemplo, fechar uma tela).
+    /// </summary>
     public virtual void PlayReverseAnimation()
     {
         KillExistingSequence();
@@ -77,11 +87,15 @@ public class UIJuice : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Cria a sequência de animação de entrada (aparecer/abrir).
+    /// </summary>
     private void CreateForwardSequence()
     {
         gameObject.SetActive(true);
         canvasGroup.blocksRaycasts = true;
 
+        // Define o estado inicial antes da animação
         canvasGroup.alpha = 0f;
         rectTransform.localScale = startScale;
 
@@ -95,26 +109,32 @@ public class UIJuice : MonoBehaviour
         sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
         sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
 
-        sequence.SetUpdate(true); // <-- CORREÇÃO APLICADA AQUI
+        // Pausa a sequência para que o método Play() possa controlá-la
         sequence.Pause();
     }
 
+    /// <summary>
+    /// Cria a sequência de animação de saída (desaparecer/fechar).
+    /// </summary>
     private void CreateReverseSequence()
     {
-
+        // Impede cliques durante a animação de saída
         canvasGroup.blocksRaycasts = false;
 
         sequence = DOTween.Sequence();
 
+        // O delay não é aplicado na animação reversa por padrão, mas pode ser adicionado se necessário
         sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
         sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
         sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
 
-        sequence.SetUpdate(true); 
+        // Pausa a sequência para que o método Play() possa controlá-la
         sequence.Pause();
     }
 
-
+    /// <summary>
+    /// Para e destrói qualquer sequência de animação ativa para evitar sobreposições.
+    /// </summary>
     private void KillExistingSequence()
     {
         if (sequence != null && sequence.IsActive())
