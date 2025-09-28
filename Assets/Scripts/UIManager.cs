@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/UI/UIManager.cs
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -48,7 +46,7 @@ public class UIManager : MonoBehaviour
         if (!registeredPanels.ContainsKey(panel.PanelType))
         {
             registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
+            panel.gameObject.SetActive(false);
         }
     }
 
@@ -81,20 +79,28 @@ public class UIManager : MonoBehaviour
         {
             panelStack.Peek().Show();
         }
-
+	Time.timeScale = 1;
         UpdateInputState();
     }
 
     private void HandlePauseToggle()
     {
-        if (panelStack.Count > 0)
+        if (panelStack.Count > 0 && panelStack.Peek().PanelType == UIPanelType.Settings) // Supondo que Settings é o painel de pausa
         {
             CloseCurrentPanel();
+            Time.timeScale = 1;
         }
-        else
+        else if (panelStack.Count == 0)
         {
             ShowPanel(UIPanelType.Settings);
+            Time.timeScale = 0;
         }
+    }
+
+    public void CloseCurrentPanelAndUnpause()
+    {
+        CloseCurrentPanel();
+        Time.timeScale = 1; // Corrige o erro e garante que despausa.
     }
 
     private void UpdateInputState()
