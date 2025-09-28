@@ -7,12 +7,13 @@ public class PlayerMovementController : MonoBehaviour
 {
     public event Action OnGroundLanded;
     public event Action<float> OnHorizontalVelocityChanged;
+    public event Action OnJumped;
+    public event Action OnLeftGround; // Novo Evento
 
     [Header("Estado Atual")]
     public bool isGrounded;
     public bool canDoubleJump;
     
-
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
@@ -174,9 +175,13 @@ public class PlayerMovementController : MonoBehaviour
             }
         }
 
-        if (wasGrounded && !isGrounded && !isJumping)
+        if (wasGrounded && !isGrounded)
         {
-            coyoteTimeCounter = coyoteTimeDuration;
+            if(!isJumping) // Se não está pulando, significa que caiu
+            {
+                 OnLeftGround?.Invoke();
+                 coyoteTimeCounter = coyoteTimeDuration;
+            }
         }
     }
 
@@ -278,6 +283,8 @@ public class PlayerMovementController : MonoBehaviour
         {
             ApplyJumpForwardBoost();
         }
+        
+        OnJumped?.Invoke();
     }
 
     private void ApplyExtraGravity()
