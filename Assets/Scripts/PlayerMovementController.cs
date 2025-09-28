@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/PlayerMovementController.cs
-
 using TMPro;
 using System;
 using UnityEngine;
@@ -12,7 +10,8 @@ public class PlayerMovementController : MonoBehaviour
 
     [Header("Estado Atual")]
     public bool isGrounded;
-    [SerializeField] private bool canDoubleJump;
+    public bool canDoubleJump;
+    
 
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
@@ -27,9 +26,16 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float grappleAirDrag = 0.5f;
 
     [Header("Configurações de Pulo")]
+    [SerializeField] private bool allowDoubleJumpFromGround = false;
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private float doubleJumpForce = 14f;
     [SerializeField] private float gravityMultiplier = 2.5f;
+
+    [Header("Impulso de Velocidade no Pulo")]
+    [Tooltip("Força do impulso para a frente ao pular enquanto se move.")]
+    [SerializeField] private float jumpForwardBoost = 5f;
+    [Tooltip("Multiplicador da velocidade ao aterrissar (0 = parada total, 1 = sem perda de velocidade).")]
+    [SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
 
     [Header("Pulo Variável (Low/High Jump)")]
     [Tooltip("Multiplicador aplicado na velocidade Y ao soltar o pulo, para um pulo mais curto.")]
@@ -44,11 +50,11 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Bunny Hop")]
     [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
     [SerializeField] private float bunnyHopWindow = 0.1f;
-    
+
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
     [SerializeField] private LayerMask groundLayer;
-    
+
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
@@ -60,6 +66,7 @@ public class PlayerMovementController : MonoBehaviour
     private float coyoteTimeCounter;
     private float jumpBufferCounter;
     private float timeSinceLanded;
+    private float currentVelocityInKm;
     private bool isJumping;
 
     private Vector3 _groundVelocity;
@@ -70,7 +77,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
-        baseAirDrag =  airDrag;
+        baseAirDrag = airDrag;
     }
 
     private void OnEnable()
@@ -96,13 +103,14 @@ public class PlayerMovementController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        UpdateCurrentVelocityInKm();
         CheckGroundedStatus();
         ApplyDrag();
         LimitVelocity();
         MovePlayer();
         ApplyExtraGravity();
     }
-    
+
     private void SetMoveInput(Vector2 input)
     {
         moveInput = input;
@@ -114,7 +122,7 @@ public class PlayerMovementController : MonoBehaviour
         {
             coyoteTimeCounter -= Time.deltaTime;
         }
-        
+
         timeSinceLanded += Time.deltaTime;
         jumpBufferCounter -= Time.deltaTime;
     }
@@ -125,26 +133,23 @@ public class PlayerMovementController : MonoBehaviour
         {
             distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
         }
-
-        float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+        
         if (velocityText != null)
         {
-            velocityText.text = "Velocidade: " + velocityInKm.ToString("F2");
-            
+            velocityText.text = "Velocidade: " + currentVelocityInKm.ToString("F2");
         }
     }
 
     private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
-        
+
         RaycastHit hitInfo;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, out hitInfo, playerHeight * 0.5f + 0.2f, groundLayer);
 
         if (isGrounded && hitInfo.rigidbody != null)
         {
             _groundVelocity = hitInfo.rigidbody.linearVelocity;
-            
         }
         else
         {
@@ -153,6 +158,11 @@ public class PlayerMovementController : MonoBehaviour
 
         if (!wasGrounded && isGrounded)
         {
+            if (isJumping && currentVelocityInKm <= 100f)
+            {
+                ApplyLandingDampening();
+            }
+
             isJumping = false;
             timeSinceLanded = 0f;
             canDoubleJump = false;
@@ -163,7 +173,7 @@ public class PlayerMovementController : MonoBehaviour
                 Jump(jumpForce);
             }
         }
-        
+
         if (wasGrounded && !isGrounded && !isJumping)
         {
             coyoteTimeCounter = coyoteTimeDuration;
@@ -177,7 +187,7 @@ public class PlayerMovementController : MonoBehaviour
             rb.linearDamping = grappleAirDrag;
             return;
         }
-        
+
         if (isGrounded)
         {
             rb.linearDamping = (timeSinceLanded > bunnyHopWindow) ? groundDrag : airDrag;
@@ -198,7 +208,7 @@ public class PlayerMovementController : MonoBehaviour
         {
             rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
         }
-        else 
+        else
         {
             rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
@@ -208,10 +218,12 @@ public class PlayerMovementController : MonoBehaviour
     {
         float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        if(horizontalVelocity.magnitude > 200 /3.6f){
+        if (horizontalVelocity.magnitude > 200 / 3.6f)
+        {
             airDrag = baseAirDrag * 1.2f;
         }
-        else{
+        else
+        {
             airDrag = baseAirDrag;
         }
 
@@ -233,6 +245,10 @@ public class PlayerMovementController : MonoBehaviour
         if (coyoteTimeCounter > 0f || isGrounded)
         {
             Jump(jumpForce);
+            if (allowDoubleJumpFromGround)
+            {
+                canDoubleJump = true;
+            }
         }
         else if (canDoubleJump)
         {
@@ -257,6 +273,11 @@ public class PlayerMovementController : MonoBehaviour
 
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) + _groundVelocity;
         rb.AddForce(transform.up * jumpStrength, ForceMode.Impulse);
+
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            ApplyJumpForwardBoost();
+        }
     }
 
     private void ApplyExtraGravity()
@@ -269,6 +290,27 @@ public class PlayerMovementController : MonoBehaviour
 
     public void EnableDoubleJump()
     {
+        if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
+    }
+    private void ApplyLandingDampening()
+    {
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Vector3 dampenedVelocity = horizontalVelocity * landingVelocityDampening;
+        rb.linearVelocity = new Vector3(dampenedVelocity.x, rb.linearVelocity.y, dampenedVelocity.z);
+    }
+
+    private void ApplyJumpForwardBoost()
+    {
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            Vector3 forwardDirection = orientation.forward;
+            forwardDirection.y = 0;
+            rb.AddForce(forwardDirection.normalized * jumpForwardBoost, ForceMode.Impulse);
+        }
+    }
+    private void UpdateCurrentVelocityInKm()
+    {
+        currentVelocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
     }
 }
