@@ -110,6 +110,7 @@ public class UIJuice : MonoBehaviour
         sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
 
         // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.SetUpdate(true); // <-- CORREÇÃO APLICADA AQUI
         sequence.Pause();
     }
 
@@ -129,6 +130,7 @@ public class UIJuice : MonoBehaviour
         sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
 
         // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.SetUpdate(true); // <-- CORREÇÃO APLICADA AQUI
         sequence.Pause();
     }
 
