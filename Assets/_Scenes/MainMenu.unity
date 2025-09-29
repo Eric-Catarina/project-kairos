@@ -893,6 +893,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6051294652306955140, guid: 60a0407e577371d4c98e4dd7bf180e50, type: 3}
   m_PrefabInstance: {fileID: 1576806727}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1580382707 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6189197513460953321, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
+  m_PrefabInstance: {fileID: 1989417112}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d64f8130b069f4047b79572f50f402b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1989417112
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1601,6 +1612,10 @@ PrefabInstance:
       value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Mode
       value: 1
       objectReference: {fileID: 0}
@@ -1611,7 +1626,7 @@ PrefabInstance:
     - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1580382707}
     - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Target
       value: 
@@ -1629,12 +1644,20 @@ PrefabInstance:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: LoadNextScene
+      objectReference: {fileID: 0}
+    - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_MethodName
       value: PlayReverseAnimation
       objectReference: {fileID: 0}
     - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[2].m_MethodName
       value: SwitchToGameplay
+      objectReference: {fileID: 0}
+    - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: SceneManagerLogic, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 8777069388280760291, guid: 7771cae87ed198a428f5e73af1ef5624, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_TargetAssemblyTypeName
