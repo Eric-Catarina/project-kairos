@@ -69,6 +69,20 @@ public class UIManager : MonoBehaviour
         panelStack.Push(panelToShow);
         UpdateInputState();
     }
+    public void OpenSettingsPanel()
+    {
+        ShowPanel(UIPanelType.Settings);
+    }
+    public void CloseSettingsPanel()
+    {
+        if (panelStack.Count == 0) return;
+
+        UIPanel topPanel = panelStack.Peek();
+        if (topPanel.PanelType == UIPanelType.Settings)
+        {
+            CloseCurrentPanel();
+        }
+    }
 
     public void CloseCurrentPanel()
     {
