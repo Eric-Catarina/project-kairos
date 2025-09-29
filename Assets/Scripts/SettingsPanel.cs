@@ -2,6 +2,20 @@
 
 public class SettingsPanel : UIPanel
 {
-    // No futuro, você pode adicionar lógica específica do menu de configurações aqui,
-    // como carregar valores, etc.
+
+    void Start()
+    {
+        DontDestroyOnLoad(gameObject);
+        UIManager.Instance.RegisterPanel(this);
+    }
+
+    void OnDestroy()
+    {
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UnregisterPanel(this.PanelType);
+        }
+    }
+
+
 }

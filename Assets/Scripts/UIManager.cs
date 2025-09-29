@@ -26,6 +26,7 @@ public class UIManager : MonoBehaviour
     {
         if (InputManager.Instance == null) return;
         InputManager.Instance.OnPausePressed += HandlePauseToggle;
+        FindAndRegisterAllPanels();
     }
 
     private void OnDisable()
@@ -49,6 +50,14 @@ public class UIManager : MonoBehaviour
         {
             registeredPanels.Add(panel.PanelType, panel);
             panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
+        }
+    }
+
+    public void UnregisterPanel(UIPanelType panelType)
+    {
+        if (registeredPanels.ContainsKey(panelType))
+        {
+            registeredPanels.Remove(panelType);
         }
     }
 
@@ -107,6 +116,7 @@ public class UIManager : MonoBehaviour
         }
         else
         {
+            FindAndRegisterAllPanels();
             ShowPanel(UIPanelType.Settings);
         }
     }

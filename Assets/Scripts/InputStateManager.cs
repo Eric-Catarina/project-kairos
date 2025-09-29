@@ -2,6 +2,7 @@
 
 using UnityEngine;
 
+[System.Serializable]
 public enum InputState
 {
     Gameplay,
@@ -42,7 +43,7 @@ public class InputStateManager : MonoBehaviour
     {
         if (_playerControls == null) return;
 
-        
+
         switch (newState)
         {
             case InputState.Gameplay:
@@ -65,5 +66,14 @@ public class InputStateManager : MonoBehaviour
                 Cursor.visible = true;
                 break;
         }
+    }
+
+    public void SwitchToGameplay()
+    {
+        SwitchState(InputState.Gameplay);
+    }
+    public void SwitchToUI()
+    {
+        SwitchState(InputState.UI);
     }
 }
