@@ -43,6 +43,7 @@ public class UIManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        UnregisterAllPanels();
         FindAndRegisterAllPanels();
     }
 
@@ -56,6 +57,13 @@ public class UIManager : MonoBehaviour
         }
         SyncPanelStackView();
     }
+    private void UnregisterAllPanels()
+    {
+        registeredPanels.Clear();
+        panelStack.Clear();
+        SyncPanelStackView();
+    }
+
 
     public void RegisterPanel(UIPanel panel)
     {
