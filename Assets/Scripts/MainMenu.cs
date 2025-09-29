@@ -1,9 +1,7 @@
 using UnityEngine;
 
-[RequireComponent(typeof(UIPanel))]
-public class MainMenu : MonoBehaviour
+public class MainMenu : UIPanel
 {
-    public UIPanel uIPanel;
     void Start()
     {
         if (InputStateManager.Instance == null)
@@ -12,13 +10,7 @@ public class MainMenu : MonoBehaviour
             return;
         }
         InputStateManager.Instance.SwitchState(InputState.UI);
-        UIManager.Instance.RegisterPanel(uIPanel);
         UIManager.Instance.ShowPanel(UIPanelType.MainMenu);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
 }

@@ -2,13 +2,16 @@
 
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
     private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
+    
+    [SerializeField, HideInInspector] private Stack<UIPanel> panelStack = new Stack<UIPanel>();
+    [SerializeField] private List<UIPanel> panelStackView = new List<UIPanel>(); // Apenas para visualização no inspetor
 
     private void Awake()
     {
@@ -18,21 +21,29 @@ public class UIManager : MonoBehaviour
             return;
         }
         Instance = this;
-        
-        FindAndRegisterAllPanels();
     }
 
     private void OnEnable()
     {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed += HandlePauseToggle;
-        FindAndRegisterAllPanels();
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnPausePressed += HandlePauseToggle;
+        }
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void OnDisable()
     {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnPausePressed -= HandlePauseToggle;
+        }
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindAndRegisterAllPanels();
     }
 
     private void FindAndRegisterAllPanels()
@@ -41,7 +52,9 @@ public class UIManager : MonoBehaviour
         foreach (UIPanel panel in allPanels)
         {
             RegisterPanel(panel);
+
         }
+        SyncPanelStackView();
     }
 
     public void RegisterPanel(UIPanel panel)
@@ -49,15 +62,15 @@ public class UIManager : MonoBehaviour
         if (!registeredPanels.ContainsKey(panel.PanelType))
         {
             registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
+            // panel.gameObject.SetActive(false);
         }
     }
 
-    public void UnregisterPanel(UIPanelType panelType)
+    public void UnregisterPanel(UIPanel panel)
     {
-        if (registeredPanels.ContainsKey(panelType))
+        if (registeredPanels.ContainsKey(panel.PanelType))
         {
-            registeredPanels.Remove(panelType);
+            registeredPanels.Remove(panel.PanelType);
         }
     }
 
@@ -76,21 +89,8 @@ public class UIManager : MonoBehaviour
 
         panelToShow.Show();
         panelStack.Push(panelToShow);
+        SyncPanelStackView();
         UpdateInputState();
-    }
-    public void OpenSettingsPanel()
-    {
-        ShowPanel(UIPanelType.Settings);
-    }
-    public void CloseSettingsPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel topPanel = panelStack.Peek();
-        if (topPanel.PanelType == UIPanelType.Settings)
-        {
-            CloseCurrentPanel();
-        }
     }
 
     public void CloseCurrentPanel()
@@ -99,6 +99,7 @@ public class UIManager : MonoBehaviour
 
         UIPanel panelToClose = panelStack.Pop();
         panelToClose.Hide();
+        SyncPanelStackView();
 
         if (panelStack.Count > 0)
         {
@@ -110,15 +111,15 @@ public class UIManager : MonoBehaviour
 
     private void HandlePauseToggle()
     {
-        if (panelStack.Count > 0)
+        if (panelStack.Count > 0 && panelStack.Peek().PanelType == UIPanelType.Settings)
         {
             CloseCurrentPanel();
         }
         else
         {
-            FindAndRegisterAllPanels();
             ShowPanel(UIPanelType.Settings);
         }
+
     }
 
     private void UpdateInputState()
@@ -129,7 +130,28 @@ public class UIManager : MonoBehaviour
         }
         else
         {
+            Debug.Log("Switching to Gameplay state");
             InputStateManager.Instance.SwitchState(InputState.Gameplay);
         }
+    }
+
+    public void OpenSettingsPanel()
+    {
+        ShowPanel(UIPanelType.Settings);
+    }
+    
+    public void CloseSettingsPanel()
+    {
+        
+        if (panelStack.Count > 0 && panelStack.Peek().PanelType == UIPanelType.Settings)
+        {
+            CloseCurrentPanel();
+        }
+    }
+
+    private void SyncPanelStackView()
+    {
+        panelStackView.Clear();
+        panelStackView.AddRange(panelStack);
     }
 }

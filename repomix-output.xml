@@ -61,16 +61,20 @@ Assets/
     AudioManager.cs
     BasePowerRing.cs
     DeathFogLogic.cs
+    DontDestroyOnLoad.cs
     DoubleJumpResetRing.cs
     GameSettingsManager.cs
+    GameSystem.cs
     GrappleResetRing.cs
     GrapplingHookController.cs
     InputManager.cs
     InputStateManager.cs
     LevelData.cs
+    MainMenu.cs
     MouseSensitivitySlider.cs
     MovingPlatform.cs
     PatrolMovement.cs
+    PlayerAnimatorController.cs
     PlayerAudioHandler.cs
     PlayerLookController.cs
     PlayerMovementController.cs
@@ -394,78 +398,6 @@ public class DeathFogLogic : MonoBehaviour
         {
             Destroy(collision.gameObject);
             sceneManager.RestartScene();
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/InputStateManager.cs">
-// Local: Assets/Scripts/InputStateManager.cs
-
-using UnityEngine;
-
-public enum InputState
-{
-    Gameplay,
-    UI
-}
-
-/// <summary>
-/// Gerencia o estado do input, alternando entre os Action Maps (Gameplay, UI)
-/// e controlando o estado do cursor do mouse.
-/// Implementa o padrão Singleton para acesso global.
-/// </summary>
-public class InputStateManager : MonoBehaviour
-{
-    public static InputStateManager Instance { get; private set; }
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    public void Initialize(PlayerControls playerControls)
-    {
-        _playerControls = playerControls;
-    }
-
-    /// <summary>
-    /// O método central para alternar o contexto de input do jogo.
-    /// </summary>
-    /// <param name="newState">O novo estado para o qual o input deve mudar.</param>
-    public void SwitchState(InputState newState)
-    {
-        if (_playerControls == null) return;
-
-        
-        switch (newState)
-        {
-            case InputState.Gameplay:
-                // Ativa os controles de gameplay
-                _playerControls.Player.Enable();
-                _playerControls.UI.Disable();
-
-                // Esconde e trava o cursor no centro da tela
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-                break;
-
-            case InputState.UI:
-                // Ativa os controles de UI e desativa os de gameplay
-                _playerControls.UI.Enable();
-                _playerControls.Player.Disable();
-
-                // Libera e mostra o cursor para interagir com a UI
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-                break;
         }
     }
 }
@@ -2492,6 +2424,20 @@ public abstract class BasePowerUpRing : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/DontDestroyOnLoad.cs">
+using UnityEngine;
+
+public class DontDestroyOnLoad : MonoBehaviour
+{
+
+    void Awake()
+    {
+        DontDestroyOnLoad(gameObject);
+    }
+
+}
+</file>
+
 <file path="Assets/Scripts/DoubleJumpResetRing.cs">
 using UnityEngine;
 
@@ -2508,6 +2454,35 @@ public class DoubleJumpResetRing : BasePowerUpRing
 }
 </file>
 
+<file path="Assets/Scripts/GameSystem.cs">
+using UnityEngine;
+
+public class GameSystem : MonoBehaviour
+{
+    public static GameSystem Instance { get; private set; }
+    void Awake()
+    {
+          if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
+}
+</file>
+
 <file path="Assets/Scripts/GrappleResetRing.cs">
 using UnityEngine;
 
@@ -2520,6 +2495,200 @@ public class GrappleResetRing : BasePowerUpRing
         {
             grappleController.ResetGrapple();
         }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/InputManager.cs">
+// Local: Assets/Scripts/InputManager.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(InputStateManager))]
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public PlayerControls PlayerControls => _playerControls;
+
+    // Eventos de Ações do Jogador
+    public event Action<Vector2> OnMove;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+    public event Action OnSlowTimeStarted;
+    public event Action OnSlowTimeCanceled;
+    
+    // Eventos de Jogo (Debug/Sistema)
+    public event Action OnLevelFinished;
+    public event Action OnLevelRestarted;
+    public event Action OnPausePressed;
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        
+        InputStateManager stateManager = GetComponent<InputStateManager>();
+        stateManager.Initialize(_playerControls);
+    }
+
+    private void Start()
+    {
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Enable();
+        
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
+        
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
+        
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
+        
+        _playerControls.Player.Pause.performed += HandlePausePressed;
+        _playerControls.UI.Unpause.performed += HandlePausePressed;
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
+        
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
+        
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
+        
+        _playerControls.Player.Pause.performed -= HandlePausePressed;
+        _playerControls.UI.Unpause.performed -= HandlePausePressed;
+        
+        _playerControls.Disable();
+    }
+
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
+    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
+    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
+}
+</file>
+
+<file path="Assets/Scripts/InputStateManager.cs">
+// Local: Assets/Scripts/InputStateManager.cs
+
+using UnityEngine;
+
+[System.Serializable]
+public enum InputState
+{
+    Gameplay,
+    UI
+}
+
+/// <summary>
+/// Gerencia o estado do input, alternando entre os Action Maps (Gameplay, UI)
+/// e controlando o estado do cursor do mouse.
+/// Implementa o padrão Singleton para acesso global.
+/// </summary>
+public class InputStateManager : MonoBehaviour
+{
+    public static InputStateManager Instance { get; private set; }
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    public void Initialize(PlayerControls playerControls)
+    {
+        _playerControls = playerControls;
+    }
+
+    /// <summary>
+    /// O método central para alternar o contexto de input do jogo.
+    /// </summary>
+    /// <param name="newState">O novo estado para o qual o input deve mudar.</param>
+    public void SwitchState(InputState newState)
+    {
+        if (_playerControls == null) return;
+
+
+        switch (newState)
+        {
+            case InputState.Gameplay:
+                // Ativa os controles de gameplay
+                _playerControls.Player.Enable();
+                _playerControls.UI.Disable();
+
+                // Esconde e trava o cursor no centro da tela
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                break;
+
+            case InputState.UI:
+                // Ativa os controles de UI e desativa os de gameplay
+                _playerControls.UI.Enable();
+                _playerControls.Player.Disable();
+
+                // Libera e mostra o cursor para interagir com a UI
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                break;
+        }
+    }
+
+    public void SwitchToGameplay()
+    {
+        SwitchState(InputState.Gameplay);
+    }
+    public void SwitchToUI()
+    {
+        SwitchState(InputState.UI);
     }
 }
 </file>
@@ -2642,13 +2811,73 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
 }
 </file>
 
-<file path="Assets/Scripts/SettingsPanel.cs">
-// Local: Assets/Scripts/UI/SettingsPanel.cs
+<file path="Assets/Scripts/PlayerAnimatorController.cs">
+// Local: Assets/Scripts/PlayerAnimationController.cs
 
-public class SettingsPanel : UIPanel
+using UnityEngine;
+
+[RequireComponent(typeof(Animator))]
+public class PlayerAnimationController : MonoBehaviour
 {
-    // No futuro, você pode adicionar lógica específica do menu de configurações aqui,
-    // como carregar valores, etc.
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+
+    private Animator _animator;
+
+    private readonly int _hashHorizontalSpeed = Animator.StringToHash("HorizontalSpeed");
+    private readonly int _hashIsGrounded = Animator.StringToHash("IsGrounded");
+    private readonly int _hashJump = Animator.StringToHash("JumpTrigger");
+
+    private void Awake()
+    {
+        _animator = GetComponent<Animator>();
+    }
+
+    private void OnEnable()
+    {
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não está atribuído no PlayerAnimationController.");
+            enabled = false;
+            return;
+        }
+        
+        playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        playerMovementController.OnJumped += HandleJump;
+        playerMovementController.OnGroundLanded += HandleLand;
+        playerMovementController.OnLeftGround += HandleLeftGround;
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController == null) return;
+        
+        playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        playerMovementController.OnJumped -= HandleJump;
+        playerMovementController.OnGroundLanded -= HandleLand;
+        playerMovementController.OnLeftGround -= HandleLeftGround;
+    }
+
+    private void HandleVelocityChanged(float horizontalSpeed)
+    {
+        _animator.SetFloat(_hashHorizontalSpeed, horizontalSpeed);
+    }
+
+    private void HandleJump()
+    {
+        _animator.SetBool(_hashIsGrounded, false);
+        _animator.SetTrigger(_hashJump);
+    }
+    
+    private void HandleLand()
+    {
+        _animator.SetBool(_hashIsGrounded, true);
+    }
+
+    private void HandleLeftGround()
+    {
+        _animator.SetBool(_hashIsGrounded, false);
+    }
 }
 </file>
 
@@ -2805,120 +3034,6 @@ public class UIJuice : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/UIManager.cs">
-// Local: Assets/Scripts/UI/UIManager.cs
-
-using System.Collections.Generic;
-using UnityEngine;
-
-public class UIManager : MonoBehaviour
-{
-    public static UIManager Instance { get; private set; }
-
-    private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        
-        FindAndRegisterAllPanels();
-    }
-
-    private void OnEnable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed += HandlePauseToggle;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
-    }
-
-    private void FindAndRegisterAllPanels()
-    {
-        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (UIPanel panel in allPanels)
-        {
-            RegisterPanel(panel);
-        }
-    }
-
-    public void RegisterPanel(UIPanel panel)
-    {
-        if (!registeredPanels.ContainsKey(panel.PanelType))
-        {
-            registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
-        }
-    }
-
-    public void ShowPanel(UIPanelType panelType)
-    {
-        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
-        {
-            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
-            return;
-        }
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Hide();
-        }
-
-        panelToShow.Show();
-        panelStack.Push(panelToShow);
-        UpdateInputState();
-    }
-
-    public void CloseCurrentPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel panelToClose = panelStack.Pop();
-        panelToClose.Hide();
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Show();
-        }
-
-        UpdateInputState();
-    }
-
-    private void HandlePauseToggle()
-    {
-        if (panelStack.Count > 0)
-        {
-            CloseCurrentPanel();
-        }
-        else
-        {
-            ShowPanel(UIPanelType.Settings);
-        }
-    }
-
-    private void UpdateInputState()
-    {
-        if (panelStack.Count > 0)
-        {
-            InputStateManager.Instance.SwitchState(InputState.UI);
-        }
-        else
-        {
-            InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/UIPanel.cs">
 // Local: Assets/Scripts/UI/UIPanel.cs
 
@@ -2963,21 +3078,6 @@ public abstract class UIPanel : MonoBehaviour
         // O mesmo aqui.
         UiJuice.PlayReverseAnimation();
     }
-}
-</file>
-
-<file path="Assets/Scripts/UIPanelType.cs">
-// Local: Assets/Scripts/UI/UIPanelType.cs
-
-public enum UIPanelType
-{
-    // Painéis que bloqueiam o input do jogador
-    Settings,
-    PauseMenu,
-    // Adicione outros painéis aqui (ex: Inventory, Map)
-
-    // Painéis que NÃO bloqueiam o input (HUD)
-    HUD 
 }
 </file>
 
@@ -3266,115 +3366,29 @@ public class GameSettingsManager : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/InputManager.cs">
-// Local: Assets/Scripts/InputManager.cs
-
-using System;
+<file path="Assets/Scripts/MainMenu.cs">
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(InputStateManager))]
-public class InputManager : MonoBehaviour
+public class MainMenu : UIPanel
 {
-    public static InputManager Instance { get; private set; }
-
-    public PlayerControls PlayerControls => _playerControls;
-
-    // Eventos de Ações do Jogador
-    public event Action<Vector2> OnMove;
-    public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-    public event Action OnSlowTimeStarted;
-    public event Action OnSlowTimeCanceled;
-    
-    // Eventos de Jogo (Debug/Sistema)
-    public event Action OnLevelFinished;
-    public event Action OnLevelRestarted;
-    public event Action OnPausePressed;
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
+    public UIPanel uIPanel;
+    void Start()
     {
-        if (Instance != null && Instance != this)
+        if (InputStateManager.Instance == null)
         {
-            Destroy(gameObject);
+            Debug.LogError("InputStateManager não encontrado na cena.");
             return;
         }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        _playerControls = new PlayerControls();
-        
-        InputStateManager stateManager = GetComponent<InputStateManager>();
-        stateManager.Initialize(_playerControls);
+        InputStateManager.Instance.SwitchState(InputState.UI);
+        // UIManager.Instance.RegisterPanel(uIPanel);
+        // UIManager.Instance.ShowPanel(UIPanelType.MainMenu);
     }
 
-    private void Start()
+    // Update is called once per frame
+    void Update()
     {
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
+
     }
-
-    private void OnEnable()
-    {
-        _playerControls.Enable();
-        
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-
-        _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-        
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
-        
-        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
-        
-        _playerControls.Player.Pause.performed += HandlePausePressed;
-        _playerControls.UI.Unpause.performed += HandlePausePressed;
-    }
-
-    private void OnDisable()
-    {
-        if (_playerControls == null) return;
-
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-        
-        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
-        
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
-        
-        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
-        
-        _playerControls.Player.Pause.performed -= HandlePausePressed;
-        _playerControls.UI.Unpause.performed -= HandlePausePressed;
-        
-        _playerControls.Disable();
-    }
-
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
-    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
-    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
-    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
-    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
-    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }
 </file>
 
@@ -3569,6 +3583,46 @@ public class PlayerLookController : MonoBehaviour
 
         playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
+}
+</file>
+
+<file path="Assets/Scripts/SettingsPanel.cs">
+// Local: Assets/Scripts/UI/SettingsPanel.cs
+
+public class SettingsPanel : UIPanel
+{
+
+    void Start()
+    {
+        DontDestroyOnLoad(gameObject);
+        UIManager.Instance.RegisterPanel(this);
+    }
+
+    void OnDestroy()
+    {
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UnregisterPanel(this.PanelType);
+        }
+    }
+
+
+}
+</file>
+
+<file path="Assets/Scripts/UIPanelType.cs">
+// Local: Assets/Scripts/UI/UIPanelType.cs
+
+public enum UIPanelType
+{
+    // Painéis que bloqueiam o input do jogador
+    Settings,
+    PauseMenu,
+    // Adicione outros painéis aqui (ex: Inventory, Map)
+
+    // Painéis que NÃO bloqueiam o input (HUD)
+    HUD,
+    MainMenu
 }
 </file>
 
@@ -3978,6 +4032,143 @@ public class AudioManager : MonoBehaviour
         }
 
         Debug.Log($"Nenhuma mЩsica atribuьda para a cena: {sceneName}");
+    }
+}
+</file>
+
+<file path="Assets/Scripts/UIManager.cs">
+// Local: Assets/Scripts/UI/UIManager.cs
+
+using System.Collections.Generic;
+using UnityEngine;
+
+public class UIManager : MonoBehaviour
+{
+    public static UIManager Instance { get; private set; }
+
+    private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
+    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        
+        FindAndRegisterAllPanels();
+    }
+
+    private void OnEnable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnPausePressed += HandlePauseToggle;
+        FindAndRegisterAllPanels();
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
+    }
+
+    private void FindAndRegisterAllPanels()
+    {
+        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (UIPanel panel in allPanels)
+        {
+            RegisterPanel(panel);
+        }
+    }
+    public void RegisterPanel(UIPanel panel)
+    {
+        if (!registeredPanels.ContainsKey(panel.PanelType))
+        {
+            registeredPanels.Add(panel.PanelType, panel);
+            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
+        }
+    }
+
+    public void UnregisterPanel(UIPanelType panelType)
+    {
+        if (registeredPanels.ContainsKey(panelType))
+        {
+            registeredPanels.Remove(panelType);
+        }
+    }
+
+    public void ShowPanel(UIPanelType panelType)
+    {
+        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
+        {
+            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
+            return;
+        }
+
+        if (panelStack.Count > 0)
+        {
+            panelStack.Peek().Hide();
+        }
+
+        panelToShow.Show();
+        panelStack.Push(panelToShow);
+        UpdateInputState();
+    }
+    public void OpenSettingsPanel()
+    {
+        ShowPanel(UIPanelType.Settings);
+    }
+    public void CloseSettingsPanel()
+    {
+        if (panelStack.Count == 0) return;
+
+        UIPanel topPanel = panelStack.Peek();
+        if (topPanel.PanelType == UIPanelType.Settings)
+        {
+            CloseCurrentPanel();
+        }
+    }
+
+    public void CloseCurrentPanel()
+    {
+        if (panelStack.Count == 0) return;
+
+        UIPanel panelToClose = panelStack.Pop();
+        panelToClose.Hide();
+
+        if (panelStack.Count > 0)
+        {
+            panelStack.Peek().Show();
+        }
+
+        UpdateInputState();
+    }
+
+    private void HandlePauseToggle()
+    {
+        if (panelStack.Count > 0)
+        {
+            CloseCurrentPanel();
+        }
+        else
+        {
+            FindAndRegisterAllPanels();
+            ShowPanel(UIPanelType.Settings);
+        }
+    }
+
+    private void UpdateInputState()
+    {
+        if (panelStack.Count > 0)
+        {
+            InputStateManager.Instance.SwitchState(InputState.UI);
+        }
+        else
+        {
+            InputStateManager.Instance.SwitchState(InputState.Gameplay);
+        }
     }
 }
 </file>
@@ -4473,12 +4664,13 @@ public class PlayerMovementController : MonoBehaviour
 {
     public event Action OnGroundLanded;
     public event Action<float> OnHorizontalVelocityChanged;
+    public event Action OnJumped;
+    public event Action OnLeftGround; // Novo Evento
 
     [Header("Estado Atual")]
     public bool isGrounded;
     public bool canDoubleJump;
     
-
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
@@ -4640,9 +4832,13 @@ public class PlayerMovementController : MonoBehaviour
             }
         }
 
-        if (wasGrounded && !isGrounded && !isJumping)
+        if (wasGrounded && !isGrounded)
         {
-            coyoteTimeCounter = coyoteTimeDuration;
+            if(!isJumping) // Se não está pulando, significa que caiu
+            {
+                 OnLeftGround?.Invoke();
+                 coyoteTimeCounter = coyoteTimeDuration;
+            }
         }
     }
 
@@ -4744,6 +4940,8 @@ public class PlayerMovementController : MonoBehaviour
         {
             ApplyJumpForwardBoost();
         }
+        
+        OnJumped?.Invoke();
     }
 
     private void ApplyExtraGravity()
