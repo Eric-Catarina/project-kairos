@@ -71,6 +71,8 @@ public class PlayerMovementController : MonoBehaviour
     private bool isJumping;
 
     private Vector3 _groundVelocity;
+    private Rigidbody _currentPlatformRb; // Referência para a plataforma atual
+    private Vector3 _lastPlatformPosition; // Posição da plataforma na última atualização
 
     public Rigidbody Rb => rb;
 
@@ -106,6 +108,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         UpdateCurrentVelocityInKm();
         CheckGroundedStatus();
+        ApplyPlatformMovement(); // NOVO: aplica movimento da plataforma
         ApplyDrag();
         LimitVelocity();
         MovePlayer();
@@ -151,10 +154,16 @@ public class PlayerMovementController : MonoBehaviour
         if (isGrounded && hitInfo.rigidbody != null)
         {
             _groundVelocity = hitInfo.rigidbody.linearVelocity;
+            if (_currentPlatformRb != hitInfo.rigidbody)
+            {
+                _currentPlatformRb = hitInfo.rigidbody;
+                _lastPlatformPosition = _currentPlatformRb.position;
+            }
         }
         else
         {
             _groundVelocity = Vector3.zero;
+            _currentPlatformRb = null;
         }
 
         if (!wasGrounded && isGrounded)
@@ -182,6 +191,25 @@ public class PlayerMovementController : MonoBehaviour
                  OnLeftGround?.Invoke();
                  coyoteTimeCounter = coyoteTimeDuration;
             }
+        }
+    }
+
+    private void ApplyPlatformMovement()
+    {
+        if (_currentPlatformRb != null && isGrounded)
+        {
+            // Move o player junto com a plataforma (apenas o deslocamento da plataforma)
+            Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
+            MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
+            float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
+            if (platformDelta != Vector3.zero)
+            {
+                platformDelta *= playerInfluence;
+                rb.position += platformDelta;
+
+
+            }
+            _lastPlatformPosition = _currentPlatformRb.position;
         }
     }
 
