@@ -340,6 +340,18 @@ public class PlayerMovementController : MonoBehaviour
         OnLeftGround?.Invoke();
     }
 
+    public void MultiplyVelocity(float multiplier)
+    {
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Vector3 newVelocity = horizontalVelocity * multiplier;
+        rb.linearVelocity = new Vector3(newVelocity.x, rb.linearVelocity.y, newVelocity.z);
+    }
+    
+    public Transform GetOrientation()
+    {
+        return orientation;
+    }
+
     private void ApplyLandingDampening()
     {
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
