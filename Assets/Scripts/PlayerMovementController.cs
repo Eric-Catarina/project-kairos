@@ -320,7 +320,7 @@ public class PlayerMovementController : MonoBehaviour
         }
     }
 
-    public void EnableDoubleJump()
+    public void ResetDoubleJump()
     {
         if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
