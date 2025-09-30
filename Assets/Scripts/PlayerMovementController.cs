@@ -8,7 +8,7 @@ public class PlayerMovementController : MonoBehaviour
     public event Action OnGroundLanded;
     public event Action<float> OnHorizontalVelocityChanged;
     public event Action OnJumped;
-    public event Action OnLeftGround; // Novo Evento
+    public event Action OnLeftGround;
 
     [Header("Estado Atual")]
     public bool isGrounded;
@@ -71,8 +71,8 @@ public class PlayerMovementController : MonoBehaviour
     private bool isJumping;
 
     private Vector3 _groundVelocity;
-    private Rigidbody _currentPlatformRb; // Referência para a plataforma atual
-    private Vector3 _lastPlatformPosition; // Posição da plataforma na última atualização
+    private Rigidbody _currentPlatformRb;
+    private Vector3 _lastPlatformPosition;
 
     public Rigidbody Rb => rb;
 
@@ -108,7 +108,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         UpdateCurrentVelocityInKm();
         CheckGroundedStatus();
-        ApplyPlatformMovement(); // NOVO: aplica movimento da plataforma
+        ApplyPlatformMovement();
         ApplyDrag();
         LimitVelocity();
         MovePlayer();
@@ -186,7 +186,7 @@ public class PlayerMovementController : MonoBehaviour
 
         if (wasGrounded && !isGrounded)
         {
-            if(!isJumping) // Se não está pulando, significa que caiu
+            if(!isJumping)
             {
                  OnLeftGround?.Invoke();
                  coyoteTimeCounter = coyoteTimeDuration;
@@ -198,7 +198,6 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (_currentPlatformRb != null && isGrounded)
         {
-            // Move o player junto com a plataforma (apenas o deslocamento da plataforma)
             Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
             MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
             float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
@@ -206,8 +205,6 @@ public class PlayerMovementController : MonoBehaviour
             {
                 platformDelta *= playerInfluence;
                 rb.position += platformDelta;
-
-
             }
             _lastPlatformPosition = _currentPlatformRb.position;
         }
@@ -328,6 +325,21 @@ public class PlayerMovementController : MonoBehaviour
         if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
     }
+    
+    public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
+    {
+        if (resetVelocity)
+        {
+            rb.linearVelocity = Vector3.zero;
+        }
+        
+        rb.AddForce(direction * force, ForceMode.Impulse);
+        
+        canDoubleJump = true;
+        isJumping = true;
+        OnLeftGround?.Invoke();
+    }
+
     private void ApplyLandingDampening()
     {
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);

@@ -46,6 +46,14 @@ Assets/
   Input/
     PlayerControls.cs
   Scripts/
+    CaioMecanica/
+      DoubleJumpResetRingCaio.cs
+      GrappleResetRingCaio.cs
+      GrapplingHookCaio.cs
+      PlayerMovimentCaio.cs
+      PlayerVisualCaio.cs
+      VelocityParticleCaio.cs
+      WallGrabController.cs
     Scenario/
       BlimpMoving.cs
       CarMoving.cs
@@ -60,6 +68,7 @@ Assets/
       TimeManipulationManager.cs
     AudioManager.cs
     BasePowerRing.cs
+    DashFoward.cs
     DeathFogLogic.cs
     DontDestroyOnLoad.cs
     DoubleJumpResetRing.cs
@@ -73,6 +82,7 @@ Assets/
     MainMenu.cs
     MouseSensitivitySlider.cs
     MovingPlatform.cs
+    ObjectRotator.cs
     PatrolMovement.cs
     PlayerAnimatorController.cs
     PlayerAudioHandler.cs
@@ -705,6 +715,1686 @@ public class TemporaryBGmusic : MonoBehaviour
             return;
         }
         if (cooldown < 0 && !played) { AudioManager.instance.PlayMusic("Level 1");  played = true; }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/DoubleJumpResetRingCaio.cs">
+using UnityEngine;
+
+public class DoubleJumpResetRingCaio : BasePowerUpRing
+{
+    protected override void ApplyEffect(GameObject playerObject)
+    {
+        var playerMovement = playerObject.GetComponent<PlayerMovimentCaio>();
+        if (playerMovement != null)
+        {
+            playerMovement.EnableDoubleJump();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/GrappleResetRingCaio.cs">
+using UnityEngine;
+
+public class GrappleResetRingCaio : BasePowerUpRing
+{
+    protected override void ApplyEffect(GameObject playerObject)
+    {
+        var grappleController = playerObject.GetComponent<GrapplingHookCaio>();
+        if (grappleController != null)
+        {
+            grappleController.ResetGrapple();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/GrapplingHookCaio.cs">
+// Local: Assets/Scripts/GrapplingHookCaio.cs
+
+using DG.Tweening;
+using UnityEngine;
+
+public class GrapplingHookCaio : MonoBehaviour
+{
+    [Header("Estado")]
+    [SerializeField] private bool canDoMultipleGrapple = false;
+    [SerializeField] private bool isGrappling = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
+    public bool IsGrappling => isGrappling;
+    private bool hasGrappleAvailable = true;
+
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleLayer;
+
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+    [SerializeField] private float maxSpringSize = .8f;
+
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+
+    [Header("Referências")]
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+
+    private PlayerMovimentCaio playerMovement;
+    private SpringJoint joint;
+    private Vector3 grapplePoint;
+    private Vector2 moveInput;
+    private float cooldownTimer;
+    private GameObject currentPredictionPoint;
+    public float grappleDistance;
+
+    private Vector3 predictedPoint;
+    private bool hasPredictedPoint;
+    private float grappleTimer;
+
+    private Rigidbody _grappleAnchorRigidbody;
+    private Vector3 _grapplePointRelativeOffset;
+
+    private void Awake()
+    {
+        playerMovement = GetComponent<PlayerMovimentCaio>();
+        hasGrappleAvailable = true;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += StartGrapple;
+        InputManager.Instance.OnGrappleCanceled += StopGrapple;
+        InputManager.Instance.OnMove += SetMoveInput;
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded += OnGroundLanded;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= StartGrapple;
+        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded -= OnGroundLanded;
+    }
+
+    private void Update()
+    {
+        if (cooldownTimer > 0) cooldownTimer -= Time.deltaTime;
+        if (grappleTimer > 0) grappleTimer -= Time.deltaTime;
+        if (grappleTimer <= 0 && isGrappling) StopGrapple();
+
+        if (canDoMultipleGrapple && cooldownTimer <= 0) hasGrappleAvailable = true;
+        
+        UpdatePredictionPoint();
+    }
+
+    private void LateUpdate()
+    {
+        DrawRope();
+    }
+
+    private void FixedUpdate()
+    {
+        ApplySwingForce();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void UpdatePredictionPoint()
+    {
+        if (isGrappling)
+        {
+            if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
+            hasPredictedPoint = false;
+            return;
+        }
+
+        RaycastHit hit;
+        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        if (!hitFound)
+        {
+            hitFound = Physics.SphereCast(cameraTransform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+        }
+
+        if (hitFound)
+        {
+            predictedPoint = hit.point;
+            hasPredictedPoint = true;
+            grappleDistance = hit.distance;
+
+            if (currentPredictionPoint == null)
+            {
+                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
+            }
+            else
+            {
+                currentPredictionPoint.SetActive(true);
+                currentPredictionPoint.transform.position = predictedPoint;
+            }
+        }
+        else
+        {
+            hasPredictedPoint = false;
+            if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
+            grappleDistance = 0f;
+        }
+    }
+
+    private void StartGrapple()
+    {
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
+        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
+        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
+
+        isGrappling = true;
+        grappleTimer = maximumTimeGrappling;
+
+        RaycastHit hit;
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
+        {
+            grapplePoint = hit.point;
+            _grappleAnchorRigidbody = hit.rigidbody;
+            if (_grappleAnchorRigidbody != null)
+            {
+                _grapplePointRelativeOffset = hit.transform.InverseTransformPoint(grapplePoint);
+            }
+        }
+        else
+        {
+            grapplePoint = predictedPoint;
+            _grappleAnchorRigidbody = null;
+        }
+
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.anchor = Vector3.zero;
+        joint.connectedAnchor = grapplePoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+
+        lineRenderer.positionCount = 2;
+        
+        if (!canDoMultipleGrapple && !groundedOverride)
+            hasGrappleAvailable = false;
+    }
+
+    private void ApplySwingForce()
+    {
+        if (!joint) return;
+
+        Vector3 viewDirection = cameraTransform.forward;
+        Vector3 rightDirection = cameraTransform.right;
+
+        playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
+    }
+
+    public void StopGrapple()
+    {
+        if (!isGrappling) return;
+
+        isGrappling = false;
+        cooldownTimer = grappleCooldown;
+        lineRenderer.positionCount = 0;
+        Destroy(joint);
+
+        _grappleAnchorRigidbody = null;
+        playerMovement.EnableDoubleJump();
+    }
+
+    private void DrawRope()
+    {
+        if (!joint) return;
+
+        if (_grappleAnchorRigidbody != null)
+        {
+            grapplePoint = _grappleAnchorRigidbody.transform.TransformPoint(_grapplePointRelativeOffset);
+            joint.connectedAnchor = grapplePoint;
+        }
+
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, grapplePoint);
+    }
+
+    private void OnGroundLanded()
+    {
+        if (!canDoMultipleGrapple && !hasGrappleAvailable)
+        {
+            hasGrappleAvailable = true;
+        }
+    }
+    
+    public void ResetGrapple()
+    {
+        hasGrappleAvailable = true;
+        cooldownTimer = 0f;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/PlayerMovimentCaio.cs">
+using TMPro;
+using System;
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class PlayerMovimentCaio : MonoBehaviour
+{
+    public event Action OnGroundLanded;
+    public event Action<float> OnHorizontalVelocityChanged;
+
+    [Header("Estado Atual")]
+    public bool isGrounded;
+    public bool canDoubleJump;
+    
+
+    [Header("Configurações de Movimento")]
+    [SerializeField] private float moveSpeed = 7f;
+    [SerializeField] private float maxMoveSpeed = 30f;
+    [SerializeField] private float maxGrappleMoveSpeed = 150f;
+    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
+
+    [Header("Configurações de Atrito (Drag)")]
+    [SerializeField] private float groundDrag = 6f;
+    [SerializeField] private float airDrag = 2f;
+    private float baseAirDrag;
+    [SerializeField] private float grappleAirDrag = 0.5f;
+
+    [Header("Configurações de Pulo")]
+    [SerializeField] private bool allowDoubleJumpFromGround = false;
+    [SerializeField] private float jumpForce = 14f;
+    [SerializeField] private float doubleJumpForce = 14f;
+    [SerializeField] private float gravityMultiplier = 2.5f;
+
+    [Header("Impulso de Velocidade no Pulo")]
+    [Tooltip("Força do impulso para a frente ao pular enquanto se move.")]
+    [SerializeField] private float jumpForwardBoost = 5f;
+    [Tooltip("Multiplicador da velocidade ao aterrissar (0 = parada total, 1 = sem perda de velocidade).")]
+    [SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
+
+    [Header("Pulo Variável (Low/High Jump)")]
+    [Tooltip("Multiplicador aplicado na velocidade Y ao soltar o pulo, para um pulo mais curto.")]
+    [SerializeField] private float jumpReleaseMultiplier = 0.5f;
+
+    [Header("Coyote Time & Jump Buffer")]
+    [Tooltip("Tempo em segundos que o jogador pode pular após sair de uma plataforma.")]
+    [SerializeField] private float coyoteTimeDuration = 0.1f;
+    [Tooltip("Tempo em segundos que um pulo é 'guardado' se pressionado antes de tocar o chão.")]
+    [SerializeField] private float jumpBufferDuration = 0.1f;
+
+    [Header("Bunny Hop")]
+    [Tooltip("Janela de tempo após aterrissar para pular e manter a velocidade (ignorar ground drag).")]
+    [SerializeField] private float bunnyHopWindow = 0.1f;
+
+    [Header("Verificação de Chão")]
+    [SerializeField] private float playerHeight = 2f;
+    [SerializeField] private LayerMask groundLayer;
+
+    [Header("Referências")]
+    [SerializeField] private Transform orientation;
+    [SerializeField] private GrapplingHookCaio grapplingHookController;
+    public TextMeshProUGUI velocityText, distanceText;
+
+    private Rigidbody rb;
+    private Vector2 moveInput;
+
+    private float coyoteTimeCounter;
+    private float jumpBufferCounter;
+    private float timeSinceLanded;
+    private float currentVelocityInKm;
+    public bool isJumping;
+
+    private Vector3 _groundVelocity;
+
+    public Rigidbody Rb => rb;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true;
+        baseAirDrag = airDrag;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnMove += SetMoveInput;
+        InputManager.Instance.OnJumpPerformed += HandleJumpInput;
+        InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        InputManager.Instance.OnJumpPerformed -= HandleJumpInput;
+        InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
+    }
+
+    private void Update()
+    {
+        HandleTimers();
+        UpdateUI();
+    }
+
+    private void FixedUpdate()
+    {
+        UpdateCurrentVelocityInKm();
+        CheckGroundedStatus();
+        ApplyDrag();
+        LimitVelocity();
+        MovePlayer();
+        ApplyExtraGravity();
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    private void HandleTimers()
+    {
+        if (!isGrounded)
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+
+        timeSinceLanded += Time.deltaTime;
+        jumpBufferCounter -= Time.deltaTime;
+    }
+
+public void DisableDoubleJump()
+{
+    canDoubleJump = false;
+}
+
+    private void UpdateUI()
+    {
+        if (grapplingHookController != null && distanceText != null)
+        {
+            distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
+        }
+        
+        if (velocityText != null)
+        {
+            velocityText.text = "Velocidade: " + currentVelocityInKm.ToString("F2");
+        }
+    }
+
+    private void CheckGroundedStatus()
+    {
+        bool wasGrounded = isGrounded;
+
+        RaycastHit hitInfo;
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, out hitInfo, playerHeight * 0.5f + 0.2f, groundLayer);
+
+        if (isGrounded && hitInfo.rigidbody != null)
+        {
+            _groundVelocity = hitInfo.rigidbody.linearVelocity;
+        }
+        else
+        {
+            _groundVelocity = Vector3.zero;
+        }
+
+        if (!wasGrounded && isGrounded)
+        {
+            if (isJumping && currentVelocityInKm <= 100f)
+            {
+                ApplyLandingDampening();
+            }
+
+            isJumping = false;
+            timeSinceLanded = 0f;
+            canDoubleJump = false;
+            OnGroundLanded?.Invoke();
+
+            if (jumpBufferCounter > 0f)
+            {
+                Jump(jumpForce);
+            }
+        }
+
+        if (wasGrounded && !isGrounded && !isJumping)
+        {
+            coyoteTimeCounter = coyoteTimeDuration;
+        }
+    }
+
+    private void ApplyDrag()
+    {
+        if (grapplingHookController.IsGrappling)
+        {
+            rb.linearDamping = grappleAirDrag;
+            return;
+        }
+
+        if (isGrounded)
+        {
+            rb.linearDamping = (timeSinceLanded > bunnyHopWindow) ? groundDrag : airDrag;
+        }
+        else
+        {
+            rb.linearDamping = airDrag;
+        }
+    }
+
+    private void MovePlayer()
+    {
+        if (grapplingHookController.IsGrappling) return;
+
+        Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
+
+        if (isGrounded)
+        {
+            rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
+        }
+        else
+        {
+            rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
+        }
+    }
+
+    private void LimitVelocity()
+    {
+        float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        if (horizontalVelocity.magnitude > 200 / 3.6f)
+        {
+            airDrag = baseAirDrag * 1.2f;
+        }
+        else
+        {
+            airDrag = baseAirDrag;
+        }
+
+        if (horizontalVelocity.magnitude > (currentMaxSpeed / 3.6f))
+        {
+            Vector3 limitedVelocity = horizontalVelocity.normalized * (currentMaxSpeed / 3.6f);
+            rb.linearVelocity = new Vector3(limitedVelocity.x, rb.linearVelocity.y, limitedVelocity.z);
+        }
+
+        OnHorizontalVelocityChanged?.Invoke(horizontalVelocity.magnitude);
+    }
+
+    private void HandleJumpInput()
+    {
+        if (grapplingHookController.IsGrappling) return;
+
+        jumpBufferCounter = jumpBufferDuration;
+
+        if (coyoteTimeCounter > 0f || isGrounded)
+        {
+            Jump(jumpForce);
+            if (allowDoubleJumpFromGround)
+            {
+                canDoubleJump = true;
+            }
+        }
+        else if (canDoubleJump)
+        {
+            Jump(doubleJumpForce);
+            canDoubleJump = false;
+        }
+    }
+
+    private void HandleJumpRelease()
+    {
+        if (rb.linearVelocity.y > 0 && isJumping)
+        {
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, rb.linearVelocity.y * jumpReleaseMultiplier, rb.linearVelocity.z);
+        }
+    }
+
+    private void Jump(float jumpStrength)
+    {
+        coyoteTimeCounter = 0f;
+        jumpBufferCounter = 0f;
+        isJumping = true;
+
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) + _groundVelocity;
+        rb.AddForce(transform.up * jumpStrength, ForceMode.Impulse);
+
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            ApplyJumpForwardBoost();
+        }
+    }
+
+    private void ApplyExtraGravity()
+    {
+        if (!isGrounded)
+        {
+            rb.AddForce(Vector3.down * gravityMultiplier * Physics.gravity.y * -1, ForceMode.Acceleration);
+        }
+    }
+
+    public void EnableDoubleJump()
+    {
+        if (!canDoubleJump && !isGrounded)
+        canDoubleJump = true;
+    }
+    private void ApplyLandingDampening()
+    {
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Vector3 dampenedVelocity = horizontalVelocity * landingVelocityDampening;
+        rb.linearVelocity = new Vector3(dampenedVelocity.x, rb.linearVelocity.y, dampenedVelocity.z);
+    }
+
+    private void ApplyJumpForwardBoost()
+    {
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            Vector3 forwardDirection = orientation.forward;
+            forwardDirection.y = 0;
+            rb.AddForce(forwardDirection.normalized * jumpForwardBoost, ForceMode.Impulse);
+        }
+    }
+    private void UpdateCurrentVelocityInKm()
+    {
+        currentVelocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/PlayerVisualCaio.cs">
+// Local: Assets/Scripts/PlayerVisualController.cs
+
+using UnityEngine;
+using DG.Tweening;
+
+/// <summary>
+/// Gerencia todas as animações e efeitos visuais procedurais do jogador.
+/// Ouve eventos do PlayerMovementController para acionar as animações corretas.
+/// (Lógica de slide removida para corresponder às novas mecânicas)
+/// </summary>
+public class PlayerVisualCaio : MonoBehaviour
+{
+    [Header("Referências")]
+    [Tooltip("Referência ao script de movimento para se inscrever nos eventos.")]
+    [SerializeField] private PlayerMovimentCaio playerMovementController;
+    [Tooltip("O transform do modelo visual do jogador que será animado.")]
+    [SerializeField] private Transform playerModel;
+
+    private void OnEnable()
+    {
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovimentCaio não está atribuído no PlayerVisualsController.");
+            return;
+        }
+
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController == null) return;
+        
+    }
+
+    /// <summary>
+    /// Para e limpa todas as animações DOTween ativas neste objeto.
+    /// </summary>
+    private void KillAllTweens()
+    {
+        playerModel.DOKill();
+    }
+
+    private void OnDestroy()
+    {
+        KillAllTweens();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/VelocityParticleCaio.cs">
+// Local: Assets/Scripts/VelocityParticleController.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(ParticleSystem))]
+public class VelocityParticleCaio : MonoBehaviour
+{
+    [Header("Referências")]
+    [Tooltip("Referência ao controlador de movimento do jogador para ouvir os eventos de velocidade.")]
+    private PlayerMovimentCaio playerMovementController;
+
+    [Header("Configurações do Efeito")]
+    [Tooltip("A velocidade horizontal mínima (em m/s) para o efeito começar a aparecer.")]
+    [SerializeField] private float minSpeedThreshold = 41.67f; // Equivalente a 150 km/h
+
+    [Tooltip("A velocidade horizontal máxima (em m/s) onde o efeito atinge sua intensidade total.")]
+    [SerializeField] private float maxSpeedThreshold = 83.33f; // Equivalente a 300 km/h
+
+    [Tooltip("A opacidade (alpha) mínima do efeito quando a velocidade mínima é atingida.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float minAlpha = 0.1f;
+
+    [Tooltip("A opacidade (alpha) máxima do efeito quando a velocidade máxima é atingida.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float maxAlpha = 1.0f;
+
+    private ParticleSystem _particleSystem;
+    private ParticleSystem.MainModule _mainModule;
+
+    private void Awake()
+    {
+        _particleSystem = GetComponent<ParticleSystem>();
+        _mainModule = _particleSystem.main;
+
+        playerMovementController = FindObjectOfType<PlayerMovimentCaio>();
+        
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não foi atribuído no VelocityParticleController.", this);
+            enabled = false;
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        }
+    }
+
+    /// <summary>
+    /// Manipula o evento de mudança de velocidade, ajustando a visibilidade e a opacidade das partículas.
+    /// </summary>
+    /// <param name="currentHorizontalSpeed">A velocidade horizontal atual do jogador em m/s.</param>
+    private void HandleVelocityChanged(float currentHorizontalSpeed)
+    {
+        if (currentHorizontalSpeed >= minSpeedThreshold / 3.6f)
+        {
+            if (!_particleSystem.isPlaying)
+            {
+                _particleSystem.Play();
+            }
+            
+            UpdateParticleAlpha(currentHorizontalSpeed);
+        }
+        else
+        {
+            if (_particleSystem.isPlaying)
+            {
+                _particleSystem.Stop();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calcula e aplica a nova opacidade (alpha) à cor inicial das partículas.
+    /// </summary>
+    /// <param name="speed">A velocidade atual do jogador.</param>
+    private void UpdateParticleAlpha(float speed)
+    {
+        // Calcula um valor normalizado (0 a 1) com base na velocidade atual entre o mínimo e o máximo.
+        float normalizedSpeed = Mathf.InverseLerp(minSpeedThreshold / 3.6f, maxSpeedThreshold/ 3.6f, speed);
+
+        // Mapeia o valor normalizado para o intervalo de alpha desejado (ex: 0.1 a 1.0).
+        float newAlpha = Mathf.Lerp(minAlpha, maxAlpha, normalizedSpeed);
+
+        // Obtém a cor inicial, atualiza seu alpha e a reaplica.
+        Color startColor = _mainModule.startColor.color;
+        startColor.a = newAlpha;
+        _mainModule.startColor = startColor;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CaioMecanica/WallGrabController.cs">
+using UnityEngine;
+
+public class WallGrabController : MonoBehaviour
+{
+    [Header("Configurações de Agarrar na Parede")]
+    [SerializeField] private float wallCheckDistance = 0.5f;
+    [SerializeField] private float wallSlideSpeed = -1f;
+    [SerializeField] private float wallJumpForceX = 10f;
+    [SerializeField] private float wallJumpForceY = 15f;
+    [SerializeField] private float wallGrabDuration = 1.5f;
+    [SerializeField] private float groundCheckGracePeriod = 0.2f;
+
+    [Header("Verificação de Parede")]
+    [SerializeField] private LayerMask wallLayer;
+    [SerializeField] private Transform orientation;
+
+    // Referências
+    private Rigidbody rb;
+    private PlayerMovimentCaio playerMovement;
+    private InputManager inputManager;
+    
+    // Estado da mecânica
+    public bool IsWallGrabbing { get; private set; }
+    private bool hasWallGrabAvailable = true;
+    private float timeSinceGrounded;
+    private float timeSinceWallGrab;
+    private bool canWallJump = false;
+    private Vector3 wallNormal;
+    private float moveInputX;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        playerMovement = GetComponent<PlayerMovimentCaio>();
+        inputManager = InputManager.Instance;
+    }
+
+    private void OnEnable()
+    {
+        inputManager.OnMove += SetMoveInput;
+        inputManager.OnJumpPerformed += HandleJumpInput;
+    }
+
+    private void OnDisable()
+    {
+        if (inputManager == null) return;
+        inputManager.OnMove -= SetMoveInput;
+        inputManager.OnJumpPerformed -= HandleJumpInput;
+    }
+
+    private void FixedUpdate()
+    {
+        if (IsWallGrabbing && !playerMovement.isJumping)
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, wallSlideSpeed, rb.linearVelocity.z);
+    }
+
+    private void Update()
+    {
+        CheckForWall();
+
+        if (IsWallGrabbing)
+        {
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, wallSlideSpeed, rb.linearVelocity.z);
+        }
+        timeSinceGrounded += Time.deltaTime;
+    }
+
+    private void SetMoveInput(Vector2 input)
+    {
+        moveInputX = input.x;
+    }
+
+   private void CheckForWall()
+{
+    RaycastHit hit;
+    bool wallDetected = Physics.Raycast(transform.position, orientation.forward, out hit, wallCheckDistance, wallLayer);
+
+    if (wallDetected && !playerMovement.isGrounded && timeSinceGrounded > groundCheckGracePeriod)
+    {
+        if (!IsWallGrabbing)
+        {
+            timeSinceWallGrab = 0f;
+            playerMovement.DisableDoubleJump(); 
+            playerMovement.Rb.linearVelocity = new Vector3(0, playerMovement.Rb.linearVelocity.y, 0);
+            hasWallGrabAvailable = false; 
+        }
+        IsWallGrabbing = true;
+        wallNormal = hit.normal;
+        rb.useGravity = false;
+
+        if (!canWallJump)
+        {
+            canWallJump = true;
+        }
+    }
+    else
+    {
+        IsWallGrabbing = false;
+        rb.useGravity = true;
+    }
+
+    if (IsWallGrabbing)
+    {
+        timeSinceWallGrab += Time.deltaTime;
+        if (timeSinceWallGrab >= wallGrabDuration)
+        {
+            IsWallGrabbing = false;
+            rb.useGravity = true;
+            canWallJump = false;
+        }
+    }
+
+    if (playerMovement.isGrounded)
+    {
+        canWallJump = true;
+        timeSinceGrounded = 0f;
+    }
+}
+
+    private void HandleJumpInput()
+    {
+        if (IsWallGrabbing && canWallJump)
+        {
+            WallJump();
+        }
+    }
+
+    private void WallJump()
+    {
+        // Reseta a gravidade
+        rb.useGravity = true;
+        IsWallGrabbing = false;
+        canWallJump = false;
+
+        rb.linearVelocity = Vector3.zero;
+
+        Vector3 jumpDirection = (wallNormal * wallJumpForceX) + (Vector3.up * wallJumpForceY);
+        rb.AddForce(jumpDirection, ForceMode.Impulse);
+    }
+
+    public void ResetWallGrab()
+    {
+        hasWallGrabAvailable = true;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scenario/BlimpMoving.cs">
+using UnityEngine;
+
+public class BlimpMoving : MonoBehaviour
+{
+    public float speed = 5.0f;
+
+    public float turnSpeed = 15.0f;
+
+    void Update()
+    {
+        transform.Translate(transform.forward * speed * Time.deltaTime, Space.World);
+
+        transform.Rotate(0, turnSpeed * Time.deltaTime, 0);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scenario/CarMoving.cs">
+using UnityEngine;
+
+public class CarMoving : MonoBehaviour
+{
+    public float velocidade = 20.0f;
+
+    void Update()
+    {
+        transform.Translate(Vector3.forward* velocidade * Time.deltaTime);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scenario/PositionMemory.cs">
+using UnityEngine;
+
+public class PositionMemory : MonoBehaviour
+{
+    private Vector3 initialPosition;
+    void Awake()
+    {
+        // Guarda a posição atual do objeto no momento em que ele é criado
+        initialPosition = transform.position;
+    }
+    public void ResetPosition()
+    {
+        // Move o carro de volta para a posição inicial.
+        transform.position = initialPosition;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scenario/ResetTrigger.cs">
+using UnityEngine;
+
+public class ResetTrigger : MonoBehaviour
+{
+    [Tooltip("A Tag do objeto que deve ser resetado (ex: 'Car').")]
+    public string targetTag = "Car";
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag(targetTag))
+        {
+            PositionMemory memory = other.GetComponentInParent<PositionMemory>();
+
+            if (memory != null)
+            {
+                memory.ResetPosition();
+            }
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
+// Local: Assets/Scripts/Scoring/ScoreUIController.cs
+
+using TMPro;
+using UnityEngine;
+
+/// <summary>
+/// Controla a exibição da UI de resultados do final do nível.
+/// Ouve o evento OnLevelCompleted do ScoreManager para se atualizar.
+/// </summary>
+public class ScoreUIController : MonoBehaviour
+{
+    [Header("Referências da UI")]
+    [SerializeField] private TextMeshProUGUI finalTimeText;
+    [SerializeField] private TextMeshProUGUI rankText;
+    [SerializeField] private GameObject resultsPanel; // O painel pai que contém os textos
+
+    private void OnEnable()
+    {
+        // Inscreve-se no evento para ser notificado quando o nível terminar.
+        ScoreManager.OnLevelCompleted += HandleLevelCompleted;
+    }
+
+
+
+    private void OnDisable()
+    {
+        // Remove a inscrição para evitar erros e memory leaks.
+        ScoreManager.OnLevelCompleted -= HandleLevelCompleted;
+    }
+
+    private void Start()
+    {
+        // Garante que o painel esteja escondido no início.
+        if (resultsPanel != null)
+        {
+            // resultsPanel.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Método chamado pelo evento OnLevelCompleted.
+    /// Atualiza os textos e exibe o painel de resultados.
+    /// </summary>
+    /// <param name="finalTime">O tempo final do jogador.</param>
+    /// <param name="finalRank">O ranque final do jogador.</param>
+    private void HandleLevelCompleted(float finalTime, Rank finalRank)
+    {
+        if (finalTimeText != null)
+        {
+            // Formata o tempo para ter duas casas decimais (ex: 34.56s).
+            finalTimeText.text = $"Tempo: {finalTime:F2}s";
+        }
+
+        if (rankText != null)
+        {
+            rankText.text = $"Ranque: {finalRank}";
+        }
+
+        if (resultsPanel != null)
+        {
+            resultsPanel.SetActive(true);
+        }
+    }
+    
+    public void UpdateTime(float newTime)
+    {
+        if (finalTimeText != null)
+        {
+            finalTimeText.text = $"Tempo: {newTime:F2}s";
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/BasePowerRing.cs">
+// Local: Assets/Scripts/PowerUps/BasePowerUpRing.cs
+
+using System;
+using UnityEngine;
+
+[RequireComponent(typeof(Collider))]
+public abstract class BasePowerUpRing : MonoBehaviour
+{
+    [Header("Configurações Base do Anel")]
+    private string playerTag = "Player";
+    [SerializeField] private bool disableOnUse = true;
+
+    [Header("Efeitos")]
+    private GameObject effectOnUse;
+    private string sfxOnUse;
+
+    public static Action OnPowerRingActivated;
+
+    private void Awake()
+    {
+        // Garante que o collider seja um trigger
+        var colliders = GetComponents<Collider>();
+        foreach (var col in colliders)
+        {
+            if (!col.isTrigger)
+            {
+                col.isTrigger = true;
+            }
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag(playerTag))
+        {
+            OnPowerRingActivated?.Invoke();
+            ApplyEffect(other.gameObject);
+            TriggerEffects();
+        }
+    }
+
+    /// <summary>
+    /// Lógica específica do power-up a ser implementada pelas classes filhas.
+    /// </summary>
+    /// <param name="playerObject">O GameObject do jogador que ativou o anel.</param>
+    protected abstract void ApplyEffect(GameObject playerObject);
+
+    /// <summary>
+    /// Aciona os efeitos visuais, sonoros e desativa o objeto, se configurado.
+    /// </summary>
+    private void TriggerEffects()
+    {
+        if (AudioManager.instance != null)
+        {
+            AudioManager.instance.PlaySFX("PowerRing");
+        }
+
+        if (effectOnUse != null)
+        {
+            Instantiate(effectOnUse, transform.position, transform.rotation);
+        }
+
+        if (disableOnUse)
+        {
+            gameObject.SetActive(false);
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/DashFoward.cs">
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(Rigidbody))]
+public class DashForwardInputSystem : MonoBehaviour
+{
+	[Header("Dash Settings")]
+	public float dashForce = 10f;
+	public float dashCooldown = 1f;
+	public float dashDuration = 0.2f;
+
+	[Header("Input")]
+	public InputActionReference dashActionReference;
+	public string dashActionName = "Dash";
+
+	[Header("Camera")]
+	public Transform cameraTransform;
+
+	private InputAction dashAction;
+	private Rigidbody rb;
+	private bool isDashing = false;
+	private float dashEndTime = 0f;
+	private float lastDash = -999f;
+
+	void Awake()
+	{
+		rb = GetComponent<Rigidbody>();
+
+		if (dashActionReference != null && dashActionReference.action != null)
+		{
+			dashAction = dashActionReference.action;
+		}
+		else
+		{
+			var pi = GetComponent<PlayerInput>();
+			if (pi != null && pi.actions != null)
+				dashAction = pi.actions.FindAction(dashActionName);
+		}
+	}
+
+	void OnEnable()
+	{
+		if (dashAction != null)
+		{
+			dashAction.started += OnDashTriggered;
+			dashAction.Enable();
+		}
+	}
+
+	void OnDisable()
+	{
+		if (dashAction != null)
+		{
+			dashAction.started -= OnDashTriggered;
+			dashAction.Disable();
+		}
+	}
+
+	private void OnDashTriggered(InputAction.CallbackContext ctx)
+	{
+		if (Time.time >= lastDash + dashCooldown)
+			StartDash();
+	}
+
+	void Update()
+	{
+		if (isDashing && Time.time >= dashEndTime)
+			EndDash();
+	}
+
+	void StartDash()
+	{
+		isDashing = true;
+		lastDash = Time.time;
+		dashEndTime = Time.time + dashDuration;
+
+		Vector3 dashDir;
+		if (cameraTransform != null)
+		{
+			dashDir = cameraTransform.forward;
+			dashDir.y = 0f;
+			dashDir.Normalize();
+		}
+		else
+		{
+			dashDir = transform.forward;
+		}
+
+		rb.linearVelocity = Vector3.zero;
+		rb.AddForce(dashDir * dashForce, ForceMode.VelocityChange);
+	}
+
+	void EndDash()
+	{
+		isDashing = false;
+		rb.linearVelocity = Vector3.zero;
+	}
+}
+</file>
+
+<file path="Assets/Scripts/DontDestroyOnLoad.cs">
+using UnityEngine;
+
+public class DontDestroyOnLoad : MonoBehaviour
+{
+
+    void Awake()
+    {
+        DontDestroyOnLoad(gameObject);
+    }
+
+}
+</file>
+
+<file path="Assets/Scripts/DoubleJumpResetRing.cs">
+using UnityEngine;
+
+public class DoubleJumpResetRing : BasePowerUpRing
+{
+    protected override void ApplyEffect(GameObject playerObject)
+    {
+        var playerMovement = playerObject.GetComponent<PlayerMovementController>();
+        if (playerMovement != null)
+        {
+            playerMovement.EnableDoubleJump();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/GameSystem.cs">
+using UnityEngine;
+
+public class GameSystem : MonoBehaviour
+{
+    public static GameSystem Instance { get; private set; }
+    void Awake()
+    {
+          if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
+}
+</file>
+
+<file path="Assets/Scripts/GrappleResetRing.cs">
+using UnityEngine;
+
+public class GrappleResetRing : BasePowerUpRing
+{
+    protected override void ApplyEffect(GameObject playerObject)
+    {
+        var grappleController = playerObject.GetComponent<GrapplingHookController>();
+        if (grappleController != null)
+        {
+            grappleController.ResetGrapple();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/InputManager.cs">
+// Local: Assets/Scripts/InputManager.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(InputStateManager))]
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public PlayerControls PlayerControls => _playerControls;
+
+    // Eventos de Ações do Jogador
+    public event Action<Vector2> OnMove;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+    public event Action OnSlowTimeStarted;
+    public event Action OnSlowTimeCanceled;
+    
+    // Eventos de Jogo (Debug/Sistema)
+    public event Action OnLevelFinished;
+    public event Action OnLevelRestarted;
+    public event Action OnPausePressed;
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        
+        InputStateManager stateManager = GetComponent<InputStateManager>();
+        stateManager.Initialize(_playerControls);
+    }
+
+    private void Start()
+    {
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Enable();
+        
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
+        
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
+        
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
+        
+        _playerControls.Player.Pause.performed += HandlePausePressed;
+        _playerControls.UI.Unpause.performed += HandlePausePressed;
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
+        
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
+        
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
+        
+        _playerControls.Player.Pause.performed -= HandlePausePressed;
+        _playerControls.UI.Unpause.performed -= HandlePausePressed;
+        
+        _playerControls.Disable();
+    }
+
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
+    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
+    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
+}
+</file>
+
+<file path="Assets/Scripts/InputStateManager.cs">
+// Local: Assets/Scripts/InputStateManager.cs
+
+using UnityEngine;
+
+[System.Serializable]
+public enum InputState
+{
+    Gameplay,
+    UI
+}
+
+/// <summary>
+/// Gerencia o estado do input, alternando entre os Action Maps (Gameplay, UI)
+/// e controlando o estado do cursor do mouse.
+/// Implementa o padrão Singleton para acesso global.
+/// </summary>
+public class InputStateManager : MonoBehaviour
+{
+    public static InputStateManager Instance { get; private set; }
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    public void Initialize(PlayerControls playerControls)
+    {
+        _playerControls = playerControls;
+    }
+
+    /// <summary>
+    /// O método central para alternar o contexto de input do jogo.
+    /// </summary>
+    /// <param name="newState">O novo estado para o qual o input deve mudar.</param>
+    public void SwitchState(InputState newState)
+    {
+        if (_playerControls == null) return;
+
+
+        switch (newState)
+        {
+            case InputState.Gameplay:
+                // Ativa os controles de gameplay
+                _playerControls.Player.Enable();
+                _playerControls.UI.Disable();
+
+                // Esconde e trava o cursor no centro da tela
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                break;
+
+            case InputState.UI:
+                // Ativa os controles de UI e desativa os de gameplay
+                _playerControls.UI.Enable();
+                _playerControls.Player.Disable();
+
+                // Libera e mostra o cursor para interagir com a UI
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                break;
+        }
+    }
+
+    public void SwitchToGameplay()
+    {
+        SwitchState(InputState.Gameplay);
+    }
+    public void SwitchToUI()
+    {
+        SwitchState(InputState.UI);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/ObjectRotator.cs">
+using UnityEngine;
+
+public class ObjectRotator : MonoBehaviour
+{
+    [Tooltip("Velocidade de rotação em graus por segundo.")]
+    public float rotationSpeed = 50f;
+
+    [Tooltip("O eixo de rotação. Por exemplo: Vector3.up para o eixo Y.")]
+    public Vector3 rotationAxis = Vector3.up;
+
+    void Update()
+    {
+        transform.Rotate(rotationAxis, rotationSpeed * Time.deltaTime);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerAnimatorController.cs">
+// Local: Assets/Scripts/PlayerAnimationController.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(Animator))]
+public class PlayerAnimationController : MonoBehaviour
+{
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+
+    private Animator _animator;
+
+    private readonly int _hashHorizontalSpeed = Animator.StringToHash("HorizontalSpeed");
+    private readonly int _hashIsGrounded = Animator.StringToHash("IsGrounded");
+    private readonly int _hashJump = Animator.StringToHash("JumpTrigger");
+
+    private void Awake()
+    {
+        _animator = GetComponent<Animator>();
+    }
+
+    private void OnEnable()
+    {
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não está atribuído no PlayerAnimationController.");
+            enabled = false;
+            return;
+        }
+        
+        playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        playerMovementController.OnJumped += HandleJump;
+        playerMovementController.OnGroundLanded += HandleLand;
+        playerMovementController.OnLeftGround += HandleLeftGround;
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController == null) return;
+        
+        playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        playerMovementController.OnJumped -= HandleJump;
+        playerMovementController.OnGroundLanded -= HandleLand;
+        playerMovementController.OnLeftGround -= HandleLeftGround;
+    }
+
+    private void HandleVelocityChanged(float horizontalSpeed)
+    {
+        _animator.SetFloat(_hashHorizontalSpeed, horizontalSpeed);
+    }
+
+    private void HandleJump()
+    {
+        _animator.SetBool(_hashIsGrounded, false);
+        _animator.SetTrigger(_hashJump);
+    }
+    
+    private void HandleLand()
+    {
+        _animator.SetBool(_hashIsGrounded, true);
+    }
+
+    private void HandleLeftGround()
+    {
+        _animator.SetBool(_hashIsGrounded, false);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/VelocityParticleController.cs">
+// Local: Assets/Scripts/VelocityParticleController.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(ParticleSystem))]
+public class VelocityParticleController : MonoBehaviour
+{
+    [Header("Referências")]
+    [Tooltip("Referência ao controlador de movimento do jogador para ouvir os eventos de velocidade.")]
+    private PlayerMovementController playerMovementController;
+
+    [Header("Configurações do Efeito")]
+    [Tooltip("A velocidade horizontal mínima (em m/s) para o efeito começar a aparecer.")]
+    [SerializeField] private float minSpeedThreshold = 41.67f; // Equivalente a 150 km/h
+
+    [Tooltip("A velocidade horizontal máxima (em m/s) onde o efeito atinge sua intensidade total.")]
+    [SerializeField] private float maxSpeedThreshold = 83.33f; // Equivalente a 300 km/h
+
+    [Tooltip("A opacidade (alpha) mínima do efeito quando a velocidade mínima é atingida.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float minAlpha = 0.1f;
+
+    [Tooltip("A opacidade (alpha) máxima do efeito quando a velocidade máxima é atingida.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float maxAlpha = 1.0f;
+
+    private ParticleSystem _particleSystem;
+    private ParticleSystem.MainModule _mainModule;
+
+    private void Awake()
+    {
+        _particleSystem = GetComponent<ParticleSystem>();
+        _mainModule = _particleSystem.main;
+
+        playerMovementController = FindObjectOfType<PlayerMovementController>();
+        
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não foi atribuído no VelocityParticleController.", this);
+            enabled = false;
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        }
+    }
+
+    /// <summary>
+    /// Manipula o evento de mudança de velocidade, ajustando a visibilidade e a opacidade das partículas.
+    /// </summary>
+    /// <param name="currentHorizontalSpeed">A velocidade horizontal atual do jogador em m/s.</param>
+    private void HandleVelocityChanged(float currentHorizontalSpeed)
+    {
+        if (currentHorizontalSpeed >= minSpeedThreshold / 3.6f)
+        {
+            if (!_particleSystem.isPlaying)
+            {
+                _particleSystem.Play();
+            }
+            
+            UpdateParticleAlpha(currentHorizontalSpeed);
+        }
+        else
+        {
+            if (_particleSystem.isPlaying)
+            {
+                _particleSystem.Stop();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calcula e aplica a nova opacidade (alpha) à cor inicial das partículas.
+    /// </summary>
+    /// <param name="speed">A velocidade atual do jogador.</param>
+    private void UpdateParticleAlpha(float speed)
+    {
+        // Calcula um valor normalizado (0 a 1) com base na velocidade atual entre o mínimo e o máximo.
+        float normalizedSpeed = Mathf.InverseLerp(minSpeedThreshold / 3.6f, maxSpeedThreshold/ 3.6f, speed);
+
+        // Mapeia o valor normalizado para o intervalo de alpha desejado (ex: 0.1 a 1.0).
+        float newAlpha = Mathf.Lerp(minAlpha, maxAlpha, normalizedSpeed);
+
+        // Obtém a cor inicial, atualiza seu alpha e a reaplica.
+        Color startColor = _mainModule.startColor.color;
+        startColor.a = newAlpha;
+        _mainModule.startColor = startColor;
     }
 }
 </file>
@@ -1411,6 +3101,15 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Dash"",
+                    ""type"": ""Button"",
+                    ""id"": ""4462b60a-f27c-48f2-94a1-d6a134b7b0fb"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -1567,6 +3266,17 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""Pause"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4889acd3-f949-44f2-9bbc-eaa4e34be90f"",
+                    ""path"": ""<Keyboard>/leftShift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Dash"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -1596,6 +3306,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_FinishLevel = m_Player.FindAction("FinishLevel", throwIfNotFound: true);
         m_Player_RestartLevel = m_Player.FindAction("RestartLevel", throwIfNotFound: true);
         m_Player_Pause = m_Player.FindAction("Pause", throwIfNotFound: true);
+        m_Player_Dash = m_Player.FindAction("Dash", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -1891,6 +3602,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_FinishLevel;
     private readonly InputAction m_Player_RestartLevel;
     private readonly InputAction m_Player_Pause;
+    private readonly InputAction m_Player_Dash;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -1934,6 +3646,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/Pause".
         /// </summary>
         public InputAction @Pause => m_Wrapper.m_Player_Pause;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/Dash".
+        /// </summary>
+        public InputAction @Dash => m_Wrapper.m_Player_Dash;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1984,6 +3700,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Pause.started += instance.OnPause;
             @Pause.performed += instance.OnPause;
             @Pause.canceled += instance.OnPause;
+            @Dash.started += instance.OnDash;
+            @Dash.performed += instance.OnDash;
+            @Dash.canceled += instance.OnDash;
         }
 
         /// <summary>
@@ -2019,6 +3738,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Pause.started -= instance.OnPause;
             @Pause.performed -= instance.OnPause;
             @Pause.canceled -= instance.OnPause;
+            @Dash.started -= instance.OnDash;
+            @Dash.performed -= instance.OnDash;
+            @Dash.canceled -= instance.OnDash;
         }
 
         /// <summary>
@@ -2200,987 +3922,13 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnPause(InputAction.CallbackContext context);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scenario/BlimpMoving.cs">
-using UnityEngine;
-
-public class BlimpMoving : MonoBehaviour
-{
-    public float speed = 5.0f;
-
-    public float turnSpeed = 15.0f;
-
-    void Update()
-    {
-        transform.Translate(transform.forward * speed * Time.deltaTime, Space.World);
-
-        transform.Rotate(0, turnSpeed * Time.deltaTime, 0);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scenario/CarMoving.cs">
-using UnityEngine;
-
-public class CarMoving : MonoBehaviour
-{
-    public float velocidade = 20.0f;
-
-    void Update()
-    {
-        transform.Translate(Vector3.forward* velocidade * Time.deltaTime);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scenario/PositionMemory.cs">
-using UnityEngine;
-
-public class PositionMemory : MonoBehaviour
-{
-    private Vector3 initialPosition;
-    void Awake()
-    {
-        // Guarda a posição atual do objeto no momento em que ele é criado
-        initialPosition = transform.position;
-    }
-    public void ResetPosition()
-    {
-        // Move o carro de volta para a posição inicial.
-        transform.position = initialPosition;
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scenario/ResetTrigger.cs">
-using UnityEngine;
-
-public class ResetTrigger : MonoBehaviour
-{
-    [Tooltip("A Tag do objeto que deve ser resetado (ex: 'Car').")]
-    public string targetTag = "Car";
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag(targetTag))
-        {
-            PositionMemory memory = other.GetComponentInParent<PositionMemory>();
-
-            if (memory != null)
-            {
-                memory.ResetPosition();
-            }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
-// Local: Assets/Scripts/Scoring/ScoreUIController.cs
-
-using TMPro;
-using UnityEngine;
-
-/// <summary>
-/// Controla a exibição da UI de resultados do final do nível.
-/// Ouve o evento OnLevelCompleted do ScoreManager para se atualizar.
-/// </summary>
-public class ScoreUIController : MonoBehaviour
-{
-    [Header("Referências da UI")]
-    [SerializeField] private TextMeshProUGUI finalTimeText;
-    [SerializeField] private TextMeshProUGUI rankText;
-    [SerializeField] private GameObject resultsPanel; // O painel pai que contém os textos
-
-    private void OnEnable()
-    {
-        // Inscreve-se no evento para ser notificado quando o nível terminar.
-        ScoreManager.OnLevelCompleted += HandleLevelCompleted;
-    }
-
-
-
-    private void OnDisable()
-    {
-        // Remove a inscrição para evitar erros e memory leaks.
-        ScoreManager.OnLevelCompleted -= HandleLevelCompleted;
-    }
-
-    private void Start()
-    {
-        // Garante que o painel esteja escondido no início.
-        if (resultsPanel != null)
-        {
-            // resultsPanel.SetActive(false);
-        }
-    }
-
-    /// <summary>
-    /// Método chamado pelo evento OnLevelCompleted.
-    /// Atualiza os textos e exibe o painel de resultados.
-    /// </summary>
-    /// <param name="finalTime">O tempo final do jogador.</param>
-    /// <param name="finalRank">O ranque final do jogador.</param>
-    private void HandleLevelCompleted(float finalTime, Rank finalRank)
-    {
-        if (finalTimeText != null)
-        {
-            // Formata o tempo para ter duas casas decimais (ex: 34.56s).
-            finalTimeText.text = $"Tempo: {finalTime:F2}s";
-        }
-
-        if (rankText != null)
-        {
-            rankText.text = $"Ranque: {finalRank}";
-        }
-
-        if (resultsPanel != null)
-        {
-            resultsPanel.SetActive(true);
-        }
-    }
-    
-    public void UpdateTime(float newTime)
-    {
-        if (finalTimeText != null)
-        {
-            finalTimeText.text = $"Tempo: {newTime:F2}s";
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/BasePowerRing.cs">
-// Local: Assets/Scripts/PowerUps/BasePowerUpRing.cs
-
-using System;
-using UnityEngine;
-
-[RequireComponent(typeof(Collider))]
-public abstract class BasePowerUpRing : MonoBehaviour
-{
-    [Header("Configurações Base do Anel")]
-    private string playerTag = "Player";
-    [SerializeField] private bool disableOnUse = true;
-
-    [Header("Efeitos")]
-    private GameObject effectOnUse;
-    private string sfxOnUse;
-
-    public static Action OnPowerRingActivated;
-
-    private void Awake()
-    {
-        // Garante que o collider seja um trigger
-        var colliders = GetComponents<Collider>();
-        foreach (var col in colliders)
-        {
-            if (!col.isTrigger)
-            {
-                col.isTrigger = true;
-            }
-        }
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag(playerTag))
-        {
-            OnPowerRingActivated?.Invoke();
-            ApplyEffect(other.gameObject);
-            TriggerEffects();
-        }
-    }
-
-    /// <summary>
-    /// Lógica específica do power-up a ser implementada pelas classes filhas.
-    /// </summary>
-    /// <param name="playerObject">O GameObject do jogador que ativou o anel.</param>
-    protected abstract void ApplyEffect(GameObject playerObject);
-
-    /// <summary>
-    /// Aciona os efeitos visuais, sonoros e desativa o objeto, se configurado.
-    /// </summary>
-    private void TriggerEffects()
-    {
-        if (AudioManager.instance != null)
-        {
-            AudioManager.instance.PlaySFX("PowerRing");
-        }
-
-        if (effectOnUse != null)
-        {
-            Instantiate(effectOnUse, transform.position, transform.rotation);
-        }
-
-        if (disableOnUse)
-        {
-            gameObject.SetActive(false);
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/DontDestroyOnLoad.cs">
-using UnityEngine;
-
-public class DontDestroyOnLoad : MonoBehaviour
-{
-
-    void Awake()
-    {
-        DontDestroyOnLoad(gameObject);
-    }
-
-}
-</file>
-
-<file path="Assets/Scripts/DoubleJumpResetRing.cs">
-using UnityEngine;
-
-public class DoubleJumpResetRing : BasePowerUpRing
-{
-    protected override void ApplyEffect(GameObject playerObject)
-    {
-        var playerMovement = playerObject.GetComponent<PlayerMovementController>();
-        if (playerMovement != null)
-        {
-            playerMovement.EnableDoubleJump();
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/GameSystem.cs">
-using UnityEngine;
-
-public class GameSystem : MonoBehaviour
-{
-    public static GameSystem Instance { get; private set; }
-    void Awake()
-    {
-          if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-}
-</file>
-
-<file path="Assets/Scripts/GrappleResetRing.cs">
-using UnityEngine;
-
-public class GrappleResetRing : BasePowerUpRing
-{
-    protected override void ApplyEffect(GameObject playerObject)
-    {
-        var grappleController = playerObject.GetComponent<GrapplingHookController>();
-        if (grappleController != null)
-        {
-            grappleController.ResetGrapple();
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/InputManager.cs">
-// Local: Assets/Scripts/InputManager.cs
-
-using System;
-using UnityEngine;
-using UnityEngine.InputSystem;
-
-[RequireComponent(typeof(InputStateManager))]
-public class InputManager : MonoBehaviour
-{
-    public static InputManager Instance { get; private set; }
-
-    public PlayerControls PlayerControls => _playerControls;
-
-    // Eventos de Ações do Jogador
-    public event Action<Vector2> OnMove;
-    public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-    public event Action OnSlowTimeStarted;
-    public event Action OnSlowTimeCanceled;
-    
-    // Eventos de Jogo (Debug/Sistema)
-    public event Action OnLevelFinished;
-    public event Action OnLevelRestarted;
-    public event Action OnPausePressed;
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        _playerControls = new PlayerControls();
-        
-        InputStateManager stateManager = GetComponent<InputStateManager>();
-        stateManager.Initialize(_playerControls);
-    }
-
-    private void Start()
-    {
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
-    }
-
-    private void OnEnable()
-    {
-        _playerControls.Enable();
-        
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-
-        _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-        
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
-        
-        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
-        
-        _playerControls.Player.Pause.performed += HandlePausePressed;
-        _playerControls.UI.Unpause.performed += HandlePausePressed;
-    }
-
-    private void OnDisable()
-    {
-        if (_playerControls == null) return;
-
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-        
-        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
-        
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
-        
-        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
-        
-        _playerControls.Player.Pause.performed -= HandlePausePressed;
-        _playerControls.UI.Unpause.performed -= HandlePausePressed;
-        
-        _playerControls.Disable();
-    }
-
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
-    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
-    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
-    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
-    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
-    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
-}
-</file>
-
-<file path="Assets/Scripts/InputStateManager.cs">
-// Local: Assets/Scripts/InputStateManager.cs
-
-using UnityEngine;
-
-[System.Serializable]
-public enum InputState
-{
-    Gameplay,
-    UI
-}
-
-/// <summary>
-/// Gerencia o estado do input, alternando entre os Action Maps (Gameplay, UI)
-/// e controlando o estado do cursor do mouse.
-/// Implementa o padrão Singleton para acesso global.
-/// </summary>
-public class InputStateManager : MonoBehaviour
-{
-    public static InputStateManager Instance { get; private set; }
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    public void Initialize(PlayerControls playerControls)
-    {
-        _playerControls = playerControls;
-    }
-
-    /// <summary>
-    /// O método central para alternar o contexto de input do jogo.
-    /// </summary>
-    /// <param name="newState">O novo estado para o qual o input deve mudar.</param>
-    public void SwitchState(InputState newState)
-    {
-        if (_playerControls == null) return;
-
-
-        switch (newState)
-        {
-            case InputState.Gameplay:
-                // Ativa os controles de gameplay
-                _playerControls.Player.Enable();
-                _playerControls.UI.Disable();
-
-                // Esconde e trava o cursor no centro da tela
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-                break;
-
-            case InputState.UI:
-                // Ativa os controles de UI e desativa os de gameplay
-                _playerControls.UI.Enable();
-                _playerControls.Player.Disable();
-
-                // Libera e mostra o cursor para interagir com a UI
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-                break;
-        }
-    }
-
-    public void SwitchToGameplay()
-    {
-        SwitchState(InputState.Gameplay);
-    }
-    public void SwitchToUI()
-    {
-        SwitchState(InputState.UI);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/MovingPlatform.cs">
-// Local: Assets/Scripts/MovingPlatform.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(Rigidbody))]
-public class MovingPlatform : MonoBehaviour, ITimeSlowable
-{
-    [Header("Configurações de Patrulha")]
-    [Tooltip("O ponto de partida da patrulha.")]
-    [SerializeField] private Transform targetA;
-    [Tooltip("O ponto final da patrulha.")]
-    [SerializeField] private Transform targetB;
-    [Tooltip("A velocidade de movimento da plataforma.")]
-    [SerializeField] private float speed = 3f;
-
-    [Header("Visual")]
-    [SerializeField] private Color slowDownColor = Color.cyan;
-    
-    private Rigidbody _rb;
-    private Transform _currentTarget;
-    private Vector3 _savedVelocity;
-    private Renderer _renderer;
-    private Color _originalColor;
-
-    private bool _isSlowed = false;
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        _renderer = GetComponent<Renderer>();
-
-        if (_renderer != null) _originalColor = _renderer.material.color;
-
-        // Configuração crucial do Rigidbody para plataformas
-        _rb.useGravity = false;
-        _rb.freezeRotation = true;
-        _rb.isKinematic = false; // Deve ser dinâmico para interagir com o jogador
-    }
-
-    private void Start()
-    {
-        if (targetA == null || targetB == null)
-        {
-            Debug.LogError("Alvos de patrulha não configurados!", this);
-            enabled = false;
-            return;
-        }
-        _currentTarget = targetB;
-        TimeManipulationManager.Instance.Register(this);
-    }
-
-    private void OnDisable()
-    {
-        if (_isSlowed) RestoreNormalTime();
-        if (TimeManipulationManager.Instance != null)
-        {
-            TimeManipulationManager.Instance.Unregister(this);
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        if (_isSlowed) return; // O movimento é controlado pelos métodos de slow
-
-        MoveTowardsTarget();
-    }
-
-    private void MoveTowardsTarget()
-    {
-        Vector3 direction = (_currentTarget.position - _rb.position).normalized;
-        _rb.linearVelocity = direction * speed;
-
-        if (Vector3.Distance(_rb.position, _currentTarget.position) < 0.5f)
-        {
-            _currentTarget = (_currentTarget == targetA) ? targetB : targetA;
-        }
-    }
-
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-
-        _savedVelocity = _rb.linearVelocity;
-        float slowFactor = 1.0f - (slowPercentage / 100.0f);
-        _rb.linearVelocity = _savedVelocity * slowFactor;
-
-        if (_renderer != null) _renderer.material.color = slowDownColor;
-    }
-
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-
-        // A velocidade é recalculada no próximo FixedUpdate, ou podemos restaurar a salva
-        _rb.linearVelocity = _savedVelocity;
-
-        if (_renderer != null) _renderer.material.color = _originalColor;
-    }
-
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
-    
-    private void OnDrawGizmos()
-    {
-        if (targetA != null && targetB != null)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(targetA.position, targetB.position);
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerAnimatorController.cs">
-// Local: Assets/Scripts/PlayerAnimationController.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(Animator))]
-public class PlayerAnimationController : MonoBehaviour
-{
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovementController;
-
-    private Animator _animator;
-
-    private readonly int _hashHorizontalSpeed = Animator.StringToHash("HorizontalSpeed");
-    private readonly int _hashIsGrounded = Animator.StringToHash("IsGrounded");
-    private readonly int _hashJump = Animator.StringToHash("JumpTrigger");
-
-    private void Awake()
-    {
-        _animator = GetComponent<Animator>();
-    }
-
-    private void OnEnable()
-    {
-        if (playerMovementController == null)
-        {
-            Debug.LogError("PlayerMovementController não está atribuído no PlayerAnimationController.");
-            enabled = false;
-            return;
-        }
-        
-        playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
-        playerMovementController.OnJumped += HandleJump;
-        playerMovementController.OnGroundLanded += HandleLand;
-        playerMovementController.OnLeftGround += HandleLeftGround;
-    }
-
-    private void OnDisable()
-    {
-        if (playerMovementController == null) return;
-        
-        playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
-        playerMovementController.OnJumped -= HandleJump;
-        playerMovementController.OnGroundLanded -= HandleLand;
-        playerMovementController.OnLeftGround -= HandleLeftGround;
-    }
-
-    private void HandleVelocityChanged(float horizontalSpeed)
-    {
-        _animator.SetFloat(_hashHorizontalSpeed, horizontalSpeed);
-    }
-
-    private void HandleJump()
-    {
-        _animator.SetBool(_hashIsGrounded, false);
-        _animator.SetTrigger(_hashJump);
-    }
-    
-    private void HandleLand()
-    {
-        _animator.SetBool(_hashIsGrounded, true);
-    }
-
-    private void HandleLeftGround()
-    {
-        _animator.SetBool(_hashIsGrounded, false);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/UIJuice.cs">
-using UnityEngine;
-using UnityEngine.Events;
-using DG.Tweening;
-
-[RequireComponent(typeof(CanvasGroup))]
-public class UIJuice : MonoBehaviour
-{
-    [Header("Configurações de Animação")]
-    [SerializeField] protected float duration = 0.5f;
-    [SerializeField] protected float delay = 0f;
-    [SerializeField] protected Ease easeType = Ease.OutBack;
-    [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
-
-    [Header("Comportamento")]
-    [SerializeField] protected bool playOnEnable = false;
-
-    [Header("Eventos de Animação")]
-    [Tooltip("Disparado quando a animação de entrada começa.")]
-    public UnityEvent OnPlayStart;
-
-    [Tooltip("Disparado quando a animação de entrada é concluída.")]
-    public UnityEvent OnPlayComplete;
-
-    [Tooltip("Disparado quando a animação de saída começa.")]
-    public UnityEvent OnReverseStart;
-
-    [Tooltip("Disparado quando a animação de saída é concluída.")]
-    public UnityEvent OnReverseComplete;
-
-    private CanvasGroup canvasGroup;
-    private RectTransform rectTransform;
-    private Sequence sequence;
-
-    private void Awake()
-    {
-        canvasGroup = GetComponent<CanvasGroup>();
-        rectTransform = GetComponent<RectTransform>();
-    }
-
-    protected virtual void OnEnable()
-    {
-        if (playOnEnable)
-        {
-            PlayAnimation();
-        }
-    }
-
-    /// <summary>
-    /// Deixa o painel ativo e inicia a animação de entrada.
-    /// Útil para chamar a partir de botões ou outros scripts.
-    /// </summary>
-    public void SetActiveAndPlay()
-    {
-        gameObject.SetActive(true);
-        PlayAnimation();
-    }
-
-    /// <summary>
-    /// Inicia a animação de "entrada" (por exemplo, abrir uma tela).
-    /// </summary>
-    public virtual void PlayAnimation()
-    {
-        KillExistingSequence();
-        CreateForwardSequence();
-
-        if (sequence != null)
-        {
-            sequence.OnStart(() => OnPlayStart?.Invoke());
-            sequence.OnComplete(() => OnPlayComplete?.Invoke());
-            sequence.Play();
-        }
-    }
-
-    /// <summary>
-    /// Inicia a animação de "saída" (por exemplo, fechar uma tela).
-    /// </summary>
-    public virtual void PlayReverseAnimation()
-    {
-        KillExistingSequence();
-        CreateReverseSequence();
-
-        if (sequence != null)
-        {
-            sequence.OnStart(() => OnReverseStart?.Invoke());
-            sequence.OnComplete(() => OnReverseComplete?.Invoke());
-            sequence.Play();
-        }
-    }
-
-    /// <summary>
-    /// Cria a sequência de animação de entrada (aparecer/abrir).
-    /// </summary>
-    private void CreateForwardSequence()
-    {
-        gameObject.SetActive(true);
-        canvasGroup.blocksRaycasts = true;
-
-        // Define o estado inicial antes da animação
-        canvasGroup.alpha = 0f;
-        rectTransform.localScale = startScale;
-
-        sequence = DOTween.Sequence();
-
-        if (delay > 0)
-        {
-            sequence.AppendInterval(delay);
-        }
-
-        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
-        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
-
-        // Pausa a sequência para que o método Play() possa controlá-la
-        sequence.Pause();
-    }
-
-    /// <summary>
-    /// Cria a sequência de animação de saída (desaparecer/fechar).
-    /// </summary>
-    private void CreateReverseSequence()
-    {
-        // Impede cliques durante a animação de saída
-        canvasGroup.blocksRaycasts = false;
-
-        sequence = DOTween.Sequence();
-
-        // O delay não é aplicado na animação reversa por padrão, mas pode ser adicionado se necessário
-        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
-        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
-        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
-
-        // Pausa a sequência para que o método Play() possa controlá-la
-        sequence.Pause();
-    }
-
-    /// <summary>
-    /// Para e destrói qualquer sequência de animação ativa para evitar sobreposições.
-    /// </summary>
-    private void KillExistingSequence()
-    {
-        if (sequence != null && sequence.IsActive())
-        {
-            sequence.Kill();
-        }
-    }
-
-    protected virtual void OnDestroy()
-    {
-        KillExistingSequence();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/UIPanel.cs">
-// Local: Assets/Scripts/UI/UIPanel.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(UIJuice))]
-public abstract class UIPanel : MonoBehaviour
-{
-    [SerializeField] private UIPanelType panelType;
-    public UIPanelType PanelType => panelType;
-
-    private UIJuice _uiJuice;
-
-    // Usamos uma propriedade para "Lazy Initialization".
-    // O código dentro do 'get' só é executado na primeira vez que UiJuice é acessado.
-    protected UIJuice UiJuice
-    {
-        get
-        {
-            if (_uiJuice == null)
-            {
-                _uiJuice = GetComponent<UIJuice>();
-            }
-            return _uiJuice;
-        }
-    }
-
-    /// <summary>
-    /// Ativa o painel e inicia sua animação de entrada.
-    /// </summary>
-    public virtual void Show()
-    {
-        // Agora acessamos a propriedade UiJuice, que garante que a referência não seja nula.
-        UiJuice.SetActiveAndPlay();
-    }
-
-    /// <summary>
-    /// Inicia a animação de saída do painel. O objeto será desativado ao final da animação.
-    /// </summary>
-    public virtual void Hide()
-    {
-        // O mesmo aqui.
-        UiJuice.PlayReverseAnimation();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/VelocityParticleController.cs">
-// Local: Assets/Scripts/VelocityParticleController.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(ParticleSystem))]
-public class VelocityParticleController : MonoBehaviour
-{
-    [Header("Referências")]
-    [Tooltip("Referência ao controlador de movimento do jogador para ouvir os eventos de velocidade.")]
-    private PlayerMovementController playerMovementController;
-
-    [Header("Configurações do Efeito")]
-    [Tooltip("A velocidade horizontal mínima (em m/s) para o efeito começar a aparecer.")]
-    [SerializeField] private float minSpeedThreshold = 41.67f; // Equivalente a 150 km/h
-
-    [Tooltip("A velocidade horizontal máxima (em m/s) onde o efeito atinge sua intensidade total.")]
-    [SerializeField] private float maxSpeedThreshold = 83.33f; // Equivalente a 300 km/h
-
-    [Tooltip("A opacidade (alpha) mínima do efeito quando a velocidade mínima é atingida.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float minAlpha = 0.1f;
-
-    [Tooltip("A opacidade (alpha) máxima do efeito quando a velocidade máxima é atingida.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float maxAlpha = 1.0f;
-
-    private ParticleSystem _particleSystem;
-    private ParticleSystem.MainModule _mainModule;
-
-    private void Awake()
-    {
-        _particleSystem = GetComponent<ParticleSystem>();
-        _mainModule = _particleSystem.main;
-
-        playerMovementController = FindObjectOfType<PlayerMovementController>();
-        
-        if (playerMovementController == null)
-        {
-            Debug.LogError("PlayerMovementController não foi atribuído no VelocityParticleController.", this);
-            enabled = false;
-        }
-    }
-
-    private void OnEnable()
-    {
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
-        }
-    }
-
-    /// <summary>
-    /// Manipula o evento de mudança de velocidade, ajustando a visibilidade e a opacidade das partículas.
-    /// </summary>
-    /// <param name="currentHorizontalSpeed">A velocidade horizontal atual do jogador em m/s.</param>
-    private void HandleVelocityChanged(float currentHorizontalSpeed)
-    {
-        if (currentHorizontalSpeed >= minSpeedThreshold / 3.6f)
-        {
-            if (!_particleSystem.isPlaying)
-            {
-                _particleSystem.Play();
-            }
-            
-            UpdateParticleAlpha(currentHorizontalSpeed);
-        }
-        else
-        {
-            if (_particleSystem.isPlaying)
-            {
-                _particleSystem.Stop();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Calcula e aplica a nova opacidade (alpha) à cor inicial das partículas.
-    /// </summary>
-    /// <param name="speed">A velocidade atual do jogador.</param>
-    private void UpdateParticleAlpha(float speed)
-    {
-        // Calcula um valor normalizado (0 a 1) com base na velocidade atual entre o mínimo e o máximo.
-        float normalizedSpeed = Mathf.InverseLerp(minSpeedThreshold / 3.6f, maxSpeedThreshold/ 3.6f, speed);
-
-        // Mapeia o valor normalizado para o intervalo de alpha desejado (ex: 0.1 a 1.0).
-        float newAlpha = Mathf.Lerp(minAlpha, maxAlpha, normalizedSpeed);
-
-        // Obtém a cor inicial, atualiza seu alpha e a reaplica.
-        Color startColor = _mainModule.startColor.color;
-        startColor.a = newAlpha;
-        _mainModule.startColor = startColor;
+        /// <summary>
+        /// Method invoked when associated input action "Dash" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDash(InputAction.CallbackContext context);
     }
 }
 </file>
@@ -3366,32 +4114,6 @@ public class GameSettingsManager : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/MainMenu.cs">
-using UnityEngine;
-
-public class MainMenu : UIPanel
-{
-    public UIPanel uIPanel;
-    void Start()
-    {
-        if (InputStateManager.Instance == null)
-        {
-            Debug.LogError("InputStateManager não encontrado na cena.");
-            return;
-        }
-        InputStateManager.Instance.SwitchState(InputState.UI);
-        // UIManager.Instance.RegisterPanel(uIPanel);
-        // UIManager.Instance.ShowPanel(UIPanelType.MainMenu);
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
-}
-</file>
-
 <file path="Assets/Scripts/MouseSensitivitySlider.cs">
 // Local: Assets/Scripts/MouseSensitivitySlider.cs
 
@@ -3451,6 +4173,124 @@ public class MouseSensitivitySlider : MonoBehaviour
                     _slider.onValueChanged.RemoveListener(GameSettingsManager.Instance.SetMouseSensitivityY);
                     break;
             }
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/MovingPlatform.cs">
+// Local: Assets/Scripts/MovingPlatform.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class MovingPlatform : MonoBehaviour, ITimeSlowable
+{
+    [Header("Configurações de Patrulha")]
+    [Tooltip("O ponto de partida da patrulha.")]
+    [SerializeField] private Transform targetA;
+    [Tooltip("O ponto final da patrulha.")]
+    [SerializeField] private Transform targetB;
+    [Tooltip("A velocidade de movimento da plataforma.")]
+    public float speed = 3f, playerInfluence = 0.69f;
+
+    [Header("Visual")]
+    [SerializeField] private Color slowDownColor = Color.cyan;
+    
+    private Rigidbody _rb;
+    private Transform _currentTarget;
+    private Vector3 _savedVelocity;
+    private Renderer _renderer;
+    private Color _originalColor;
+
+    private bool _isSlowed = false;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        _renderer = GetComponent<Renderer>();
+
+        if (_renderer != null) _originalColor = _renderer.material.color;
+
+        // Configuração crucial do Rigidbody para plataformas
+        _rb.useGravity = false;
+        _rb.freezeRotation = true;
+        _rb.isKinematic = false; // Deve ser dinâmico para interagir com o jogador
+    }
+
+    private void Start()
+    {
+        if (targetA == null || targetB == null)
+        {
+            Debug.LogError("Alvos de patrulha não configurados!", this);
+            enabled = false;
+            return;
+        }
+        _currentTarget = targetB;
+        TimeManipulationManager.Instance.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        if (_isSlowed) RestoreNormalTime();
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (_isSlowed) return; // O movimento é controlado pelos métodos de slow
+
+        MoveTowardsTarget();
+    }
+
+    private void MoveTowardsTarget()
+    {
+        Vector3 direction = (_currentTarget.position - _rb.position).normalized;
+        _rb.linearVelocity = direction * speed;
+
+        if (Vector3.Distance(_rb.position, _currentTarget.position) < 0.5f)
+        {
+            _currentTarget = (_currentTarget == targetA) ? targetB : targetA;
+        }
+    }
+
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+
+        _savedVelocity = _rb.linearVelocity;
+        float slowFactor = 1.0f - (slowPercentage / 100.0f);
+        _rb.linearVelocity = _savedVelocity * slowFactor;
+
+        if (_renderer != null) _renderer.material.color = slowDownColor;
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+
+        // A velocidade é recalculada no próximo FixedUpdate, ou podemos restaurar a salva
+        _rb.linearVelocity = _savedVelocity;
+
+        if (_renderer != null) _renderer.material.color = _originalColor;
+    }
+
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+    
+    private void OnDrawGizmos()
+    {
+        if (targetA != null && targetB != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(targetA.position, targetB.position);
         }
     }
 }
@@ -3586,27 +4426,60 @@ public class PlayerLookController : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/SettingsPanel.cs">
-// Local: Assets/Scripts/UI/SettingsPanel.cs
+<file path="Assets/Scripts/UIPanel.cs">
+// Local: Assets/Scripts/UI/UIPanel.cs
 
-public class SettingsPanel : UIPanel
+using UnityEngine;
+
+[RequireComponent(typeof(UIJuice))]
+[System.Serializable]
+public abstract class UIPanel : MonoBehaviour
 {
+    [SerializeField] private UIPanelType panelType;
+    public UIPanelType PanelType => panelType;
 
-    void Start()
+    private UIJuice _uiJuice;
+    
+    protected UIJuice UiJuice
     {
-        DontDestroyOnLoad(gameObject);
-        UIManager.Instance.RegisterPanel(this);
-    }
-
-    void OnDestroy()
-    {
-        if (UIManager.Instance != null)
+        get
         {
-            UIManager.Instance.UnregisterPanel(this.PanelType);
+            if (_uiJuice == null)
+            {
+                _uiJuice = GetComponent<UIJuice>();
+            }
+            return _uiJuice;
         }
     }
 
+    protected virtual void OnEnable()
+    {
+        // Esta chamada é mais relevante para painéis instanciados em tempo de execução.
+        // O UIManager já cuida dos painéis que existem na cena no carregamento.
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.RegisterPanel(this);
+        }
+    }
 
+    protected virtual void OnDestroy()
+    {
+        // Garante que, se o painel for destruído, ele seja removido do dicionário do manager.
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UnregisterPanel(this);
+        }
+    }
+    
+    public virtual void Show()
+    {
+        UiJuice.SetActiveAndPlay();
+    }
+
+    public virtual void Hide()
+    {
+        UiJuice.PlayReverseAnimation();
+    }
 }
 </file>
 
@@ -3653,213 +4526,6 @@ public class WinLogic : MonoBehaviour
 </file>
 
 <file path="Assets/Scripts/AudioManager.cs">
-/*using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Audio;
-using UnityEngine.SceneManagement;
-
-public class AudioManager : MonoBehaviour
-{
-    public static AudioManager instance;
-
-    public Sound[] musicSounds, ambientSounds, sfxSounds;
-    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
-    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
-    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
-
-    [SerializeField] private AudioMixer audioMixer;
-    [SerializeField] private float sfxPitchVariation = 0.1f;
-    [Header("Configuraушes de Cena")]
-    [SerializeField] private string gameplaySceneName = "BasicMovement";
-
-
-    private void Awake()
-    {
-
-        AddSoundsToDictionary(sfxSounds);
-        AddSoundsToDictionary(musicSounds);
-        AddSoundsToDictionary(ambientSounds);
-
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
-    }
-
-    private void Start()
-    {
-        PlayMusic("Menu");
-    }
-
-
-    private void AddSoundsToDictionary(Sound[] soundArray)
-    {
-        foreach (Sound s in soundArray)
-        {
-            if (!sfxDictionary.ContainsKey(s.name))
-            {
-                sfxDictionary.Add(s.name, s.clip);
-            }
-        }
-    }
-
-    public void PlayMusic(string name)
-    {
-        Sound s = Array.Find(musicSounds, x => x.name == name);
-
-        if (s == null)
-        {
-            Debug.Log("Sound Not Found");
-        }
-
-        else
-        {
-            musicSource.clip = s.clip;
-            musicSource.volume = musicSource.volume * masterSource.volume;
-            musicSource.Play();
-        }
-    }
-
-    public void PlayAmbient(string name)
-    {
-        Sound s = Array.Find(ambientSounds, x => x.name == name);
-        if (s == null)
-        {
-            Debug.Log("Ambient sound not found: " + name);
-        }
-        else
-        {
-            ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
-            ambientSource.loop = true;
-            ambientSource.Play();
-
-        }
-    }
-
-    public void PlaySFX(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-            sfxSource.pitch = randomPitch;
-            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
-
-            
-        }
-        else
-        {
-            Debug.Log("Sound Not Found: " + name);
-        }
-
-       
-    }
-
-    public void ToggleMusic()
-    {
-        musicSource.mute = !musicSource.mute;
-    }
-
-    public void ToggleSFX()
-    {
-        sfxSource.mute = !sfxSource.mute;
-    }
-
-    public void ToggleAmbient()
-    {
-        ambientSource.mute = !ambientSource.mute;
-    }
-
-    public void MusicVolume(float volume)
-    {
-        musicSource.volume = volume * masterSource.volume;
-    }
-
-    public void AmbientVolume(float volume)
-    {
-        ambientSource.volume = volume * masterSource.volume;
-    }
-
-    public void SFXVolume(float volume)
-    {
-        sfxSource.volume = volume * masterSource.volume;
-    }
-
-    public void MasterVolume(float volume)
-    {
-        audioMixer.SetFloat("MasterVolume", volume);
-    }
-
-    public void ToggleMaster()
-    {
-        masterSource.mute = !masterSource.mute;
-        musicSource.mute = masterSource.mute;
-        sfxSource.mute = masterSource.mute;
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
-    {
-        // Se jр existe, sз retorna
-        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
-            return existingSource;
-
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            GameObject obj = new GameObject("LoopingSFX_" + name);
-            obj.transform.parent = transform;
-
-            AudioSource newSource = obj.AddComponent<AudioSource>();
-            newSource.clip = clip;
-            newSource.loop = true;
-            newSource.playOnAwake = false;
-            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
-
-            newSource.Play();
-
-            loopingSources.Add(name, newSource);
-            return newSource;
-        }
-        else
-        {
-            Debug.LogWarning("Looping Sound Not Found: " + name);
-            return null;
-        }
-    }
-
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        if (scene.name == "Menu")
-        {
-            PlayMusic("Menu");
-        }
-        else if (scene.name == gameplaySceneName)
-        {
-            PlayMusic("Gameplay");
-        }
-    }
-
-
-} */
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -4032,143 +4698,6 @@ public class AudioManager : MonoBehaviour
         }
 
         Debug.Log($"Nenhuma mЩsica atribuьda para a cena: {sceneName}");
-    }
-}
-</file>
-
-<file path="Assets/Scripts/UIManager.cs">
-// Local: Assets/Scripts/UI/UIManager.cs
-
-using System.Collections.Generic;
-using UnityEngine;
-
-public class UIManager : MonoBehaviour
-{
-    public static UIManager Instance { get; private set; }
-
-    private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        
-        FindAndRegisterAllPanels();
-    }
-
-    private void OnEnable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed += HandlePauseToggle;
-        FindAndRegisterAllPanels();
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
-    }
-
-    private void FindAndRegisterAllPanels()
-    {
-        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (UIPanel panel in allPanels)
-        {
-            RegisterPanel(panel);
-        }
-    }
-    public void RegisterPanel(UIPanel panel)
-    {
-        if (!registeredPanels.ContainsKey(panel.PanelType))
-        {
-            registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
-        }
-    }
-
-    public void UnregisterPanel(UIPanelType panelType)
-    {
-        if (registeredPanels.ContainsKey(panelType))
-        {
-            registeredPanels.Remove(panelType);
-        }
-    }
-
-    public void ShowPanel(UIPanelType panelType)
-    {
-        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
-        {
-            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
-            return;
-        }
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Hide();
-        }
-
-        panelToShow.Show();
-        panelStack.Push(panelToShow);
-        UpdateInputState();
-    }
-    public void OpenSettingsPanel()
-    {
-        ShowPanel(UIPanelType.Settings);
-    }
-    public void CloseSettingsPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel topPanel = panelStack.Peek();
-        if (topPanel.PanelType == UIPanelType.Settings)
-        {
-            CloseCurrentPanel();
-        }
-    }
-
-    public void CloseCurrentPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel panelToClose = panelStack.Pop();
-        panelToClose.Hide();
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Show();
-        }
-
-        UpdateInputState();
-    }
-
-    private void HandlePauseToggle()
-    {
-        if (panelStack.Count > 0)
-        {
-            CloseCurrentPanel();
-        }
-        else
-        {
-            FindAndRegisterAllPanels();
-            ShowPanel(UIPanelType.Settings);
-        }
-    }
-
-    private void UpdateInputState()
-    {
-        if (panelStack.Count > 0)
-        {
-            InputStateManager.Instance.SwitchState(InputState.UI);
-        }
-        else
-        {
-            InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        }
     }
 }
 </file>
@@ -4413,6 +4942,37 @@ public class GrapplingHookController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/MainMenu.cs">
+using UnityEngine;
+
+public class MainMenu : UIPanel
+{
+    void Start()
+    {
+        if (InputStateManager.Instance == null)
+        {
+            Debug.LogError("InputStateManager não encontrado na cena.");
+            return;
+        }
+        InputStateManager.Instance.SwitchState(InputState.UI);
+        UIManager.Instance.ShowPanel(UIPanelType.MainMenu);
+    }
+
+}
+</file>
+
+<file path="Assets/Scripts/SettingsPanel.cs">
+// Local: Assets/Scripts/UI/SettingsPanel.cs
+
+public class SettingsPanel : UIPanel
+{
+
+
+ 
+
+}
+</file>
+
 <file path="Assets/Scripts/PlayerAudioHandler.cs">
 using UnityEngine;
 
@@ -4425,7 +4985,7 @@ public class PlayerAudioHandler : MonoBehaviour
 
     [Header("Sons - Movimento")]
     [SerializeField] private string jumpSfx = "Jump";
-    //[SerializeField] private string doubleJumpSfx = "DoubleJump";
+    [SerializeField] private string doubleJumpSfx = "DoubleJump";
     [SerializeField] private string landSfx = "Land";
     [SerializeField] private string footstepSfx = "Footstep";
     [SerializeField] private string wallHitSfx = "WallHit";
@@ -4455,7 +5015,6 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private float stepTimer;
     private bool wasGrounded;
-    private bool didDoubleJump;
     private bool canDoubleJumpSound;
     private Vector3 lastPosition;
 
@@ -4528,16 +5087,11 @@ public class PlayerAudioHandler : MonoBehaviour
         if (movement.isGrounded)
         {
             AudioManager.instance.PlaySFX(jumpSfx);
-            didDoubleJump = false;
         }
-        /*else if (canDoubleJumpSound && !didDoubleJump)
+        else if (!movement.isGrounded && doubleJumpSfx != null)
         {
-            if (rb.linearVelocity.y > 1f )
-            {
-                AudioManager.instance.PlaySFX(doubleJumpSfx);
-                didDoubleJump = true;
-            }
-        }*/
+            AudioManager.instance.PlaySFX(doubleJumpSfx);
+        }
     }
 
     private void HandleFootsteps()
@@ -4654,6 +5208,329 @@ public class PlayerAudioHandler : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/UIJuice.cs">
+using UnityEngine;
+using UnityEngine.Events;
+using DG.Tweening;
+
+[RequireComponent(typeof(CanvasGroup))]
+public class UIJuice : MonoBehaviour
+{
+    [Header("Configurações de Animação")]
+    [SerializeField] protected float duration = 0.5f;
+    [SerializeField] protected float delay = 0f;
+    [SerializeField] protected Ease easeType = Ease.OutBack;
+    [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
+
+    [Header("Comportamento")]
+    [SerializeField] protected bool playOnEnable = false;
+
+    [Header("Eventos de Animação")]
+    [Tooltip("Disparado quando a animação de entrada começa.")]
+    public UnityEvent OnPlayStart;
+
+    [Tooltip("Disparado quando a animação de entrada é concluída.")]
+    public UnityEvent OnPlayComplete;
+
+    [Tooltip("Disparado quando a animação de saída começa.")]
+    public UnityEvent OnReverseStart;
+
+    [Tooltip("Disparado quando a animação de saída é concluída.")]
+    public UnityEvent OnReverseComplete;
+
+    private CanvasGroup canvasGroup;
+    private RectTransform rectTransform;
+    private Sequence sequence;
+
+    private void Awake()
+    {
+        canvasGroup = GetComponent<CanvasGroup>();
+        rectTransform = GetComponent<RectTransform>();
+    }
+
+    protected virtual void OnEnable()
+    {
+        if (playOnEnable)
+        {
+            PlayAnimation();
+        }
+    }
+
+    /// <summary>
+    /// Deixa o painel ativo e inicia a animação de entrada.
+    /// Útil para chamar a partir de botões ou outros scripts.
+    /// </summary>
+    public void SetActiveAndPlay()
+    {
+        gameObject.SetActive(true);
+        PlayAnimation();
+    }
+
+    /// <summary>
+    /// Inicia a animação de "entrada" (por exemplo, abrir uma tela).
+    /// </summary>
+    public virtual void PlayAnimation()
+    {
+        KillExistingSequence();
+        CreateForwardSequence();
+
+        if (sequence != null)
+        {
+            sequence.OnStart(() => OnPlayStart?.Invoke());
+            sequence.OnComplete(() => OnPlayComplete?.Invoke());
+            sequence.Play();
+        }
+    }
+
+    /// <summary>
+    /// Inicia a animação de "saída" (por exemplo, fechar uma tela).
+    /// </summary>
+    public virtual void PlayReverseAnimation()
+    {
+        KillExistingSequence();
+        CreateReverseSequence();
+
+        if (sequence != null)
+        {
+            sequence.OnStart(() => OnReverseStart?.Invoke());
+            sequence.OnComplete(() => OnReverseComplete?.Invoke());
+            sequence.Play();
+        }
+    }
+
+    /// <summary>
+    /// Cria a sequência de animação de entrada (aparecer/abrir).
+    /// </summary>
+    private void CreateForwardSequence()
+    {
+        gameObject.SetActive(true);
+        canvasGroup.blocksRaycasts = true;
+
+        // Define o estado inicial antes da animação
+        canvasGroup.alpha = 0f;
+        rectTransform.localScale = startScale;
+
+        sequence = DOTween.Sequence();
+
+        if (delay > 0)
+        {
+            sequence.AppendInterval(delay);
+        }
+
+        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
+        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
+
+        // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.SetUpdate(true); // <-- CORREÇÃO APLICADA AQUI
+        sequence.Pause();
+    }
+
+    /// <summary>
+    /// Cria a sequência de animação de saída (desaparecer/fechar).
+    /// </summary>
+    private void CreateReverseSequence()
+    {
+        // Impede cliques durante a animação de saída
+        canvasGroup.blocksRaycasts = false;
+
+        sequence = DOTween.Sequence();
+
+        // O delay não é aplicado na animação reversa por padrão, mas pode ser adicionado se necessário
+        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
+        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
+        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
+
+        // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.SetUpdate(true); // <-- CORREÇÃO APLICADA AQUI
+        sequence.Pause();
+    }
+
+    /// <summary>
+    /// Para e destrói qualquer sequência de animação ativa para evitar sobreposições.
+    /// </summary>
+    private void KillExistingSequence()
+    {
+        if (sequence != null && sequence.IsActive())
+        {
+            sequence.Kill();
+        }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        KillExistingSequence();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/UIManager.cs">
+// Local: Assets/Scripts/UI/UIManager.cs
+
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class UIManager : MonoBehaviour
+{
+    public static UIManager Instance { get; private set; }
+
+    private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
+    
+    [SerializeField, HideInInspector] private Stack<UIPanel> panelStack = new Stack<UIPanel>();
+    [SerializeField] private List<UIPanel> panelStackView = new List<UIPanel>(); // Apenas para visualização no inspetor
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    private void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnPausePressed += HandlePauseToggle;
+        }
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnPausePressed -= HandlePauseToggle;
+        }
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        UnregisterAllPanels();
+        FindAndRegisterAllPanels();
+    }
+
+    private void FindAndRegisterAllPanels()
+    {
+        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (UIPanel panel in allPanels)
+        {
+            RegisterPanel(panel);
+
+        }
+        SyncPanelStackView();
+    }
+    private void UnregisterAllPanels()
+    {
+        registeredPanels.Clear();
+        panelStack.Clear();
+        SyncPanelStackView();
+    }
+
+
+    public void RegisterPanel(UIPanel panel)
+    {
+        if (!registeredPanels.ContainsKey(panel.PanelType))
+        {
+            registeredPanels.Add(panel.PanelType, panel);
+            // panel.gameObject.SetActive(false);
+        }
+    }
+
+    public void UnregisterPanel(UIPanel panel)
+    {
+        if (registeredPanels.ContainsKey(panel.PanelType))
+        {
+            registeredPanels.Remove(panel.PanelType);
+        }
+    }
+
+    public void ShowPanel(UIPanelType panelType)
+    {
+        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
+        {
+            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
+            return;
+        }
+
+        if (panelStack.Count > 0)
+        {
+            panelStack.Peek().Hide();
+        }
+
+        panelToShow.Show();
+        panelStack.Push(panelToShow);
+        SyncPanelStackView();
+        UpdateInputState();
+    }
+
+    public void CloseCurrentPanel()
+    {
+        if (panelStack.Count == 0) return;
+
+        UIPanel panelToClose = panelStack.Pop();
+        panelToClose.Hide();
+        SyncPanelStackView();
+
+        if (panelStack.Count > 0)
+        {
+            panelStack.Peek().Show();
+        }
+
+        UpdateInputState();
+    }
+
+    private void HandlePauseToggle()
+    {
+        if (panelStack.Count > 0 && panelStack.Peek().PanelType == UIPanelType.Settings)
+        {
+            CloseCurrentPanel();
+        }
+        else
+        {
+            ShowPanel(UIPanelType.Settings);
+        }
+
+    }
+
+    private void UpdateInputState()
+    {
+        if (panelStack.Count > 0)
+        {
+            InputStateManager.Instance.SwitchState(InputState.UI);
+        }
+        else
+        {
+            Debug.Log("Switching to Gameplay state");
+            InputStateManager.Instance.SwitchState(InputState.Gameplay);
+        }
+    }
+
+    public void OpenSettingsPanel()
+    {
+        ShowPanel(UIPanelType.Settings);
+    }
+    
+    public void CloseSettingsPanel()
+    {
+        
+        if (panelStack.Count > 0 && panelStack.Peek().PanelType == UIPanelType.Settings)
+        {
+            CloseCurrentPanel();
+        }
+    }
+
+    private void SyncPanelStackView()
+    {
+        panelStackView.Clear();
+        panelStackView.AddRange(panelStack);
+    }
+}
+</file>
+
 <file path="Assets/Scripts/PlayerMovementController.cs">
 using TMPro;
 using System;
@@ -4728,6 +5605,8 @@ public class PlayerMovementController : MonoBehaviour
     private bool isJumping;
 
     private Vector3 _groundVelocity;
+    private Rigidbody _currentPlatformRb; // Referência para a plataforma atual
+    private Vector3 _lastPlatformPosition; // Posição da plataforma na última atualização
 
     public Rigidbody Rb => rb;
 
@@ -4763,6 +5642,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         UpdateCurrentVelocityInKm();
         CheckGroundedStatus();
+        ApplyPlatformMovement(); // NOVO: aplica movimento da plataforma
         ApplyDrag();
         LimitVelocity();
         MovePlayer();
@@ -4808,10 +5688,16 @@ public class PlayerMovementController : MonoBehaviour
         if (isGrounded && hitInfo.rigidbody != null)
         {
             _groundVelocity = hitInfo.rigidbody.linearVelocity;
+            if (_currentPlatformRb != hitInfo.rigidbody)
+            {
+                _currentPlatformRb = hitInfo.rigidbody;
+                _lastPlatformPosition = _currentPlatformRb.position;
+            }
         }
         else
         {
             _groundVelocity = Vector3.zero;
+            _currentPlatformRb = null;
         }
 
         if (!wasGrounded && isGrounded)
@@ -4839,6 +5725,25 @@ public class PlayerMovementController : MonoBehaviour
                  OnLeftGround?.Invoke();
                  coyoteTimeCounter = coyoteTimeDuration;
             }
+        }
+    }
+
+    private void ApplyPlatformMovement()
+    {
+        if (_currentPlatformRb != null && isGrounded)
+        {
+            // Move o player junto com a plataforma (apenas o deslocamento da plataforma)
+            Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
+            MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
+            float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
+            if (platformDelta != Vector3.zero)
+            {
+                platformDelta *= playerInfluence;
+                rb.position += platformDelta;
+
+
+            }
+            _lastPlatformPosition = _currentPlatformRb.position;
         }
     }
 
