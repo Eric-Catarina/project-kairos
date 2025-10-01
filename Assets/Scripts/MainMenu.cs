@@ -11,6 +11,7 @@ public class MainMenu : UIPanel
         }
         InputStateManager.Instance.SwitchState(InputState.UI);
         UIManager.Instance.ShowPanel(UIPanelType.MainMenu);
+
     }
 
 }

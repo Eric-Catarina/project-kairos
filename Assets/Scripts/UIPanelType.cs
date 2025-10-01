@@ -1,5 +1,6 @@
 // Local: Assets/Scripts/UI/UIPanelType.cs
 
+[System.Serializable]
 public enum UIPanelType
 {
     // Painéis que bloqueiam o input do jogador
