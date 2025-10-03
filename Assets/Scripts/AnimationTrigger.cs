@@ -82,6 +82,7 @@ public class AnimationTrigger : MonoBehaviour
 
     private void ActivateAnimation()
     {
+        Debug.Log("AnimationTrigger: Ativando animação.", this);
         // Ativa um Trigger se o nome for fornecido
         if (!string.IsNullOrEmpty(triggerParameterName))
         {
