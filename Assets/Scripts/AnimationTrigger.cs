@@ -32,6 +32,7 @@ public class AnimationTrigger : MonoBehaviour
     [Header("Comportamento")]
     [Tooltip("Se marcado, o trigger só pode ser ativado uma única vez.")]
     [SerializeField] private bool activateOnlyOnce = true;
+    [SerializeField] private string sfxOnActivate;
 
     private bool _hasBeenActivated = false;
 
@@ -93,6 +94,11 @@ public class AnimationTrigger : MonoBehaviour
         if (!string.IsNullOrEmpty(boolParameterName))
         {
             targetAnimator.SetBool(boolParameterName, true);
+        }
+        // Toca som de ativação
+        if (!string.IsNullOrEmpty(sfxOnActivate) && AudioManager.instance != null)
+        {
+            AudioManager.instance.PlaySFX(sfxOnActivate);
         }
 
         _hasBeenActivated = true;

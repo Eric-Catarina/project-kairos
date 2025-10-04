@@ -249,6 +249,7 @@ MonoBehaviour:
   triggerParameterName: Contact
   boolParameterName: 
   activateOnlyOnce: 1
+  sfxOnActivate: MarimbaWin
 --- !u!114 &5947859829632437115
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -265,9 +266,9 @@ MonoBehaviour:
   - eventName: BoxExplosion
     particleEffectPrefab: {fileID: 0}
     childParticleSystem: {fileID: 2586043524746585391}
-    sfxName: PowerRing
+    sfxName: PopWin
     componentToDisable: {fileID: 3239496792257100713}
-  sfxOnStateEnter: PowerRing
+  sfxOnStateEnter: 
   sfxOnStateExit: 
 --- !u!1 &3223702942007335318
 GameObject:
@@ -282,6 +283,8 @@ GameObject:
   - component: {fileID: 6093191808391658889}
   - component: {fileID: 835920701459125759}
   - component: {fileID: 6346034236630415229}
+  - component: {fileID: 5101397704729430399}
+  - component: {fileID: 8678811460172703342}
   m_Layer: 0
   m_Name: ClockPrefab
   m_TagString: Untagged
@@ -398,6 +401,40 @@ Animation:
   m_AnimatePhysics: 0
   m_UpdateMode: 0
   m_CullingType: 0
+--- !u!135 &5101397704729430399
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3223702942007335318}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.15930365
+  m_Center: {x: -0.000000002561137, y: 0.029063115, z: -0.0000000055879372}
+--- !u!114 &8678811460172703342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3223702942007335318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44c2163e52e23f74ab6ef42a60229097, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  disableOnUse: 1
 --- !u!1 &3239496792257100713
 GameObject:
   m_ObjectHideFlags: 0

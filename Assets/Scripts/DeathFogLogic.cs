@@ -5,6 +5,13 @@ using UnityEngine.SceneManagement;
 public class DeathFogLogic : MonoBehaviour
 {
     [SerializeField] SceneManagerLogic sceneManager;
+    void Start()
+    {
+        if (sceneManager == null)
+        {
+            sceneManager = FindObjectOfType<SceneManagerLogic>();
+        }
+    }
 
     private void OnCollisionEnter(Collision collision)
     {
