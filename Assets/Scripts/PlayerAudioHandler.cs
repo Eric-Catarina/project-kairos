@@ -11,7 +11,7 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private string jumpSfx = "Jump";
     [SerializeField] private string doubleJumpSfx = "DoubleJump";
     [SerializeField] private string landSfx = "Land";
-    [SerializeField] private string footstepSfx = "Step";
+    [SerializeField] private string footstepSfx = "Footstep";
     [SerializeField] private string wallHitSfx = "WallHit";
 
     [Header("Sons - Estado do Player")]
@@ -39,7 +39,6 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private float stepTimer;
     private bool wasGrounded;
-    private bool didDoubleJump;
     private bool canDoubleJumpSound;
     private Vector3 lastPosition;
 
@@ -53,15 +52,23 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private void Awake()
     {
+
         movement = GetComponent<PlayerMovementController>();
         grapple = GetComponent<GrapplingHookController>();
-        rb = movement.Rb;
+        rb = GetComponent<Rigidbody>();
 
         wasGrounded = movement.isGrounded;
         stepTimer = stepInterval;
         lastPosition = transform.position;
 
-        windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        if (AudioManager.instance != null)
+        {
+            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
+        }
     }
 
     private void OnEnable()
@@ -104,15 +111,10 @@ public class PlayerAudioHandler : MonoBehaviour
         if (movement.isGrounded)
         {
             AudioManager.instance.PlaySFX(jumpSfx);
-            didDoubleJump = false;
         }
-        else if (canDoubleJumpSound && !didDoubleJump)
+        else if (!movement.isGrounded && doubleJumpSfx != null)
         {
-            if (rb.linearVelocity.y > 1f )
-            {
-                AudioManager.instance.PlaySFX(doubleJumpSfx);
-                didDoubleJump = true;
-            }
+            AudioManager.instance.PlaySFX(doubleJumpSfx);
         }
     }
 

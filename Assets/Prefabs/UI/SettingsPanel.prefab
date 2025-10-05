@@ -2697,6 +2697,9 @@ GameObject:
   - component: {fileID: 4044281117879042925}
   - component: {fileID: 1140553860732923935}
   - component: {fileID: 4420060320723587805}
+  - component: {fileID: 3685674717726058488}
+  - component: {fileID: 3989789923794976860}
+  - component: {fileID: 158381206641362311}
   m_Layer: 5
   m_Name: SettingsPanel
   m_TagString: Untagged
@@ -2764,6 +2767,60 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!225 &3685674717726058488
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3061829519012011674}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
+--- !u!114 &3989789923794976860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3061829519012011674}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ecdf82a5b99cc48cbbd6145f8502a78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  duration: 0.5
+  delay: 0
+  easeType: 27
+  startScale: {x: 0.1, y: 0.1, z: 0.1}
+  playOnEnable: 1
+  OnPlayStart:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPlayComplete:
+    m_PersistentCalls:
+      m_Calls: []
+  OnReverseStart:
+    m_PersistentCalls:
+      m_Calls: []
+  OnReverseComplete:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &158381206641362311
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3061829519012011674}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3062e3edc62c42bfe857fe729f405b82, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelType: 0
 --- !u!1 &3096290094087051879
 GameObject:
   m_ObjectHideFlags: 0
@@ -3232,6 +3289,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3129558388562907406}
   - component: {fileID: 3951895136732501477}
+  - component: {fileID: 815081858917898484}
   m_Layer: 5
   m_Name: SensX Slider
   m_TagString: Untagged
@@ -3312,6 +3370,19 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &815081858917898484
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3800635060747739024}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60bbb364e5de52e1f9dfb38d0f0967d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  controlledAxis: 0
 --- !u!1 &3843763628621817912
 GameObject:
   m_ObjectHideFlags: 0
@@ -3835,11 +3906,11 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: SetActivePanel
-        m_Mode: 2
+        m_MethodName: CloseCurrentPanel
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -7707,6 +7778,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6472229649531589454}
   - component: {fileID: 8350327945390981027}
+  - component: {fileID: 4645912173352039924}
   m_Layer: 5
   m_Name: SensY Slider
   m_TagString: Untagged
@@ -7787,6 +7859,19 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &4645912173352039924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7928048140943095774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60bbb364e5de52e1f9dfb38d0f0967d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  controlledAxis: 1
 --- !u!1 &8043575123708492547
 GameObject:
   m_ObjectHideFlags: 0

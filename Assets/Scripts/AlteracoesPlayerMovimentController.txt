@@ -1,0 +1,69 @@
+// Este arquivo contém as modificações para o script PlayerMovementController.cs.
+
+
+// --- Alteração na declaração de variáveis ---
+// A variável isJumping foi alterada para 'public' para permitir o acesso de outros scripts.
+public bool isJumping;
+
+// Adição de referência para o WallGrabController.
+[SerializeField] private WallGrabController wallGrabController;
+
+
+/* --- Alteração no método FixedUpdate() ---
+ A lógica original foi restaurada. Agora, o script inteiro é ativado ou desativado
+ pelo GrapplingHookController ou WallGrabController, evitando conflitos de física.
+ O corpo do FixedUpdate deve ser o que está abaixo: */
+private void FixedUpdate()
+{
+    UpdateCurrentVelocityInKm();
+    CheckGroundedStatus();
+    ApplyDrag();
+    LimitVelocity();
+    MovePlayer();
+    ApplyExtraGravity();
+}
+
+
+/* --- Alteração no método CheckGroundedStatus() ---
+ A linha que ativava o pulo duplo aqui foi removida, pois agora ele é ativado
+ apenas pelo grappling hook.
+ A habilidade de agarrar na parede é recarregada neste método. */
+private void CheckGroundedStatus()
+{
+    bool wasGrounded = isGrounded;
+    // ... (o resto do código)
+    if (isGrounded && !wasGrounded)
+    {
+        // ... (codigo)
+        // Linha removida: canDoubleJump = true;
+        
+        // --- Adição para recarregar a habilidade de agarrar na parede ---
+        if (wallGrabController != null)
+        {
+            wallGrabController.ResetWallGrab();
+        }
+        // ... (o resto do código)
+    }
+    // ... (etc etc etc resto do código)
+}
+
+
+/* --- Métodos de Controle Adicionados ---
+ Estes são os novos métodos que devem ser adicionados ao final do script.
+ Eles permitem que outros scripts, como o GrapplingHookController e WallGrabController,
+ controlem o estado do pulo duplo e do próprio PlayerMovementController. */
+
+public void DisableDoubleJump()
+{
+    canDoubleJump = false;
+}
+
+public void EnableDoubleJump()
+{
+    canDoubleJump = true;
+}
+
+public void SetMovementActive(bool active)
+{
+    this.enabled = active;
+}
