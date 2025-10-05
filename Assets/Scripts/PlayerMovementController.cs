@@ -1,7 +1,5 @@
 using TMPro;
-
 using System;
-
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -9,12 +7,13 @@ public class PlayerMovementController : MonoBehaviour
 {
     public event Action OnGroundLanded;
     public event Action<float> OnHorizontalVelocityChanged;
+    public event Action OnJumped;
+    public event Action OnLeftGround; // Novo Evento
 
     [Header("Estado Atual")]
     public bool isGrounded;
-    public bool isJumping;
-    [SerializeField] private bool canDoubleJump;
-
+    public bool canDoubleJump;
+    
     [Header("Configurações de Movimento")]
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
@@ -28,6 +27,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float grappleAirDrag = 0.5f;
 
     [Header("Configurações de Pulo")]
+    [SerializeField] private bool allowDoubleJumpFromGround = false;
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private float doubleJumpForce = 14f;
     [SerializeField] private float gravityMultiplier = 2.5f;
@@ -59,7 +59,6 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform orientation;
     [SerializeField] private GrapplingHookController grapplingHookController;
-    [SerializeField] private WallGrabController wallGrabController;
     public TextMeshProUGUI velocityText, distanceText;
 
     private Rigidbody rb;
@@ -69,7 +68,8 @@ public class PlayerMovementController : MonoBehaviour
     private float jumpBufferCounter;
     private float timeSinceLanded;
     private float currentVelocityInKm;
-    
+    private bool isJumping;
+
     private Vector3 _groundVelocity;
 
     public Rigidbody Rb => rb;
@@ -134,8 +134,7 @@ public class PlayerMovementController : MonoBehaviour
         {
             distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
         }
-
-        float velocityInKm = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude * 3.6f;
+        
         if (velocityText != null)
         {
             velocityText.text = "Velocidade: " + currentVelocityInKm.ToString("F2");
@@ -167,13 +166,8 @@ public class PlayerMovementController : MonoBehaviour
 
             isJumping = false;
             timeSinceLanded = 0f;
-            
+            canDoubleJump = false;
             OnGroundLanded?.Invoke();
-
-            if (wallGrabController != null)
-            {
-                wallGrabController.ResetWallGrab();
-            }
 
             if (jumpBufferCounter > 0f)
             {
@@ -181,9 +175,13 @@ public class PlayerMovementController : MonoBehaviour
             }
         }
 
-        if (wasGrounded && !isGrounded && !isJumping)
+        if (wasGrounded && !isGrounded)
         {
-            coyoteTimeCounter = coyoteTimeDuration;
+            if(!isJumping) // Se não está pulando, significa que caiu
+            {
+                 OnLeftGround?.Invoke();
+                 coyoteTimeCounter = coyoteTimeDuration;
+            }
         }
     }
 
@@ -252,6 +250,10 @@ public class PlayerMovementController : MonoBehaviour
         if (coyoteTimeCounter > 0f || isGrounded)
         {
             Jump(jumpForce);
+            if (allowDoubleJumpFromGround)
+            {
+                canDoubleJump = true;
+            }
         }
         else if (canDoubleJump)
         {
@@ -281,6 +283,8 @@ public class PlayerMovementController : MonoBehaviour
         {
             ApplyJumpForwardBoost();
         }
+        
+        OnJumped?.Invoke();
     }
 
     private void ApplyExtraGravity()
@@ -293,19 +297,9 @@ public class PlayerMovementController : MonoBehaviour
 
     public void EnableDoubleJump()
     {
+        if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
     }
-
-    public void DisableDoubleJump()
-    {
-        canDoubleJump = false;
-    }
-
-    public void SetMovementActive(bool active)
-    {
-        this.enabled = active;
-    }
-    
     private void ApplyLandingDampening()
     {
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);

@@ -79,8 +79,9 @@ public class UIManager : MonoBehaviour
         {
             panelStack.Peek().Show();
         }
-	Time.timeScale = 1;
+
         UpdateInputState();
+	Time.timeScale = 1;
     }
 
     private void HandlePauseToggle()

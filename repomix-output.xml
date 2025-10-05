@@ -377,6 +377,28 @@ public class TimeManipulationManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/DeathFogLogic.cs">
+using Unity.VisualScripting;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class DeathFogLogic : MonoBehaviour
+{
+    [SerializeField] SceneManagerLogic sceneManager;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Debug.Log("Collision detected with: " + collision.gameObject.name);
+
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Destroy(collision.gameObject);
+            sceneManager.RestartScene();
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/InputStateManager.cs">
 // Local: Assets/Scripts/InputStateManager.cs
 
@@ -590,13 +612,97 @@ public class PatrolMovement : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/SettingsPanel.cs">
-// Local: Assets/Scripts/UI/SettingsPanel.cs
+<file path="Assets/Scripts/PlayerVisualController.cs">
+// Local: Assets/Scripts/PlayerVisualController.cs
 
-public class SettingsPanel : UIPanel
+using UnityEngine;
+using DG.Tweening;
+
+/// <summary>
+/// Gerencia todas as animações e efeitos visuais procedurais do jogador.
+/// Ouve eventos do PlayerMovementController para acionar as animações corretas.
+/// (Lógica de slide removida para corresponder às novas mecânicas)
+/// </summary>
+public class PlayerVisualController : MonoBehaviour
 {
-    // No futuro, você pode adicionar lógica específica do menu de configurações aqui,
-    // como carregar valores, etc.
+    [Header("Referências")]
+    [Tooltip("Referência ao script de movimento para se inscrever nos eventos.")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+    [Tooltip("O transform do modelo visual do jogador que será animado.")]
+    [SerializeField] private Transform playerModel;
+
+    private void OnEnable()
+    {
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não está atribuído no PlayerVisualsController.");
+            return;
+        }
+
+    }
+
+    private void OnDisable()
+    {
+        if (playerMovementController == null) return;
+        
+    }
+
+    /// <summary>
+    /// Para e limpa todas as animações DOTween ativas neste objeto.
+    /// </summary>
+    private void KillAllTweens()
+    {
+        playerModel.DOKill();
+    }
+
+    private void OnDestroy()
+    {
+        KillAllTweens();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/SceneManagerLogic.cs">
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class SceneManagerLogic : MonoBehaviour
+{
+    public void RestartScene()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
+    }
+
+    public void LoadNextScene()
+    {
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int nextSceneIndex = currentSceneIndex + 1;
+        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            SceneManager.LoadScene(0); // Volta para o menu principal ou primeira cena
+        }
+    }
+
+    public void LoadSceneByName(string sceneName)
+    {
+        SceneManager.LoadScene(sceneName);
+    }
+
+    public void QuitGame()
+    {
+        Debug.Log("Quit Game!");
+        Application.Quit();
+    }
+
+    public void LoadMainMenu()
+    {
+        SceneManager.LoadScene(0);
+    }
 }
 </file>
 
@@ -651,318 +757,23 @@ public class Sound
 }
 </file>
 
-<file path="Assets/Scripts/UIJuice.cs">
-using UnityEngine;
-using UnityEngine.Events;
-using DG.Tweening;
-
-[RequireComponent(typeof(CanvasGroup))]
-public class UIJuice : MonoBehaviour
-{
-    [Header("Configurações de Animação")]
-    [SerializeField] protected float duration = 0.5f;
-    [SerializeField] protected float delay = 0f;
-    [SerializeField] protected Ease easeType = Ease.OutBack;
-    [SerializeField] private Vector3 startScale = new Vector3(0.8f, 0.8f, 0.8f);
-
-    [Header("Comportamento")]
-    [SerializeField] protected bool playOnEnable = false;
-
-    [Header("Eventos de Animação")]
-    [Tooltip("Disparado quando a animação de entrada começa.")]
-    public UnityEvent OnPlayStart;
-
-    [Tooltip("Disparado quando a animação de entrada é concluída.")]
-    public UnityEvent OnPlayComplete;
-
-    [Tooltip("Disparado quando a animação de saída começa.")]
-    public UnityEvent OnReverseStart;
-
-    [Tooltip("Disparado quando a animação de saída é concluída.")]
-    public UnityEvent OnReverseComplete;
-
-    private CanvasGroup canvasGroup;
-    private RectTransform rectTransform;
-    private Sequence sequence;
-
-    private void Awake()
-    {
-        canvasGroup = GetComponent<CanvasGroup>();
-        rectTransform = GetComponent<RectTransform>();
-    }
-
-    protected virtual void OnEnable()
-    {
-        if (playOnEnable)
-        {
-            PlayAnimation();
-        }
-    }
-
-    /// <summary>
-    /// Deixa o painel ativo e inicia a animação de entrada.
-    /// Útil para chamar a partir de botões ou outros scripts.
-    /// </summary>
-    public void SetActiveAndPlay()
-    {
-        gameObject.SetActive(true);
-        PlayAnimation();
-    }
-
-    /// <summary>
-    /// Inicia a animação de "entrada" (por exemplo, abrir uma tela).
-    /// </summary>
-    public virtual void PlayAnimation()
-    {
-        KillExistingSequence();
-        CreateForwardSequence();
-
-        if (sequence != null)
-        {
-            sequence.OnStart(() => OnPlayStart?.Invoke());
-            sequence.OnComplete(() => OnPlayComplete?.Invoke());
-            sequence.Play();
-        }
-    }
-
-    /// <summary>
-    /// Inicia a animação de "saída" (por exemplo, fechar uma tela).
-    /// </summary>
-    public virtual void PlayReverseAnimation()
-    {
-        KillExistingSequence();
-        CreateReverseSequence();
-
-        if (sequence != null)
-        {
-            sequence.OnStart(() => OnReverseStart?.Invoke());
-            sequence.OnComplete(() => OnReverseComplete?.Invoke());
-            sequence.Play();
-        }
-    }
-
-    /// <summary>
-    /// Cria a sequência de animação de entrada (aparecer/abrir).
-    /// </summary>
-    private void CreateForwardSequence()
-    {
-        gameObject.SetActive(true);
-        canvasGroup.blocksRaycasts = true;
-
-        // Define o estado inicial antes da animação
-        canvasGroup.alpha = 0f;
-        rectTransform.localScale = startScale;
-
-        sequence = DOTween.Sequence();
-
-        if (delay > 0)
-        {
-            sequence.AppendInterval(delay);
-        }
-
-        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
-        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
-
-        // Pausa a sequência para que o método Play() possa controlá-la
-        sequence.Pause();
-    }
-
-    /// <summary>
-    /// Cria a sequência de animação de saída (desaparecer/fechar).
-    /// </summary>
-    private void CreateReverseSequence()
-    {
-        // Impede cliques durante a animação de saída
-        canvasGroup.blocksRaycasts = false;
-
-        sequence = DOTween.Sequence();
-
-        // O delay não é aplicado na animação reversa por padrão, mas pode ser adicionado se necessário
-        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
-        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
-        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
-
-        // Pausa a sequência para que o método Play() possa controlá-la
-        sequence.Pause();
-    }
-
-    /// <summary>
-    /// Para e destrói qualquer sequência de animação ativa para evitar sobreposições.
-    /// </summary>
-    private void KillExistingSequence()
-    {
-        if (sequence != null && sequence.IsActive())
-        {
-            sequence.Kill();
-        }
-    }
-
-    protected virtual void OnDestroy()
-    {
-        KillExistingSequence();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/UIManager.cs">
-// Local: Assets/Scripts/UI/UIManager.cs
-
-using System.Collections.Generic;
+<file path="Assets/Scripts/TemporaryBGmusic.cs">
 using UnityEngine;
 
-public class UIManager : MonoBehaviour
+public class TemporaryBGmusic : MonoBehaviour
 {
-    public static UIManager Instance { get; private set; }
+    float cooldown = 1.5f;
+    bool played = false;
 
-    private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
-
-    private void Awake()
+    private void Update()
     {
-        if (Instance != null && Instance != this)
+        if (cooldown > 0)
         {
-            Destroy(gameObject);
+            cooldown--;
             return;
         }
-        Instance = this;
+        if (cooldown < 0 && !played) { AudioManager.instance.PlayMusic("Level 1");  played = true; }
     }
-
-    private void OnEnable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed += HandlePauseToggle;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
-    }
-
-    public void RegisterPanel(UIPanel panel)
-    {
-        if (!registeredPanels.ContainsKey(panel.PanelType))
-        {
-            registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
-        }
-    }
-
-    public void ShowPanel(UIPanelType panelType)
-    {
-        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
-        {
-            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
-            return;
-        }
-
-        // Opcional: esconde o painel atual antes de mostrar o próximo
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Hide();
-        }
-
-        panelToShow.Show();
-        panelStack.Push(panelToShow);
-        UpdateInputState();
-    }
-
-    public void CloseCurrentPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel panelToClose = panelStack.Pop();
-        panelToClose.Hide();
-
-        // Opcional: mostra o painel anterior na pilha
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Show();
-        }
-
-        UpdateInputState();
-    }
-
-    private void HandlePauseToggle()
-    {
-        if (panelStack.Count > 0)
-        {
-            CloseCurrentPanel();
-        }
-        else
-        {
-            ShowPanel(UIPanelType.Settings);
-        }
-    }
-
-    private void UpdateInputState()
-    {
-        if (panelStack.Count > 0)
-        {
-            // Se houver algum painel na pilha, muda para o estado de UI
-            InputStateManager.Instance.SwitchState(InputState.UI);
-        }
-        else
-        {
-            // Se a pilha estiver vazia, volta para o estado de Gameplay
-            InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/UIPanel.cs">
-// Local: Assets/Scripts/UI/UIPanel.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(UIJuice))]
-public abstract class UIPanel : MonoBehaviour
-{
-    [SerializeField] private UIPanelType panelType;
-    public UIPanelType PanelType => panelType;
-
-    protected UIJuice uiJuice;
-
-    protected virtual void Awake()
-    {
-        uiJuice = GetComponent<UIJuice>();
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.RegisterPanel(this);
-        }
-    }
-
-    /// <summary>
-    /// Ativa o painel e inicia sua animação de entrada.
-    /// </summary>
-    public virtual void Show()
-    {
-        uiJuice.SetActiveAndPlay();
-    }
-
-    /// <summary>
-    /// Inicia a animação de saída do painel. O objeto será desativado ao final da animação.
-    /// </summary>
-    public virtual void Hide()
-    {
-        uiJuice.PlayReverseAnimation();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/UIPanelType.cs">
-// Local: Assets/Scripts/UI/UIPanelType.cs
-
-public enum UIPanelType
-{
-    // Painéis que bloqueiam o input do jogador
-    Settings,
-    PauseMenu,
-    // Adicione outros painéis aqui (ex: Inventory, Map)
-
-    // Painéis que NÃO bloqueiam o input (HUD)
-    HUD 
 }
 </file>
 
@@ -2681,28 +2492,6 @@ public abstract class BasePowerUpRing : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/DeathFogLogic.cs">
-using Unity.VisualScripting;
-using UnityEngine;
-using UnityEngine.SceneManagement;
-
-public class DeathFogLogic : MonoBehaviour
-{
-    [SerializeField] SceneManagerLogic sceneManager;
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        Debug.Log("Collision detected with: " + collision.gameObject.name);
-
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            Destroy(collision.gameObject);
-            sceneManager.RestartScene();
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/DoubleJumpResetRing.cs">
 using UnityEngine;
 
@@ -2853,117 +2642,342 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
 }
 </file>
 
-<file path="Assets/Scripts/PlayerVisualController.cs">
-// Local: Assets/Scripts/PlayerVisualController.cs
+<file path="Assets/Scripts/SettingsPanel.cs">
+// Local: Assets/Scripts/UI/SettingsPanel.cs
 
+public class SettingsPanel : UIPanel
+{
+    // No futuro, você pode adicionar lógica específica do menu de configurações aqui,
+    // como carregar valores, etc.
+}
+</file>
+
+<file path="Assets/Scripts/UIJuice.cs">
 using UnityEngine;
+using UnityEngine.Events;
 using DG.Tweening;
 
-/// <summary>
-/// Gerencia todas as animações e efeitos visuais procedurais do jogador.
-/// Ouve eventos do PlayerMovementController para acionar as animações corretas.
-/// (Lógica de slide removida para corresponder às novas mecânicas)
-/// </summary>
-public class PlayerVisualController : MonoBehaviour
+[RequireComponent(typeof(CanvasGroup))]
+public class UIJuice : MonoBehaviour
 {
-    [Header("Referências")]
-    [Tooltip("Referência ao script de movimento para se inscrever nos eventos.")]
-    [SerializeField] private PlayerMovementController playerMovementController;
-    [Tooltip("O transform do modelo visual do jogador que será animado.")]
-    [SerializeField] private Transform playerModel;
+    [Header("Configurações de Animação")]
+    [SerializeField] protected float duration = 0.5f;
+    [SerializeField] protected float delay = 0f;
+    [SerializeField] protected Ease easeType = Ease.OutBack;
+    [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
+
+    [Header("Comportamento")]
+    [SerializeField] protected bool playOnEnable = false;
+
+    [Header("Eventos de Animação")]
+    [Tooltip("Disparado quando a animação de entrada começa.")]
+    public UnityEvent OnPlayStart;
+
+    [Tooltip("Disparado quando a animação de entrada é concluída.")]
+    public UnityEvent OnPlayComplete;
+
+    [Tooltip("Disparado quando a animação de saída começa.")]
+    public UnityEvent OnReverseStart;
+
+    [Tooltip("Disparado quando a animação de saída é concluída.")]
+    public UnityEvent OnReverseComplete;
+
+    private CanvasGroup canvasGroup;
+    private RectTransform rectTransform;
+    private Sequence sequence;
+
+    private void Awake()
+    {
+        canvasGroup = GetComponent<CanvasGroup>();
+        rectTransform = GetComponent<RectTransform>();
+    }
+
+    protected virtual void OnEnable()
+    {
+        if (playOnEnable)
+        {
+            PlayAnimation();
+        }
+    }
+
+    /// <summary>
+    /// Deixa o painel ativo e inicia a animação de entrada.
+    /// Útil para chamar a partir de botões ou outros scripts.
+    /// </summary>
+    public void SetActiveAndPlay()
+    {
+        gameObject.SetActive(true);
+        PlayAnimation();
+    }
+
+    /// <summary>
+    /// Inicia a animação de "entrada" (por exemplo, abrir uma tela).
+    /// </summary>
+    public virtual void PlayAnimation()
+    {
+        KillExistingSequence();
+        CreateForwardSequence();
+
+        if (sequence != null)
+        {
+            sequence.OnStart(() => OnPlayStart?.Invoke());
+            sequence.OnComplete(() => OnPlayComplete?.Invoke());
+            sequence.Play();
+        }
+    }
+
+    /// <summary>
+    /// Inicia a animação de "saída" (por exemplo, fechar uma tela).
+    /// </summary>
+    public virtual void PlayReverseAnimation()
+    {
+        KillExistingSequence();
+        CreateReverseSequence();
+
+        if (sequence != null)
+        {
+            sequence.OnStart(() => OnReverseStart?.Invoke());
+            sequence.OnComplete(() => OnReverseComplete?.Invoke());
+            sequence.Play();
+        }
+    }
+
+    /// <summary>
+    /// Cria a sequência de animação de entrada (aparecer/abrir).
+    /// </summary>
+    private void CreateForwardSequence()
+    {
+        gameObject.SetActive(true);
+        canvasGroup.blocksRaycasts = true;
+
+        // Define o estado inicial antes da animação
+        canvasGroup.alpha = 0f;
+        rectTransform.localScale = startScale;
+
+        sequence = DOTween.Sequence();
+
+        if (delay > 0)
+        {
+            sequence.AppendInterval(delay);
+        }
+
+        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
+        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
+
+        // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.Pause();
+    }
+
+    /// <summary>
+    /// Cria a sequência de animação de saída (desaparecer/fechar).
+    /// </summary>
+    private void CreateReverseSequence()
+    {
+        // Impede cliques durante a animação de saída
+        canvasGroup.blocksRaycasts = false;
+
+        sequence = DOTween.Sequence();
+
+        // O delay não é aplicado na animação reversa por padrão, mas pode ser adicionado se necessário
+        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
+        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
+        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o objeto ao final
+
+        // Pausa a sequência para que o método Play() possa controlá-la
+        sequence.Pause();
+    }
+
+    /// <summary>
+    /// Para e destrói qualquer sequência de animação ativa para evitar sobreposições.
+    /// </summary>
+    private void KillExistingSequence()
+    {
+        if (sequence != null && sequence.IsActive())
+        {
+            sequence.Kill();
+        }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        KillExistingSequence();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/UIManager.cs">
+// Local: Assets/Scripts/UI/UIManager.cs
+
+using System.Collections.Generic;
+using UnityEngine;
+
+public class UIManager : MonoBehaviour
+{
+    public static UIManager Instance { get; private set; }
+
+    private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
+    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        
+        FindAndRegisterAllPanels();
+    }
 
     private void OnEnable()
     {
-        if (playerMovementController == null)
-        {
-            Debug.LogError("PlayerMovementController não está atribuído no PlayerVisualsController.");
-            return;
-        }
-
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnPausePressed += HandlePauseToggle;
     }
 
     private void OnDisable()
     {
-        if (playerMovementController == null) return;
-        
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
     }
 
-    /// <summary>
-    /// Para e limpa todas as animações DOTween ativas neste objeto.
-    /// </summary>
-    private void KillAllTweens()
+    private void FindAndRegisterAllPanels()
     {
-        playerModel.DOKill();
-    }
-
-    private void OnDestroy()
-    {
-        KillAllTweens();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/SceneManagerLogic.cs">
-using UnityEngine;
-using UnityEngine.SceneManagement;
-
-public class SceneManagerLogic : MonoBehaviour
-{
-    public void RestartScene()
-    {
-        Scene currentScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(currentScene.name);
-    }
-
-    public void LoadNextScene()
-    {
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
-        int nextSceneIndex = currentSceneIndex + 1;
-        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (UIPanel panel in allPanels)
         {
-            SceneManager.LoadScene(nextSceneIndex);
+            RegisterPanel(panel);
+        }
+    }
+
+    public void RegisterPanel(UIPanel panel)
+    {
+        if (!registeredPanels.ContainsKey(panel.PanelType))
+        {
+            registeredPanels.Add(panel.PanelType, panel);
+            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
+        }
+    }
+
+    public void ShowPanel(UIPanelType panelType)
+    {
+        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
+        {
+            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
+            return;
+        }
+
+        if (panelStack.Count > 0)
+        {
+            panelStack.Peek().Hide();
+        }
+
+        panelToShow.Show();
+        panelStack.Push(panelToShow);
+        UpdateInputState();
+    }
+
+    public void CloseCurrentPanel()
+    {
+        if (panelStack.Count == 0) return;
+
+        UIPanel panelToClose = panelStack.Pop();
+        panelToClose.Hide();
+
+        if (panelStack.Count > 0)
+        {
+            panelStack.Peek().Show();
+        }
+
+        UpdateInputState();
+    }
+
+    private void HandlePauseToggle()
+    {
+        if (panelStack.Count > 0)
+        {
+            CloseCurrentPanel();
         }
         else
         {
-            SceneManager.LoadScene(0); // Volta para o menu principal ou primeira cena
+            ShowPanel(UIPanelType.Settings);
         }
     }
 
-    public void LoadSceneByName(string sceneName)
+    private void UpdateInputState()
     {
-        SceneManager.LoadScene(sceneName);
-    }
-
-    public void QuitGame()
-    {
-        Debug.Log("Quit Game!");
-        Application.Quit();
-    }
-
-    public void LoadMainMenu()
-    {
-        SceneManager.LoadScene(0);
+        if (panelStack.Count > 0)
+        {
+            InputStateManager.Instance.SwitchState(InputState.UI);
+        }
+        else
+        {
+            InputStateManager.Instance.SwitchState(InputState.Gameplay);
+        }
     }
 }
 </file>
 
-<file path="Assets/Scripts/TemporaryBGmusic.cs">
+<file path="Assets/Scripts/UIPanel.cs">
+// Local: Assets/Scripts/UI/UIPanel.cs
+
 using UnityEngine;
 
-public class TemporaryBGmusic : MonoBehaviour
+[RequireComponent(typeof(UIJuice))]
+public abstract class UIPanel : MonoBehaviour
 {
-    float cooldown = 1.5f;
-    bool played = false;
+    [SerializeField] private UIPanelType panelType;
+    public UIPanelType PanelType => panelType;
 
-    private void Update()
+    private UIJuice _uiJuice;
+
+    // Usamos uma propriedade para "Lazy Initialization".
+    // O código dentro do 'get' só é executado na primeira vez que UiJuice é acessado.
+    protected UIJuice UiJuice
     {
-        if (cooldown > 0)
+        get
         {
-            cooldown--;
-            return;
+            if (_uiJuice == null)
+            {
+                _uiJuice = GetComponent<UIJuice>();
+            }
+            return _uiJuice;
         }
-        if (cooldown < 0 && !played) { AudioManager.instance.PlayMusic("Level 1");  played = true; }
     }
+
+    /// <summary>
+    /// Ativa o painel e inicia sua animação de entrada.
+    /// </summary>
+    public virtual void Show()
+    {
+        // Agora acessamos a propriedade UiJuice, que garante que a referência não seja nula.
+        UiJuice.SetActiveAndPlay();
+    }
+
+    /// <summary>
+    /// Inicia a animação de saída do painel. O objeto será desativado ao final da animação.
+    /// </summary>
+    public virtual void Hide()
+    {
+        // O mesmo aqui.
+        UiJuice.PlayReverseAnimation();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/UIPanelType.cs">
+// Local: Assets/Scripts/UI/UIPanelType.cs
+
+public enum UIPanelType
+{
+    // Painéis que bloqueiam o input do jogador
+    Settings,
+    PauseMenu,
+    // Adicione outros painéis aqui (ex: Inventory, Map)
+
+    // Painéis que NÃO bloqueiam o input (HUD)
+    HUD 
 }
 </file>
 
@@ -4462,7 +4476,7 @@ public class PlayerMovementController : MonoBehaviour
 
     [Header("Estado Atual")]
     public bool isGrounded;
-    private bool canDoubleJump;
+    public bool canDoubleJump;
     
 
     [Header("Configurações de Movimento")]
@@ -4742,6 +4756,7 @@ public class PlayerMovementController : MonoBehaviour
 
     public void EnableDoubleJump()
     {
+        if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
     }
     private void ApplyLandingDampening()
