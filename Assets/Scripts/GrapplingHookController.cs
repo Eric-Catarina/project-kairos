@@ -5,9 +5,6 @@ using UnityEngine;
 
 public class GrapplingHookController : MonoBehaviour
 {
-    // ALTERAÇÃO: Adicionada uma referência para a estratégia atual.
-    private IGrappleStrategy _currentStrategy;
-
     [Header("Estado")]
     [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private bool isGrappling = false;
@@ -21,30 +18,23 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private LayerMask grappleLayer;
 
     [Header("Configurações da Junta (Puxão)")]
-    // ALTERAÇÃO: Campos tornados públicos para serem acessados pelas estratégias
-    public float springForce = 8f;
-    public float damper = 7f;
-    public float massScale = 4.5f;
-    public float minSpringSize = .1f;
-    public float maxSpringSize = .8f;
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+    [SerializeField] private float maxSpringSize = .8f;
 
     [Header("Configurações do Pêndulo")]
-    // ALTERAÇÃO: Campo tornado público
-    public float swingForce = 50f;
+    [SerializeField] private float swingForce = 50f;
 
     [Header("Referências")]
     [SerializeField] private Transform grappleTip;
-    // ALTERAÇÃO: Campo tornado público
-    public Transform cameraTransform;
+    [SerializeField] private Transform cameraTransform;
     [SerializeField] private LineRenderer lineRenderer;
     [SerializeField] private GameObject predictionPointPrefab;
 
-    // ALTERAÇÃO: Propriedade pública para acessar o PlayerMovementController
-    public PlayerMovementController PlayerMovement { get; private set; }
-
-    // ALTERAÇÃO: Removida a referência direta ao SpringJoint daqui.
-    // private SpringJoint joint;
-
+    private PlayerMovementController playerMovement;
+    private SpringJoint joint;
     private Vector3 grapplePoint;
     private Vector2 moveInput;
     private float cooldownTimer;
@@ -60,8 +50,7 @@ public class GrapplingHookController : MonoBehaviour
 
     private void Awake()
     {
-        // ALTERAÇÃO: Renomeado para usar a nova propriedade pública
-        PlayerMovement = GetComponent<PlayerMovementController>();
+        playerMovement = GetComponent<PlayerMovementController>();
         hasGrappleAvailable = true;
     }
 
@@ -70,8 +59,8 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted += StartGrapple;
         InputManager.Instance.OnGrappleCanceled += StopGrapple;
         InputManager.Instance.OnMove += SetMoveInput;
-        if (PlayerMovement != null)
-            PlayerMovement.OnGroundLanded += OnGroundLanded;
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded += OnGroundLanded;
     }
 
     private void OnDisable()
@@ -80,8 +69,8 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted -= StartGrapple;
         InputManager.Instance.OnGrappleCanceled -= StopGrapple;
         InputManager.Instance.OnMove -= SetMoveInput;
-        if (PlayerMovement != null)
-            PlayerMovement.OnGroundLanded -= OnGroundLanded;
+        if (playerMovement != null)
+            playerMovement.OnGroundLanded -= OnGroundLanded;
     }
 
     private void Update()
@@ -91,20 +80,18 @@ public class GrapplingHookController : MonoBehaviour
         if (grappleTimer <= 0 && isGrappling) StopGrapple();
 
         if (canDoMultipleGrapple && cooldownTimer <= 0) hasGrappleAvailable = true;
-
+        
         UpdatePredictionPoint();
     }
 
     private void LateUpdate()
     {
-        // ALTERAÇÃO: Delega a chamada para a estratégia
-        _currentStrategy?.LateUpdate(this);
+        DrawRope();
     }
 
     private void FixedUpdate()
     {
-        // ALTERAÇÃO: Delega a chamada para a estratégia
-        _currentStrategy?.FixedUpdate(this);
+        ApplySwingForce();
     }
 
     private void SetMoveInput(Vector2 input)
@@ -154,10 +141,11 @@ public class GrapplingHookController : MonoBehaviour
 
     private void StartGrapple()
     {
-        bool groundedOverride = PlayerMovement != null && PlayerMovement.isGrounded;
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
         if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
         if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
 
+        isGrappling = true;
         grappleTimer = maximumTimeGrappling;
 
         RaycastHit hit;
@@ -165,68 +153,70 @@ public class GrapplingHookController : MonoBehaviour
         {
             grapplePoint = hit.point;
             _grappleAnchorRigidbody = hit.rigidbody;
-
-            // --- INÍCIO DA LÓGICA DE ESTRATÉGIA ---
-            PullableObject pullable = hit.collider.GetComponent<PullableObject>();
-            if (pullable != null)
-            {
-                _currentStrategy = pullable.CreateStrategy();
-            }
-            else
-            {
-                _currentStrategy = new SwingStrategy();
-            }
-            // --- FIM DA LÓGICA DE ESTRATÉGIA ---
-
             if (_grappleAnchorRigidbody != null)
             {
                 _grapplePointRelativeOffset = hit.transform.InverseTransformPoint(grapplePoint);
             }
         }
-        else
+        else // Se o SphereCast acertou
         {
+            // Para simplicidade, não vamos lidar com anchor móvel do spherecast, mas a lógica seria similar
             grapplePoint = predictedPoint;
             _grappleAnchorRigidbody = null;
-            // Se não acertou nada específico, usa a estratégia de balanço por padrão
-            _currentStrategy = new SwingStrategy();
         }
 
-        isGrappling = true;
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.anchor = Vector3.zero;
+        joint.connectedAnchor = grapplePoint;
 
-        // ALTERAÇÃO: Delega a execução para o objeto de estratégia
-        _currentStrategy.Execute(this);
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
 
         lineRenderer.positionCount = 2;
-
+        
         if (!canDoMultipleGrapple && !groundedOverride)
             hasGrappleAvailable = false;
     }
 
-    // ALTERAÇÃO: Removido ApplySwingForce. A lógica agora está na SwingStrategy.
-    // private void ApplySwingForce() { ... }
+    private void ApplySwingForce()
+    {
+        if (!joint) return;
+
+        Vector3 viewDirection = cameraTransform.forward;
+        Vector3 rightDirection = cameraTransform.right;
+
+        playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
+    }
 
     public void StopGrapple()
     {
         if (!isGrappling) return;
 
-        // ALTERAÇÃO: Delega a parada para a estratégia antes de limpar.
-        _currentStrategy?.Stop(this);
-        _currentStrategy = null;
-
         isGrappling = false;
         cooldownTimer = grappleCooldown;
         lineRenderer.positionCount = 0;
+        Destroy(joint);
 
-        // ALTERAÇÃO: Removido Destroy(joint). Isso agora é responsabilidade da SwingStrategy.
         _grappleAnchorRigidbody = null;
-        PlayerMovement.EnableDoubleJump();
+        playerMovement.EnableDoubleJump();
     }
 
-    // ALTERAÇÃO: Método tornado público para ser chamado pelas estratégias.
-    public void DrawRope()
+    private void DrawRope()
     {
-        // Se não houver estratégia ativa (ou seja, não está com gancho), não desenha.
-        if (_currentStrategy == null) return;
+        if (!joint) return;
+
+        if (_grappleAnchorRigidbody != null)
+        {
+            grapplePoint = _grappleAnchorRigidbody.transform.TransformPoint(_grapplePointRelativeOffset);
+            joint.connectedAnchor = grapplePoint;
+        }
 
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, grapplePoint);
@@ -239,22 +229,4 @@ public class GrapplingHookController : MonoBehaviour
             hasGrappleAvailable = true;
         }
     }
-
-    public void ResetGrapple()
-    {
-        hasGrappleAvailable = true;
-        cooldownTimer = 0f;
-    }
-
-    #region MÉTODOS PÚBLICOS PARA ESTRATÉGIAS
-    // ALTERAÇÃO: Adicionados métodos públicos para que as estratégias possam obter
-    // informações do controlador de forma segura, sem expor campos privados.
-
-    public Vector2 GetMoveInput() => moveInput;
-    public Vector3 GetGrapplePoint() => grapplePoint;
-    public void SetGrapplePoint(Vector3 newPoint) => grapplePoint = newPoint;
-    public Rigidbody GetGrappleAnchorRigidbody() => _grappleAnchorRigidbody;
-    public Vector3 GetGrapplePointRelativeOffset() => _grapplePointRelativeOffset;
-
-    #endregion
 }
