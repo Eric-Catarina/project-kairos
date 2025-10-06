@@ -2,13 +2,13 @@
 
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
     private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
 
     private void Awake()
     {
@@ -18,24 +18,16 @@ public class UIManager : MonoBehaviour
             return;
         }
         Instance = this;
-        
-        FindAndRegisterAllPanels();
     }
 
-    private void OnEnable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed += HandlePauseToggle;
-    }
+    private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
+    private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
 
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
-    }
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => FindAndRegisterAllPanels();
 
     private void FindAndRegisterAllPanels()
     {
+        registeredPanels.Clear();
         UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (UIPanel panel in allPanels)
         {
@@ -48,64 +40,43 @@ public class UIManager : MonoBehaviour
         if (!registeredPanels.ContainsKey(panel.PanelType))
         {
             registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false); // Garante que todos os painéis comecem desativados
+            if (panel.gameObject.activeInHierarchy && panel.PanelType != UIPanelType.MainMenu)
+            {
+                panel.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    public void UnregisterPanel(UIPanel panel)
+    {
+        if (registeredPanels.ContainsKey(panel.PanelType))
+        {
+            registeredPanels.Remove(panel.PanelType);
         }
     }
 
     public void ShowPanel(UIPanelType panelType)
     {
-        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
+        if (registeredPanels.TryGetValue(panelType, out UIPanel panel))
         {
-            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
-            return;
-        }
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Hide();
-        }
-
-        panelToShow.Show();
-        panelStack.Push(panelToShow);
-        UpdateInputState();
-    }
-
-    public void CloseCurrentPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel panelToClose = panelStack.Pop();
-        panelToClose.Hide();
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Show();
-        }
-
-        UpdateInputState();
-    }
-
-    private void HandlePauseToggle()
-    {
-        if (panelStack.Count > 0)
-        {
-            CloseCurrentPanel();
-        }
-        else
-        {
-            ShowPanel(UIPanelType.Settings);
+            panel.Show();
         }
     }
 
-    private void UpdateInputState()
+    public void ClosePanel(UIPanelType panelType)
     {
-        if (panelStack.Count > 0)
+        if (registeredPanels.TryGetValue(panelType, out UIPanel panel))
         {
-            InputStateManager.Instance.SwitchState(InputState.UI);
+            panel.Hide();
         }
-        else
-        {
-            InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        }
+    }
+
+    public void OpenSettingsPanel()
+    {
+        ShowPanel(UIPanelType.Settings);
+    }
+    public void CloseSettingsPanel()
+    {
+        ClosePanel(UIPanelType.Settings);
     }
 }

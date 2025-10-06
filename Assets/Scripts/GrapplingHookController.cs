@@ -205,7 +205,7 @@ public class GrapplingHookController : MonoBehaviour
         Destroy(joint);
 
         _grappleAnchorRigidbody = null;
-        playerMovement.EnableDoubleJump();
+        playerMovement.ResetDoubleJump();
     }
 
     private void DrawRope()

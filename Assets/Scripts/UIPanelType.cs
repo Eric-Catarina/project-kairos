@@ -1,5 +1,6 @@
 // Local: Assets/Scripts/UI/UIPanelType.cs
 
+[System.Serializable]
 public enum UIPanelType
 {
     // Painéis que bloqueiam o input do jogador
@@ -8,5 +9,6 @@ public enum UIPanelType
     // Adicione outros painéis aqui (ex: Inventory, Map)
 
     // Painéis que NÃO bloqueiam o input (HUD)
-    HUD 
+    HUD,
+    MainMenu
 }
