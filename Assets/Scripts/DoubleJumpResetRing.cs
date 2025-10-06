@@ -7,7 +7,7 @@ public class DoubleJumpResetRing : BasePowerUpRing
         var playerMovement = playerObject.GetComponent<PlayerMovementController>();
         if (playerMovement != null)
         {
-            playerMovement.EnableDoubleJump();
+            playerMovement.ResetDoubleJump();
         }
     }
 }

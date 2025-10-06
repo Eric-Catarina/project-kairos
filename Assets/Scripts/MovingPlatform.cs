@@ -11,7 +11,7 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
     [Tooltip("O ponto final da patrulha.")]
     [SerializeField] private Transform targetB;
     [Tooltip("A velocidade de movimento da plataforma.")]
-    [SerializeField] private float speed = 3f;
+    public float speed = 3f, playerInfluence = 0.69f;
 
     [Header("Visual")]
     [SerializeField] private Color slowDownColor = Color.cyan;

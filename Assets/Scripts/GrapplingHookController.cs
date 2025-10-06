@@ -158,9 +158,8 @@ public class GrapplingHookController : MonoBehaviour
                 _grapplePointRelativeOffset = hit.transform.InverseTransformPoint(grapplePoint);
             }
         }
-        else // Se o SphereCast acertou
+        else
         {
-            // Para simplicidade, não vamos lidar com anchor móvel do spherecast, mas a lógica seria similar
             grapplePoint = predictedPoint;
             _grappleAnchorRigidbody = null;
         }
@@ -205,7 +204,7 @@ public class GrapplingHookController : MonoBehaviour
         Destroy(joint);
 
         _grappleAnchorRigidbody = null;
-        playerMovement.EnableDoubleJump();
+        playerMovement.ResetDoubleJump();
     }
 
     private void DrawRope()
@@ -228,5 +227,11 @@ public class GrapplingHookController : MonoBehaviour
         {
             hasGrappleAvailable = true;
         }
+    }
+    
+    public void ResetGrapple()
+    {
+        hasGrappleAvailable = true;
+        cooldownTimer = 0f;
     }
 }
