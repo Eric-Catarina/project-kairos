@@ -158,8 +158,9 @@ public class GrapplingHookController : MonoBehaviour
                 _grapplePointRelativeOffset = hit.transform.InverseTransformPoint(grapplePoint);
             }
         }
-        else
+        else // Se o SphereCast acertou
         {
+            // Para simplicidade, não vamos lidar com anchor móvel do spherecast, mas a lógica seria similar
             grapplePoint = predictedPoint;
             _grappleAnchorRigidbody = null;
         }
@@ -227,11 +228,5 @@ public class GrapplingHookController : MonoBehaviour
         {
             hasGrappleAvailable = true;
         }
-    }
-    
-    public void ResetGrapple()
-    {
-        hasGrappleAvailable = true;
-        cooldownTimer = 0f;
     }
 }
