@@ -1,6 +1,7 @@
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class ScoreManager : MonoBehaviour
@@ -24,6 +25,10 @@ public class ScoreManager : MonoBehaviour
         scoreUIController = FindObjectOfType<ScoreUIController>();
     }
 
+    private void Start()
+    {
+        StartLevelTimer();
+    }
     private void OnEnable()
     {
         if (InputManager.Instance != null)
@@ -63,6 +68,7 @@ public class ScoreManager : MonoBehaviour
     
     public void StartLevelTimer()
     {
+        scoreUIController = FindAnyObjectByType<ScoreUIController>();
         _levelTimer = 0f;
         _levelStarted = true;
         _isTimerRunning = true;
@@ -94,5 +100,9 @@ public class ScoreManager : MonoBehaviour
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
         Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
+    }
+    public IEnumerator WaitAndStartLevelTimer()
+    {
+        return null;
     }
 }
