@@ -121,21 +121,27 @@ public class GrapplingHookController : MonoBehaviour
             hasPredictedPoint = true;
             grappleDistance = hit.distance;
 
-            if (currentPredictionPoint == null)
-            {
-                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
-            }
-            else
-            {
-                currentPredictionPoint.SetActive(true);
-                currentPredictionPoint.transform.position = predictedPoint;
-            }
+            DrawPredictionPoint(predictedPoint);
         }
         else
         {
             hasPredictedPoint = false;
             if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
             grappleDistance = 0f;
+        }
+    }
+
+    private void DrawPredictionPoint(Vector3 position)
+    {
+        if (!hasGrappleAvailable) return;
+        if (currentPredictionPoint == null)
+        {
+            currentPredictionPoint = Instantiate(predictionPointPrefab, position, Quaternion.identity);
+        }
+        else
+        {
+            currentPredictionPoint.SetActive(true);
+            currentPredictionPoint.transform.position = position;
         }
     }
 
