@@ -128,13 +128,8 @@ public class GrapplingHookController : MonoBehaviour
             hasPredictedPoint = false;
             return;
         }
-
         RaycastHit hit;
-        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-        if (!hitFound)
-        {
-            hitFound = Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-        }
+        bool hitFound = TryFindGrappleHit(out hit);
 
         if (hitFound)
         {
@@ -207,7 +202,7 @@ public class GrapplingHookController : MonoBehaviour
         grappleTimer = maximumTimeGrappling;
 
         RaycastHit hit;
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
+        if (TryRaycastGrapple(out hit))
         {
             grapplePoint = hit.point;
             _grappleAnchorRigidbody = hit.rigidbody;
@@ -222,20 +217,7 @@ public class GrapplingHookController : MonoBehaviour
             _grappleAnchorRigidbody = null;
         }
 
-        joint = gameObject.AddComponent<SpringJoint>();
-        joint.autoConfigureConnectedAnchor = false;
-        joint.anchor = Vector3.zero;
-        joint.connectedAnchor = grapplePoint;
-
-        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
-
-        joint.maxDistance = distanceFromPoint * maxSpringSize;
-        joint.minDistance = distanceFromPoint * minSpringSize;
-        joint.spring = springForce;
-        joint.damper = damper;
-        joint.massScale = massScale;
-
-        lineRenderer.positionCount = 2;
+        CreateAndConfigureJoint(grapplePoint);
 
         bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
         if (!canDoMultipleGrapple && !groundedOverride)
@@ -282,14 +264,56 @@ public class GrapplingHookController : MonoBehaviour
     {
         if (!joint) return;
 
-        if (_grappleAnchorRigidbody != null)
-        {
-            grapplePoint = _grappleAnchorRigidbody.transform.TransformPoint(_grapplePointRelativeOffset);
-            joint.connectedAnchor = grapplePoint;
-        }
+        UpdateGrappleAnchor();
 
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, grapplePoint);
+    }
+
+    // Tenta um Raycast simples (sem sphere cast) — usado ao iniciar o grapple para manter o comportamento anterior
+    private bool TryRaycastGrapple(out RaycastHit hit)
+    {
+        return Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+    }
+
+    // Tenta Raycast e, se falhar, faz um SphereCast como fallback — usado para predição visual
+    private bool TryFindGrappleHit(out RaycastHit hit)
+    {
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
+        {
+            return true;
+        }
+
+        return Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+    }
+
+    // Cria e configura a junta do grapple com os valores padronizados
+    private void CreateAndConfigureJoint(Vector3 connectedPoint)
+    {
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.anchor = Vector3.zero;
+        joint.connectedAnchor = connectedPoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
+
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+
+        lineRenderer.positionCount = 2;
+    }
+
+    // Atualiza o ponto do grapple quando o objeto âncora se move
+    private void UpdateGrappleAnchor()
+    {
+        if (_grappleAnchorRigidbody != null)
+        {
+            grapplePoint = _grappleAnchorRigidbody.transform.TransformPoint(_grapplePointRelativeOffset);
+            if (joint) joint.connectedAnchor = grapplePoint;
+        }
     }
 
     private void OnGroundLanded()
