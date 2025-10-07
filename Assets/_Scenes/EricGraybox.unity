@@ -5788,12 +5788,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7596768071946879737, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: grappleCooldown
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7596768071946879737, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: maxGrappleDistance
       value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 7596768071946879737, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: canDoMultipleGrapple
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7596768071946879737, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: grappleInputBufferTime
+      value: 0.1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

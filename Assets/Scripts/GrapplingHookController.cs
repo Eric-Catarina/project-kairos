@@ -48,6 +48,12 @@ public class GrapplingHookController : MonoBehaviour
     private Rigidbody _grappleAnchorRigidbody;
     private Vector3 _grapplePointRelativeOffset;
 
+    // Buffer de input para o grapple
+    private bool grappleInputBuffered = false;
+    private float grappleInputBufferTimer = 0f;
+    [SerializeField]
+    private float grappleInputBufferTime = 1f;
+
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovementController>();
@@ -56,8 +62,8 @@ public class GrapplingHookController : MonoBehaviour
 
     private void OnEnable()
     {
-        InputManager.Instance.OnGrappleStarted += StartGrapple;
-        InputManager.Instance.OnGrappleCanceled += StopGrapple;
+        InputManager.Instance.OnGrappleStarted += BufferOrStartGrapple;
+        InputManager.Instance.OnGrappleCanceled += OnGrappleCanceled;
         InputManager.Instance.OnMove += SetMoveInput;
         if (playerMovement != null)
             playerMovement.OnGroundLanded += OnGroundLanded;
@@ -66,8 +72,8 @@ public class GrapplingHookController : MonoBehaviour
     private void OnDisable()
     {
         if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= StartGrapple;
-        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
+        InputManager.Instance.OnGrappleStarted -= BufferOrStartGrapple;
+        InputManager.Instance.OnGrappleCanceled -= OnGrappleCanceled;
         InputManager.Instance.OnMove -= SetMoveInput;
         if (playerMovement != null)
             playerMovement.OnGroundLanded -= OnGroundLanded;
@@ -80,7 +86,22 @@ public class GrapplingHookController : MonoBehaviour
         if (grappleTimer <= 0 && isGrappling) StopGrapple();
 
         if (canDoMultipleGrapple && cooldownTimer <= 0) hasGrappleAvailable = true;
-        
+
+        // Lógica do buffer de input: só tenta iniciar se agora existe ponto viável
+        if (grappleInputBuffered)
+        {
+            grappleInputBufferTimer -= Time.deltaTime;
+            if (hasPredictedPoint && CanStartGrapple())
+            {
+                StartGrappleInternal();
+                grappleInputBuffered = false;
+            }
+            else if (grappleInputBufferTimer <= 0f)
+            {
+                grappleInputBuffered = false;
+            }
+        }
+
         UpdatePredictionPoint();
     }
 
@@ -112,7 +133,7 @@ public class GrapplingHookController : MonoBehaviour
         bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
         if (!hitFound)
         {
-            hitFound = Physics.SphereCast(cameraTransform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+            hitFound = Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
         }
 
         if (hitFound)
@@ -145,12 +166,43 @@ public class GrapplingHookController : MonoBehaviour
         }
     }
 
-    private void StartGrapple()
+    // Novo método para lidar com o buffer
+    private void BufferOrStartGrapple()
+    {
+        if (hasPredictedPoint && CanStartGrapple())
+        {
+            StartGrappleInternal();
+        }
+        else
+        {
+            // Só ativa o buffer se NÃO há ponto viável
+            if (!hasPredictedPoint)
+            {
+                grappleInputBuffered = true;
+                grappleInputBufferTimer = grappleInputBufferTime;
+            }
+        }
+    }
+
+    // Checa se pode iniciar o grapple agora
+    private bool CanStartGrapple()
     {
         bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
-        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
-        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
+        return (canDoMultipleGrapple || hasGrappleAvailable || groundedOverride)
+            && cooldownTimer <= 0
+            && !isGrappling
+            && hasPredictedPoint;
+    }
 
+    // Refatora o StartGrapple para ser chamado internamente
+    private void StartGrapple()
+    {
+        // Mantém para compatibilidade, mas não usa mais diretamente
+        BufferOrStartGrapple();
+    }
+
+    private void StartGrappleInternal()
+    {
         isGrappling = true;
         grappleTimer = maximumTimeGrappling;
 
@@ -184,7 +236,8 @@ public class GrapplingHookController : MonoBehaviour
         joint.massScale = massScale;
 
         lineRenderer.positionCount = 2;
-        
+
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
         if (!canDoMultipleGrapple && !groundedOverride)
             hasGrappleAvailable = false;
     }
@@ -200,6 +253,14 @@ public class GrapplingHookController : MonoBehaviour
         playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
     }
 
+    // Novo método para cancelar o grapple e limpar o buffer
+    private void OnGrappleCanceled()
+    {
+        StopGrapple();
+        grappleInputBuffered = false;
+        grappleInputBufferTimer = 0f;
+    }
+
     public void StopGrapple()
     {
         if (!isGrappling) return;
@@ -211,6 +272,10 @@ public class GrapplingHookController : MonoBehaviour
 
         _grappleAnchorRigidbody = null;
         playerMovement.ResetDoubleJump();
+
+        // Sempre limpa o buffer ao soltar o input
+        grappleInputBuffered = false;
+        grappleInputBufferTimer = 0f;
     }
 
     private void DrawRope()
