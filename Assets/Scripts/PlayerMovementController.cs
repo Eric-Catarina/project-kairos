@@ -18,7 +18,9 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
+    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f, airControlMultiplier = 5f;
+
+private Vector2 lastMoveInput;
 
     [Header("Configurações de Atrito (Drag)")]
     [SerializeField] private float groundDrag = 6f;
@@ -226,23 +228,52 @@ public class PlayerMovementController : MonoBehaviour
         {
             rb.linearDamping = airDrag;
         }
-    }
+    }private void MovePlayer()
+{
+    if (grapplingHookController.IsGrappling) return;
 
-    private void MovePlayer()
+    Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
+    Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+
+    float appliedForceMultiplier = isGrounded ? groundMultiplier : airMultiplier;
+
+    if (!isGrounded)
     {
-        if (grapplingHookController.IsGrappling) return;
-
-        Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
-
-        if (isGrounded)
+        if (moveInput.sqrMagnitude > 0.01f)
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
-        }
-        else
-        {
-            rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
+            // Direção atual e input desejado
+            Vector3 velocityDir = horizontalVelocity.sqrMagnitude > 0.01f ? horizontalVelocity.normalized : moveDirection;
+            float angle = Vector3.Angle(velocityDir, moveDirection);
+
+            // Intensidade de correção direcional (apenas redireciona o momentum)
+            float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
+            float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
+
+            // Aplica uma força na direção desejada
+            rb.AddForce(moveDirection * moveSpeed * 10f * appliedForceMultiplier * lateralInfluence, ForceMode.Force);
+
+            // 🔒 Clampa a velocidade horizontal para evitar ganho exagerado
+            float maxHorizontalSpeed = maxMoveSpeed / 3.6f; // converte km/h → m/s
+            Vector3 clampedVelocity = horizontalVelocity;
+
+            if (horizontalVelocity.magnitude > maxHorizontalSpeed)
+            {
+                clampedVelocity = horizontalVelocity.normalized * maxHorizontalSpeed;
+                rb.linearVelocity = new Vector3(clampedVelocity.x, rb.linearVelocity.y, clampedVelocity.z);
+            }
         }
     }
+    else
+    {
+        // Movimento normal no chão
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            rb.AddForce(moveDirection * moveSpeed * 10f * appliedForceMultiplier, ForceMode.Force);
+        }
+    }
+}
+
+
 
     private void LimitVelocity()
     {
