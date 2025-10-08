@@ -3,6 +3,34 @@ using UnityEngine.SceneManagement;
 
 public class SceneManagerLogic : MonoBehaviour
 {
+    public static SceneManagerLogic Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+      void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLevelFinished += LoadNextScene;
+            InputManager.Instance.OnLevelRestarted += RestartScene;
+        }
+    }   
+    void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLevelFinished -= LoadNextScene;
+            InputManager.Instance.OnLevelRestarted -= RestartScene;
+        }
+    }
     public void RestartScene()
     {
         Scene currentScene = SceneManager.GetActiveScene();
