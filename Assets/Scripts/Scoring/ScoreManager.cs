@@ -7,7 +7,6 @@ using UnityEngine;
 public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
-
     public static event Action<float, Rank> OnLevelCompleted;
 
     [Header("Configuração do Nível")]
@@ -22,19 +21,22 @@ public class ScoreManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        scoreUIController = FindObjectOfType<ScoreUIController>();
     }
 
     private void Start()
     {
-        StartLevelTimer();
+        scoreUIController = FindObjectOfType<ScoreUIController>();
+        if (scoreUIController == null)
+        {
+            Debug.LogWarning("ScoreUIController não encontrado na cena.");
+        }
     }
+    
     private void OnEnable()
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnLevelFinished += EndLevelTimer;
-            InputManager.Instance.OnLevelRestarted += StartLevelTimer;
+            InputManager.Instance.OnLevelFinished += HandleLevelFinished;
         }
         if (GameFlowManager.Instance != null)
         {
@@ -47,8 +49,7 @@ public class ScoreManager : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnLevelFinished -= EndLevelTimer;
-            InputManager.Instance.OnLevelRestarted -= StartLevelTimer;
+            InputManager.Instance.OnLevelFinished -= HandleLevelFinished;
         }
         if (GameFlowManager.Instance != null)
         {
@@ -68,7 +69,6 @@ public class ScoreManager : MonoBehaviour
     
     public void StartLevelTimer()
     {
-        scoreUIController = FindAnyObjectByType<ScoreUIController>();
         _levelTimer = 0f;
         _levelStarted = true;
         _isTimerRunning = true;
@@ -82,14 +82,18 @@ public class ScoreManager : MonoBehaviour
 
     private void ResumeTimer()
     {
-        // Só retoma o timer se o nível já tiver começado
         if (_levelStarted)
         {
             _isTimerRunning = true;
         }
     }
 
-    public void EndLevelTimer()
+    private void HandleLevelFinished()
+    {
+        EndLevelTimer();
+    }
+
+    public async void EndLevelTimer()
     {
         if (!_isTimerRunning && !_levelStarted) return;
         _isTimerRunning = false;
@@ -99,10 +103,40 @@ public class ScoreManager : MonoBehaviour
 
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
         Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
+        
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
+        
+        await SubmitScoreAsync();
+
+        // Atualiza e exibe o leaderboard ao finalizar a fase
+        LeaderboardUIController leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        leaderboardUIController?.ShowLeaderboard();
     }
-    public IEnumerator WaitAndStartLevelTimer()
+
+    private async System.Threading.Tasks.Task SubmitScoreAsync()
     {
-        return null;
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance == null)
+        {
+            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis para submeter a pontuação.");
+            return;
+        }
+
+        var scoreEntry = new ScoreEntry(
+            PlayerProfile.Instance.PlayerId,
+            PlayerProfile.Instance.PlayerName,
+            _levelTimer,
+            currentLevelData.GetFullLevelId()
+        );
+
+        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
+
+        if (success)
+        {
+            Debug.Log("Pontuação submetida com sucesso!");
+        }
+        else
+        {
+            Debug.LogWarning("Falha ao submeter pontuação.");
+        }
     }
 }

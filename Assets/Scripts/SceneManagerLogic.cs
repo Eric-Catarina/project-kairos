@@ -19,7 +19,7 @@ public class SceneManagerLogic : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnLevelFinished += LoadNextScene;
+            // InputManager.Instance.OnLevelFinished += LoadNextScene;
             InputManager.Instance.OnLevelRestarted += RestartScene;
         }
     }   
@@ -27,7 +27,7 @@ public class SceneManagerLogic : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnLevelFinished -= LoadNextScene;
+            // InputManager.Instance.OnLevelFinished -= LoadNextScene;
             InputManager.Instance.OnLevelRestarted -= RestartScene;
         }
     }

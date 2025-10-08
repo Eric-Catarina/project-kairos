@@ -14,10 +14,13 @@ public class WinLogic : MonoBehaviour
             if (ScoreManager.Instance != null)
             {
                 ScoreManager.Instance.EndLevelTimer();
-                
+
             }
-            Destroy(collision.gameObject);
-            sceneManager.LoadNextScene();
+            // Destroy(collision.gameObject);
+            // sceneManager.LoadNextScene();
+            //Pause game
+            Time.timeScale = 0f;
+        
         }
     }
 }
