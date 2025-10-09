@@ -14809,17 +14809,6 @@ Mesh:
     offset: 0
     size: 0
     path: 
---- !u!114 &737096092 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6189197513460953321, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-  m_PrefabInstance: {fileID: 3279603993199282714}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d64f8130b069f4047b79572f50f402b1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!43 &755275788
 Mesh:
   m_ObjectHideFlags: 0
@@ -15512,6 +15501,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 1521076725}
     m_Modifications:
     - target: {fileID: 1185111727233144787, guid: 57d78fbab4a0acb47b644c7735dd0b45, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1185111727233144787, guid: 57d78fbab4a0acb47b644c7735dd0b45, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 702840345}
@@ -15658,7 +15651,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4258661382683277457, guid: 57d78fbab4a0acb47b644c7735dd0b45, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1209560110}
   m_SourcePrefab: {fileID: 100100000, guid: 57d78fbab4a0acb47b644c7735dd0b45, type: 3}
 --- !u!1 &838107267
 GameObject:
@@ -20697,7 +20693,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25d2cf38c8b946f4fbe3de5a7cf4841f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneManager: {fileID: 737096092}
 --- !u!65 &1158275110
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -20719,6 +20714,23 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 10.000001, y: 2.2204463e-16, z: 10.000001}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &1209560105 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4258661382683277457, guid: 57d78fbab4a0acb47b644c7735dd0b45, type: 3}
+  m_PrefabInstance: {fileID: 834326074}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1209560110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1209560105}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c00c1f17e7f80a085be10ed15155a391, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1212262305
 GameObject:
   m_ObjectHideFlags: 0
@@ -23312,7 +23324,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f0fbd7655cbbf247b29b7b397555727, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneManager: {fileID: 737096092}
 --- !u!43 &1367630628
 Mesh:
   m_ObjectHideFlags: 0
@@ -33956,6 +33967,7 @@ GameObject:
   - component: {fileID: 1985550358}
   - component: {fileID: 1985550360}
   - component: {fileID: 1985550359}
+  - component: {fileID: 1985550361}
   m_Layer: 5
   m_Name: CountdownPanel
   m_TagString: Untagged
@@ -34021,6 +34033,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1985550357}
   m_CullTransparentMesh: 1
+--- !u!114 &1985550361
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1985550357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02f3499786d95295ead6a72035393450, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panel: {fileID: 1985550357}
+  text: {fileID: 486933023}
 --- !u!43 &1988080130
 Mesh:
   m_ObjectHideFlags: 0
@@ -36553,7 +36579,7 @@ Transform:
   m_GameObject: {fileID: 2101338148}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.21745773, z: -0, w: 0.9760698}
-  m_LocalPosition: {x: -17.6, y: -30, z: 371.1}
+  m_LocalPosition: {x: 4.8, y: -30, z: 371.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

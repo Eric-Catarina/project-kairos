@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameFlowManager : MonoBehaviour
 {
@@ -12,10 +13,8 @@ public class GameFlowManager : MonoBehaviour
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
-    [Header("Referências da UI")]
-    [SerializeField] private UIManager uiManager;
-    [SerializeField] private GameObject countdownPanel;
-    [SerializeField] private TextMeshProUGUI countdownText;
+    private UIManager _uiManager;
+    private CountdownUI _countdownUI;
 
     private bool _isPaused = false;
     private bool _isCountingDown = false;
@@ -38,6 +37,7 @@ public class GameFlowManager : MonoBehaviour
         {
             InputManager.Instance.OnPausePressed += HandlePauseRequest;
         }
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void OnDisable()
@@ -46,18 +46,28 @@ public class GameFlowManager : MonoBehaviour
         {
             InputManager.Instance.OnPausePressed -= HandlePauseRequest;
         }
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+    }
+
+    private void FindSceneReferences()
+    {
+        _uiManager = FindObjectOfType<UIManager>(true);
+        _countdownUI = FindObjectOfType<CountdownUI>(true);
     }
 
     private void HandlePauseRequest()
     {
-        // Se estivermos em contagem regressiva, pausar interrompe a contagem e volta ao menu de pausa.
         if (_isCountingDown)
         {
             PauseGame();
             return;
         }
 
-        // Caso contrário, alterna normalmente entre pausado e despausado.
         if (_isPaused)
         {
             ResumeGame();
@@ -72,29 +82,27 @@ public class GameFlowManager : MonoBehaviour
     {
         if (_isPaused) return;
 
-        // Se uma contagem regressiva estiver em andamento, pare-a.
         if (_countdownCoroutine != null)
         {
             StopCoroutine(_countdownCoroutine);
             _countdownCoroutine = null;
             _isCountingDown = false;
-            if (countdownPanel != null) countdownPanel.SetActive(false);
+            if (_countdownUI != null && _countdownUI.panel != null) _countdownUI.panel.SetActive(false);
         }
 
         _isPaused = true;
         Time.timeScale = 0f;
         InputStateManager.Instance.SwitchState(InputState.UI);
-        uiManager.ShowPanel(UIPanelType.Settings);
+        _uiManager?.ShowPanel(UIPanelType.Settings);
         
         OnGamePaused?.Invoke();
-        Debug.Log("Game Paused");
     }
 
     public void ResumeGame()
     {
         if (!_isPaused || _isCountingDown) return;
 
-        uiManager.ClosePanel(UIPanelType.Settings);
+        _uiManager?.ClosePanel(UIPanelType.Settings);
         
         _countdownCoroutine = StartCoroutine(ResumeCountdown());
     }
@@ -103,9 +111,8 @@ public class GameFlowManager : MonoBehaviour
     {
         _isCountingDown = true;
 
-        if (countdownPanel == null || countdownText == null)
+        if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
         {
-            Debug.LogWarning("Referências do painel de contagem regressiva não estão atribuídas. Pulando contagem.");
             Time.timeScale = 1f;
             _isPaused = false;
             _isCountingDown = false;
@@ -115,21 +122,21 @@ public class GameFlowManager : MonoBehaviour
             yield break;
         }
 
-        if (countdownPanel != null) countdownPanel.SetActive(true);
+        _countdownUI.panel.SetActive(true);
 
-        countdownText.text = "3";
+        _countdownUI.text.text = "3";
         yield return new WaitForSecondsRealtime(1f);
 
-        countdownText.text = "2";
+        _countdownUI.text.text = "2";
         yield return new WaitForSecondsRealtime(1f);
 
-        countdownText.text = "1";
+        _countdownUI.text.text = "1";
         yield return new WaitForSecondsRealtime(1f);
 
-        countdownText.text = "VAI!";
+        _countdownUI.text.text = "VAI!";
         yield return new WaitForSecondsRealtime(0.5f);
 
-        if (countdownPanel != null) countdownPanel.SetActive(false);
+        _countdownUI.panel.SetActive(false);
 
         Time.timeScale = 1f;
         _isPaused = false;
@@ -138,8 +145,5 @@ public class GameFlowManager : MonoBehaviour
         InputStateManager.Instance.SwitchState(InputState.Gameplay);
 
         OnGameResumed?.Invoke();
-        Debug.Log("Game Resumed");
-        
-        
     }
 }

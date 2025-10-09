@@ -19,6 +19,7 @@ public class TimeStopUIController : MonoBehaviour
         if (TimeManipulationManager.Instance != null)
         {
             TimeManipulationManager.Instance.OnChargeChanged += UpdateSlider;
+            UpdateSlider(1);
         }
         else
         {

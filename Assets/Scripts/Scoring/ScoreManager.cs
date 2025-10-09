@@ -1,8 +1,8 @@
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
 using System;
-using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class ScoreManager : MonoBehaviour
 {
@@ -11,7 +11,9 @@ public class ScoreManager : MonoBehaviour
 
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
-    private ScoreUIController scoreUIController;
+    
+    private ScoreUIController _scoreUIController;
+    private LeaderboardUIController _leaderboardUIController;
 
     private float _levelTimer;
     private bool _isTimerRunning = false;
@@ -22,18 +24,10 @@ public class ScoreManager : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
     }
-
-    private void Start()
-    {
-        scoreUIController = FindObjectOfType<ScoreUIController>();
-        if (scoreUIController == null)
-        {
-            Debug.LogWarning("ScoreUIController não encontrado na cena.");
-        }
-    }
     
     private void OnEnable()
     {
+        SceneManager.sceneLoaded += OnSceneLoaded;
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnLevelFinished += HandleLevelFinished;
@@ -47,6 +41,7 @@ public class ScoreManager : MonoBehaviour
 
     private void OnDisable()
     {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnLevelFinished -= HandleLevelFinished;
@@ -57,13 +52,25 @@ public class ScoreManager : MonoBehaviour
             GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
         }
     }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        ResetLevelTimer();
+    }
     
+    private void FindSceneReferences()
+    {
+        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
+        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+    }
+
     private void Update()
     {
         if (_isTimerRunning)
         {
             _levelTimer += Time.deltaTime;
-            scoreUIController?.UpdateTime(_levelTimer);
+            _scoreUIController?.UpdateTime(_levelTimer);
         }
     }
     
@@ -72,7 +79,6 @@ public class ScoreManager : MonoBehaviour
         _levelTimer = 0f;
         _levelStarted = true;
         _isTimerRunning = true;
-        Debug.Log("Cronômetro do nível iniciado!");
     }
 
     private void PauseTimer()
@@ -86,6 +92,14 @@ public class ScoreManager : MonoBehaviour
         {
             _isTimerRunning = true;
         }
+    }
+
+    public void ResetLevelTimer()
+    {
+        _levelTimer = 0f;
+        _isTimerRunning = false;
+        _levelStarted = false;
+        _scoreUIController?.UpdateTime(_levelTimer);
     }
 
     private void HandleLevelFinished()
@@ -102,15 +116,12 @@ public class ScoreManager : MonoBehaviour
         if (currentLevelData == null) { Debug.LogError("LevelData não está configurado!"); return; }
 
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
-        Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
         
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
         
         await SubmitScoreAsync();
 
-        // Atualiza e exibe o leaderboard ao finalizar a fase
-        LeaderboardUIController leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
-        leaderboardUIController?.ShowLeaderboard();
+        _leaderboardUIController?.ShowLeaderboard();
     }
 
     private async System.Threading.Tasks.Task SubmitScoreAsync()

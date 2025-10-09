@@ -78,5 +78,6 @@ public class UIManager : MonoBehaviour
     public void CloseSettingsPanel()
     {
         ClosePanel(UIPanelType.Settings);
+        GameFlowManager.Instance?.ResumeGame();
     }
 }
