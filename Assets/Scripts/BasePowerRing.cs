@@ -1,5 +1,5 @@
 // Local: Assets/Scripts/PowerUps/BasePowerUpRing.cs
-
+using DG.Tweening;
 using System;
 using UnityEngine;
 
@@ -55,6 +55,8 @@ public abstract class BasePowerUpRing : MonoBehaviour
             AudioManager.instance.PlaySFX("PowerRing");
         }
 
+        RotateRing();
+
         if (effectOnUse != null)
         {
             Instantiate(effectOnUse, transform.position, transform.rotation);
@@ -62,7 +64,21 @@ public abstract class BasePowerUpRing : MonoBehaviour
 
         if (disableOnUse)
         {
-            gameObject.SetActive(false);
+            // Desativa o collider para evitar múltiplas ativações
+            var colliders = GetComponents<Collider>();
+            foreach (var col in colliders)
+            {
+                col.enabled = false;
+            }
+            Destroy(gameObject, 2f); // Destrói o anel após 1 segundo para permitir a animação de rotação
         }
+    }
+
+    // Uses Dotween to rotate the ring when activated
+    private void RotateRing()
+    {
+        transform.DORotate(new Vector3(90, 0, 360), 1f, RotateMode.FastBeyond360)
+                 .SetLoops(-1, LoopType.Restart)
+                 .SetEase(Ease.Linear);
     }
 }

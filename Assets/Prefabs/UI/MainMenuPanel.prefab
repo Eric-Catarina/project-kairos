@@ -123,11 +123,11 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: SetActivePanel
-        m_Mode: 2
+        m_MethodName: OpenSettingsPanel
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -811,15 +811,39 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: LoadScene
-        m_Mode: 5
+        m_TargetAssemblyTypeName: SceneManagerLogic, Assembly-CSharp
+        m_MethodName: LoadNextScene
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: BasicMovement
+          m_StringArgument: BonesStartGrayBox
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 6410321705842977798}
+        m_TargetAssemblyTypeName: UIJuice, Assembly-CSharp
+        m_MethodName: PlayReverseAnimation
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: BonesStartGrayBox
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: InputStateManager, Assembly-CSharp
+        m_MethodName: SwitchToGameplay
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: BonesStartGrayBox
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!1 &5267069598936748820
@@ -966,7 +990,9 @@ GameObject:
   - component: {fileID: 6839189214987785965}
   - component: {fileID: 1565779667680782677}
   - component: {fileID: 5416870912007847955}
-  - component: {fileID: 5003751094994579666}
+  - component: {fileID: 5831801504590860334}
+  - component: {fileID: 6410321705842977798}
+  - component: {fileID: 4588659180989028093}
   m_Layer: 5
   m_Name: MainMenuPanel
   m_TagString: Untagged
@@ -1036,7 +1062,48 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &5003751094994579666
+--- !u!225 &5831801504590860334
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6917910389639472193}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
+--- !u!114 &6410321705842977798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6917910389639472193}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ecdf82a5b99cc48cbbd6145f8502a78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  duration: 0.5
+  delay: 0
+  easeType: 27
+  startScale: {x: 0.1, y: 0.1, z: 0.1}
+  playOnEnable: 0
+  OnPlayStart:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPlayComplete:
+    m_PersistentCalls:
+      m_Calls: []
+  OnReverseStart:
+    m_PersistentCalls:
+      m_Calls: []
+  OnReverseComplete:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &4588659180989028093
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1048,6 +1115,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4aed98cbd58d5750b4bf8d5a5b1464d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  panelType: 3
 --- !u!1 &7169956647938537480
 GameObject:
   m_ObjectHideFlags: 0

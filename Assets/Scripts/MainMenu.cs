@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class MainMenu : MonoBehaviour
+public class MainMenu : UIPanel
 {
     void Start()
     {
@@ -10,11 +10,8 @@ public class MainMenu : MonoBehaviour
             return;
         }
         InputStateManager.Instance.SwitchState(InputState.UI);
+        UIManager.Instance.ShowPanel(UIPanelType.MainMenu);
+
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }
