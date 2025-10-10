@@ -61,22 +61,24 @@ public class TimeManipulationManager : MonoBehaviour
     
     private void Start()
     {
-        // Garante que a UI seja atualizada com o valor inicial assim que o jogo começa
         OnChargeChanged?.Invoke(_currentCharge / maxChargeDuration);
     }
 
     private void Update()
     {
         bool chargeChanged = false;
-        float oldCharge = _currentCharge;
-
+        
         if (_isTimeSlowed)
         {
-            _currentCharge -= Time.deltaTime;
-            if (_currentCharge <= 0)
+            bool infiniteTimeStop = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteTimeStopActive;
+            if (!infiniteTimeStop)
             {
-                _currentCharge = 0;
-                DeactivateSlowTime();
+                _currentCharge -= Time.deltaTime;
+                if (_currentCharge <= 0)
+                {
+                    _currentCharge = 0;
+                    DeactivateSlowTime();
+                }
             }
             chargeChanged = true;
         }
@@ -90,7 +92,6 @@ public class TimeManipulationManager : MonoBehaviour
             }
         }
         
-        // Dispara o evento apenas se o valor realmente mudou para otimização
         if (chargeChanged)
         {
             OnChargeChanged?.Invoke(_currentCharge / maxChargeDuration);
