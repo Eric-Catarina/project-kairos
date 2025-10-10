@@ -140,7 +140,7 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private void HandleFootsteps()
     {
-        if (!movement.isGrounded || rb.velocity.magnitude < minStepSpeed)
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
         {
             stepTimer = stepInterval;
             return;
@@ -196,7 +196,7 @@ public class PlayerAudioHandler : MonoBehaviour
     {
         if (windSource == null) return;
 
-        float speed = rb.velocity.magnitude;
+        float speed = rb.linearVelocity.magnitude;
         float targetVolume = 0f;
 
         if (speed > windMinSpeed)
