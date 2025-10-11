@@ -26,7 +26,7 @@ public class CheatManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-#if UNITY_EDITOR
+#if ENABLE_CHEATS
     private void OnEnable()
     {
         if (InputManager.Instance != null)

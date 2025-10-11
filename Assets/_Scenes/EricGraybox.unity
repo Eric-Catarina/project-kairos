@@ -3460,6 +3460,17 @@ Mesh:
     offset: 0
     size: 0
     path: 
+--- !u!114 &172857621 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4943271865898170268, guid: e845135526f54be26836a8c0237d8347, type: 3}
+  m_PrefabInstance: {fileID: 292675632}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b7f0b9c4a557b13dac8a5f7ab7d00ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
 --- !u!1 &180016878
 GameObject:
   m_ObjectHideFlags: 0
@@ -6012,7 +6023,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.2583308
+      value: 0.38833085
       objectReference: {fileID: 0}
     - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.y
@@ -6021,14 +6032,50 @@ PrefabInstance:
     - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.z
       value: -3.4214501
+      objectReference: {fileID: 0}
+    - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.99913776
+      objectReference: {fileID: 0}
+    - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.040176217
+      objectReference: {fileID: 0}
+    - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.010463337
+      objectReference: {fileID: 0}
+    - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.00042074005
+      objectReference: {fileID: 0}
+    - target: {fileID: 722441998437464358, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: Lens.FieldOfView
+      value: 70
+      objectReference: {fileID: 0}
+    - target: {fileID: 1615927059740956077, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.46
       objectReference: {fileID: 0}
     - target: {fileID: 3887213110585828035, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_Name
       value: Core
       objectReference: {fileID: 0}
+    - target: {fileID: 4609643518488893481, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: field of view
+      value: 70
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609643518488893481, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: far clip plane
+      value: 1000
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609643518488893481, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: near clip plane
+      value: 0.3
+      objectReference: {fileID: 0}
     - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.2583308
+      value: 0.38833085
       objectReference: {fileID: 0}
     - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.y
@@ -6037,6 +6084,22 @@ PrefabInstance:
     - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.z
       value: -3.4214501
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.99913776
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.04017622
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.010463338
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.0004207402
       objectReference: {fileID: 0}
     - target: {fileID: 4943271865898170268, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: velocityText
@@ -6110,6 +6173,30 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: maxFov
+      value: 130
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: freeLookCamera
+      value: 
+      objectReference: {fileID: 1746523610}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: maxSpeedThreshold
+      value: 83.33334
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: minSpeedThreshold
+      value: 27.77778
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: fovTransitionDuration
+      value: 0.35
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: playerMovementController
+      value: 
+      objectReference: {fileID: 172857621}
     - target: {fileID: 7582899435873710728, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_Radius
       value: 0.12442784
@@ -27984,6 +28071,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1063142735860216307, guid: 24c3d01d8983e624494df4630063ea0f, type: 3}
   m_PrefabInstance: {fileID: 113368975}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1746523610 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 722441998437464358, guid: e845135526f54be26836a8c0237d8347, type: 3}
+  m_PrefabInstance: {fileID: 292675632}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
 --- !u!4 &1747318362 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3258515427170321763, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}

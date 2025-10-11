@@ -23,7 +23,7 @@ public class InputManager : MonoBehaviour
     public event Action OnLevelRestarted;
     public event Action OnPausePressed;
 
-#if UNITY_EDITOR
+#if ENABLE_CHEATS
     public event Action OnToggleInfiniteJumps;
     public event Action OnToggleInfiniteGrappleCooldown;
     public event Action OnToggleInfiniteGrappleDuration;
@@ -77,7 +77,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Pause.performed += HandlePausePressed;
         _playerControls.UI.Unpause.performed += HandlePausePressed;
 
-#if UNITY_EDITOR
+#if ENABLE_CHEATS
         _playerControls.Debug.Enable();
         _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
         _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
