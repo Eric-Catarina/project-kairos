@@ -5,10 +5,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using DG.Tweening;
 
-/// <summary>
-/// Controla a orientação de movimento do jogador, a sensibilidade da câmera e o FOV dinâmico.
-/// Compatível com Cinemachine 3.
-/// </summary>
 public class PlayerLookController : MonoBehaviour
 {
     [Header("Referências")]
@@ -16,35 +12,50 @@ public class PlayerLookController : MonoBehaviour
     [SerializeField] private Transform playerModel;
     [SerializeField] private Transform orientation;
     [SerializeField] private Transform cameraTransform;
-    [Tooltip("Referência ao componente CinemachineInputAxisController (usado no FreeLook do CM3).")]
     [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
-    [Tooltip("Referência à CinemachineCamera (CM3) configurada como FreeLook.")]
     [SerializeField] private CinemachineCamera freeLookCamera;
+    private CinemachineBasicMultiChannelPerlin _cameraNoise;
     
-    [Header("Sensibilidade - Eixo X")]
+    [Header("Sensibilidade")]
     [SerializeField] private float minSensitivityGainX = 0.5f;
     [SerializeField] private float maxSensitivityGainX = 10f;
-
-    [Header("Sensibilidade - Eixo Y")]
     [SerializeField] private float minSensitivityGainY = 0.5f;
     [SerializeField] private float maxSensitivityGainY = 10f;
 
-    [Header("FOV Dinâmico (CM3)")]
-    [Tooltip("O FOV vertical máximo que a câmera atingirá em alta velocidade.")]
-    [SerializeField] private float maxFov = 70f; // FreeLook geralmente tem um FOV base menor
-    [Tooltip("Velocidade (m/s) a partir da qual o FOV começa a aumentar.")]
-    [SerializeField] private float minSpeedThreshold = 15f;
-    [Tooltip("Velocidade (m/s) na qual o FOV atinge seu valor máximo.")]
-    [SerializeField] private float maxSpeedThreshold = 40f;
-    [Tooltip("A rapidez com que o FOV transita para o novo valor usando DOTween.")]
+    [Header("FOV Dinâmico")]
+    [SerializeField] private float maxFov = 70f;
+    [SerializeField] private float fovMinSpeedThreshold = 15f;
+    [SerializeField] private float fovMaxSpeedThreshold = 40f;
     [SerializeField] private float fovTransitionDuration = 0.5f;
+
+    [Header("Camera Shake (Noise)")]
+    [Tooltip("A intensidade máxima do tremor em altas velocidades (multiplicador).")]
+    [SerializeField] private float maxShakeAmplitudeGain = 1.5f;
+    [Tooltip("A rapidez máxima do tremor em altas velocidades (multiplicador).")]
+    [SerializeField] private float maxShakeFrequencyGain = 1.5f;
+    [Tooltip("Velocidade (m/s) a partir da qual o tremor começa.")]
+    [SerializeField] private float shakeMinSpeedThreshold = 25f;
+    [Tooltip("Velocidade (m/s) na qual o tremor atinge sua intensidade máxima.")]
+    [SerializeField] private float shakeMaxSpeedThreshold = 60f;
 
     [Header("Outras Configurações")]
     [SerializeField] private float playerRotationSpeed = 10f;
 
     private float _baseFov;
     private Tweener _fovTween;
-    private LensSettings _tempLens; // Struct para modificar a lente no CM3
+    private LensSettings _tempLens;
+
+    void Awake()
+    {
+        if (freeLookCamera != null)
+        {
+            _cameraNoise = freeLookCamera.GetComponent<CinemachineBasicMultiChannelPerlin>();
+            if (_cameraNoise == null)
+            {
+                Debug.LogError("CinemachineBasicMultiChannelPerlin não encontrado no FreeLook Camera.");
+            }
+        }
+    }
 
     private void OnEnable()
     {
@@ -83,13 +94,14 @@ public class PlayerLookController : MonoBehaviour
             return;
         }
 
-        // No CM3, pegamos o FOV base da propriedade Lens
         _baseFov = freeLookCamera.Lens.FieldOfView;
-        Debug.Log($"FOV base do FreeLook: {_baseFov}");
+        
+        // Garante que o tremor comece desativado
+        _cameraNoise.AmplitudeGain = 0;
+        _cameraNoise.FrequencyGain = 0;
 
         ConnectCinemachineToInputManager();
         
-        // Aplica as sensibilidades iniciais
         if (GameSettingsManager.Instance != null)
         {
             HandleMouseSensitivityXChanged(GameSettingsManager.Instance.MouseSensitivityX);
@@ -104,23 +116,37 @@ public class PlayerLookController : MonoBehaviour
 
     private void HandleVelocityChanged(float currentHorizontalSpeed)
     {
-        if (freeLookCamera == null) return;
+        UpdateFov(currentHorizontalSpeed);
+        UpdateCameraShake(currentHorizontalSpeed);
+    }
 
-        // Calcula o FOV alvo baseado na velocidade
-        float normalizedSpeed = Mathf.InverseLerp(minSpeedThreshold, maxSpeedThreshold, currentHorizontalSpeed);
+    private void UpdateFov(float speed)
+    {
+        if (freeLookCamera == null) return;
+        
+        float normalizedSpeed = Mathf.InverseLerp(fovMinSpeedThreshold, fovMaxSpeedThreshold, speed);
         float targetFov = Mathf.Lerp(_baseFov, maxFov, normalizedSpeed);
 
-        // Usa DOTween para interpolar suavemente o valor do FOV
         _fovTween?.Kill();
         _fovTween = DOTween.To(
-            () => freeLookCamera.Lens.FieldOfView, // Getter (CM3)
-            x => SetCameraFOV(x),                  // Setter customizado
+            () => freeLookCamera.Lens.FieldOfView,
+            x => SetCameraFOV(x),
             targetFov,
             fovTransitionDuration
         ).SetEase(Ease.OutQuad);
     }
 
-    // Método auxiliar para setar o FOV no CM3, pois LensSettings é uma struct
+    private void UpdateCameraShake(float speed)
+    {
+        if (freeLookCamera == null) return;
+
+        float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
+        
+        // CORREÇÃO: Modifica AmplitudeGain e FrequencyGain diretamente no componente CinemachineCamera
+        _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
+        _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
+    }
+    
     private void SetCameraFOV(float fov)
     {
         _tempLens = freeLookCamera.Lens;
@@ -131,12 +157,9 @@ public class PlayerLookController : MonoBehaviour
     private void HandleMouseSensitivityXChanged(float normalizedValue)
     {
         if (cinemachineInputAxisController == null) return;
-        
         float newGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, normalizedValue);
-
         foreach (var controller in cinemachineInputAxisController.Controllers)
         {
-            // Verifica nomes comuns de eixos X em FreeLook
             if (controller.Name == "Look Orbit X" || controller.Name == "X")
             {
                 controller.Input.Gain = newGain;
@@ -147,15 +170,11 @@ public class PlayerLookController : MonoBehaviour
     private void HandleMouseSensitivityYChanged(float normalizedValue)
     {
         if (cinemachineInputAxisController == null) return;
-
         float newGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, normalizedValue);
-        
         foreach (var controller in cinemachineInputAxisController.Controllers)
         {
-            // Verifica nomes comuns de eixos Y em FreeLook
             if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
             {
-                // O eixo Y geralmente é invertido no FreeLook padrão
                 controller.Input.Gain = -newGain;
             }
         }
@@ -164,7 +183,6 @@ public class PlayerLookController : MonoBehaviour
     private void ConnectCinemachineToInputManager()
     {
         if (cinemachineInputAxisController == null) return;
-
         InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
         foreach (var controller in cinemachineInputAxisController.Controllers)
         {
@@ -176,18 +194,23 @@ public class PlayerLookController : MonoBehaviour
     private void HandlePlayerModelRotation()
     {
         if (cameraTransform == null || orientation == null || playerModel == null) return;
-
         Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
         if (viewDirection != Vector3.zero)
         {
             orientation.forward = viewDirection;
         }
-
         playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
     }
 
     private void OnDestroy()
     {
         _fovTween?.Kill();
+        
+        // Reseta o Noise ao sair da cena para evitar que ele persista
+        if (freeLookCamera != null)
+        {
+            _cameraNoise.AmplitudeGain = 0;
+            _cameraNoise.FrequencyGain = 0;
+        }
     }
 }

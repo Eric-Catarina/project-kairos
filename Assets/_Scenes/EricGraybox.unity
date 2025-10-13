@@ -6242,8 +6242,24 @@ PrefabInstance:
       value: 27.77778
       objectReference: {fileID: 0}
     - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: fovMaxSpeedThreshold
+      value: 83.33334
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: fovMinSpeedThreshold
+      value: 41.66667
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: fovTransitionDuration
       value: 0.35
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: shakeMaxSpeedThreshold
+      value: 83.33334
+      objectReference: {fileID: 0}
+    - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: shakeMinSpeedThreshold
+      value: 41.66667
       objectReference: {fileID: 0}
     - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: playerMovementController
@@ -6273,6 +6289,14 @@ PrefabInstance:
       propertyPath: grappleInputBufferTime
       value: 0.5
       objectReference: {fileID: 0}
+    - target: {fileID: 8328204614404352248, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: maxAlpha
+      value: 0.9
+      objectReference: {fileID: 0}
+    - target: {fileID: 8328204614404352248, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: minSpeedThreshold
+      value: 200
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -6280,6 +6304,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6924190449495164268, guid: e845135526f54be26836a8c0237d8347, type: 3}
       insertIndex: -1
       addedObject: {fileID: 292675635}
+    - targetCorrespondingSourceObject: {fileID: 4110254221261267479, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1746523616}
   m_SourcePrefab: {fileID: 100100000, guid: e845135526f54be26836a8c0237d8347, type: 3}
 --- !u!4 &292675633 stripped
 Transform:
@@ -16712,6 +16739,11 @@ Transform:
   - {fileID: 1229492314}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &919029433 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4110254221261267479, guid: e845135526f54be26836a8c0237d8347, type: 3}
+  m_PrefabInstance: {fileID: 292675632}
+  m_PrefabAsset: {fileID: 0}
 --- !u!43 &921012352
 Mesh:
   m_ObjectHideFlags: 0
@@ -28155,12 +28187,29 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 722441998437464358, guid: e845135526f54be26836a8c0237d8347, type: 3}
   m_PrefabInstance: {fileID: 292675632}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 919029433}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
+--- !u!114 &1746523616
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919029433}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68bb026fafb42b14791938953eaace77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NoiseProfile: {fileID: 11400000, guid: 69ce8388f6785dd4c8c39915efece2f4, type: 2}
+  PivotOffset: {x: 0, y: 0, z: 0}
+  AmplitudeGain: 1
+  FrequencyGain: 1
+  m_NoiseOffsets: {x: -892.5233, y: 840.5747, z: -814.4874}
 --- !u!4 &1747318362 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3258515427170321763, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
