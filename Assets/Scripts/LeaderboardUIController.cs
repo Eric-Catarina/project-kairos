@@ -16,7 +16,7 @@ public class LeaderboardUIController : MonoBehaviour
 
     public async void ShowLeaderboard()
     {
-        if (levelData == null || LeaderboardManager.Instance == null)
+        if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
         {
             Debug.LogError("Dependências não configuradas!");
             return;
@@ -27,7 +27,6 @@ public class LeaderboardUIController : MonoBehaviour
         if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
         gameObject.SetActive(true);
 
-        // Usando a nova função mais robusta
         var leaderboardResult = await LeaderboardManager.Instance.GetLeaderboardWithPlayerAsync(levelData.GetFullLevelId(), 10);
 
         loadingIndicator.SetActive(false);
@@ -48,6 +47,19 @@ public class LeaderboardUIController : MonoBehaviour
         {
             playerScoreUIEntry.Populate(leaderboardResult.PlayerEntry.Position, leaderboardResult.PlayerEntry);
             playerScoreContainer.SetActive(true);
+
+            // CORREÇÃO: Se o jogador local também está no top 10, evitamos mostrá-lo duas vezes.
+            // A maneira mais simples é esconder a entrada do top 10 se o ID for o mesmo.
+            string localPlayerFabId = PlayFabAuthManager.Instance.PlayFabId;
+            foreach (var topEntry in leaderboardResult.TopEntries)
+            {
+                if (topEntry.playerId == localPlayerFabId)
+                {
+                    // A entrada do Top 10 já representa o jogador, então podemos desativar o container separado
+                    playerScoreContainer.SetActive(false); 
+                    break;
+                }
+            }
         }
         else
         {

@@ -5,8 +5,8 @@ using PlayFab.ClientModels;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using UnityEngine; // Adicionado para Mathf
 
-// Novo DTO (Data Transfer Object) para retornar os resultados de forma estruturada
 public class LeaderboardResult
 {
     public List<ScoreEntry> TopEntries { get; set; } = new List<ScoreEntry>();
@@ -29,14 +29,22 @@ public class PlayFabLeaderboardService : ILeaderboardService
         var playerRequest = new GetLeaderboardAroundPlayerRequest
         {
             StatisticName = levelId,
-            PlayFabId = PlayFabAuthManager.Instance.PlayFabId, // Garante que buscamos o jogador correto
+            PlayFabId = PlayFabAuthManager.Instance.PlayFabId,
             MaxResultsCount = 1
         };
 
         var topTask = GetLeaderboardAsync(topRequest);
         var playerTask = GetLeaderboardAroundPlayerAsync(playerRequest);
 
-        await Task.WhenAll(topTask, playerTask);
+        try
+        {
+            await Task.WhenAll(topTask, playerTask);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Erro ao buscar leaderboards: {e.Message}");
+            return new LeaderboardResult();
+        }
 
         var result = new LeaderboardResult();
 
@@ -58,6 +66,19 @@ public class PlayFabLeaderboardService : ILeaderboardService
     public Task<bool> SubmitScoreAsync(ScoreEntry score)
     {
         var tcs = new TaskCompletionSource<bool>();
+        
+        // Garante que o tempo não seja negativo para evitar bugs na lógica de inversão
+        if (score.scoreTime < 0) score.scoreTime = 0;
+
+        // Converte para inteiro e inverte o sinal
+        int invertedScore = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER) * -1;
+        
+        // *** BLINDAGEM ADICIONAL ***
+        // Garante que o valor final nunca seja maior que zero.
+        // Se invertedScore for positivo (o que não deveria acontecer), ele se torna negativo.
+        // Se for zero, continua zero.
+        int finalValue = Mathf.Min(0, invertedScore);
+
         var request = new UpdatePlayerStatisticsRequest
         {
             Statistics = new List<StatisticUpdate>
@@ -65,7 +86,7 @@ public class PlayFabLeaderboardService : ILeaderboardService
                 new StatisticUpdate
                 {
                     StatisticName = score.levelId,
-                    Value = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER)
+                    Value = finalValue
                 }
             }
         };
@@ -73,7 +94,7 @@ public class PlayFabLeaderboardService : ILeaderboardService
         PlayFabClientAPI.UpdatePlayerStatistics(request, 
             (result) => tcs.SetResult(true), 
             (error) => {
-                UnityEngine.Debug.LogError("Falha ao submeter pontuação: " + error.GenerateErrorReport());
+                Debug.LogError("Falha ao submeter pontuação: " + error.GenerateErrorReport());
                 tcs.SetResult(false);
             }
         );
@@ -97,18 +118,19 @@ public class PlayFabLeaderboardService : ILeaderboardService
 
     private ScoreEntry ConvertPlayFabEntryToScoreEntry(PlayerLeaderboardEntry playfabEntry, string levelId)
     {
-        return new ScoreEntry(
+        // Garante que, mesmo que o valor no banco seja positivo, ele seja tratado como tempo inválido ou zero
+        float correctedValue = Mathf.Min(0, playfabEntry.StatValue);
+    
+        var scoreEntry = new ScoreEntry(
             playfabEntry.PlayFabId,
             playfabEntry.DisplayName ?? "Player",
-            (float)playfabEntry.StatValue / SCORE_PRECISION_MULTIPLIER,
-            levelId // O levelId não vem na resposta, então usamos o que foi passado na requisição
-        ) {
-            // A posição no PlayFab é baseada em 0, então adicionamos 1 para exibição
-            Position = playfabEntry.Position + 1 
-        };
+            (correctedValue / SCORE_PRECISION_MULTIPLIER) * -1,
+            levelId
+        );
+        scoreEntry.Position = playfabEntry.Position + 1;
+        return scoreEntry;
     }
     
-    // Interface implementation (legacy)
     public async Task<List<ScoreEntry>> GetLeaderboardAsync(string levelId, int count)
     {
         var result = await GetLeaderboardWithPlayerAsync(levelId, count);
