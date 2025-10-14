@@ -76,6 +76,7 @@ public class ScoreManager : MonoBehaviour
     
     public void StartLevelTimer()
     {
+        if (_levelStarted) return;
         _levelTimer = 0f;
         _levelStarted = true;
         _isTimerRunning = true;
@@ -121,20 +122,24 @@ public class ScoreManager : MonoBehaviour
         
         await SubmitScoreAsync();
 
-        _leaderboardUIController.ShowLeaderboard();
+        if (_leaderboardUIController != null)
+        {
+            _leaderboardUIController.ShowLeaderboard();
+        }
     }
 
     private async System.Threading.Tasks.Task SubmitScoreAsync()
     {
-        if (LeaderboardManager.Instance == null || PlayerProfile.Instance == null)
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance == null || PlayerProfile.Instance.CurrentProfile == null)
         {
             Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis para submeter a pontuação.");
             return;
         }
 
+        // CORREÇÃO: Acessar as propriedades através de 'CurrentProfile'
         var scoreEntry = new ScoreEntry(
-            PlayerProfile.Instance.PlayerId,
-            PlayerProfile.Instance.PlayerName,
+            PlayerProfile.Instance.CurrentProfile.PlayerId,
+            PlayerProfile.Instance.CurrentProfile.PlayerName,
             _levelTimer,
             currentLevelData.GetFullLevelId()
         );
