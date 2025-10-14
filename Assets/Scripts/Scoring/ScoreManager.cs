@@ -121,7 +121,7 @@ public class ScoreManager : MonoBehaviour
         
         await SubmitScoreAsync();
 
-        _leaderboardUIController?.ShowLeaderboard();
+        _leaderboardUIController.ShowLeaderboard();
     }
 
     private async System.Threading.Tasks.Task SubmitScoreAsync()

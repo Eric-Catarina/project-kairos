@@ -28,6 +28,11 @@ public class LocalLeaderboardService : ILeaderboardService
         return leaderboard;
     }
 
+    public Task<LeaderboardResult> GetLeaderboardWithPlayerAsync(string levelId, int topCount)
+    {
+        throw new System.NotImplementedException();
+    }
+
     public async Task<bool> SubmitScoreAsync(ScoreEntry score)
     {
         if (score.scoreTime <= 0)

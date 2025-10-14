@@ -25,7 +25,7 @@ public class LeaderboardManager : MonoBehaviour
 
     private void InitializeService()
     {
-        _service = new LocalLeaderboardService();
+        _service = new PlayFabLeaderboardService();
     }
 
     public Task<bool> SubmitScoreAsync(ScoreEntry score)
@@ -36,5 +36,11 @@ public class LeaderboardManager : MonoBehaviour
     public Task<List<ScoreEntry>> GetLeaderboardAsync(string levelId, int count)
     {
         return _service.GetLeaderboardAsync(levelId, count);
+    }
+    
+    // Nova função exposta
+    public Task<LeaderboardResult> GetLeaderboardWithPlayerAsync(string levelId, int topCount)
+    {
+        return _service.GetLeaderboardWithPlayerAsync(levelId, topCount);
     }
 }
