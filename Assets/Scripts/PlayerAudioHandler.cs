@@ -7,6 +7,8 @@ public class PlayerAudioHandler : MonoBehaviour
     private GrapplingHookController grapple;
     private Rigidbody rb;
 
+    private bool jumpSoundPlayed = false;
+
     [Header("Sons - Movimento")]
     [SerializeField] private string jumpSfx = "Jump";
     [SerializeField] private string doubleJumpSfx = "DoubleJump";
@@ -38,26 +40,24 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private float windFadeSpeed = 5f;
 
     private float stepTimer;
-    private bool wasGrounded;
-    private bool canDoubleJumpSound;
+    private bool hasLandedOnce = false;
     private Vector3 lastPosition;
 
     private bool wasGrappling;
     private bool grappleJustStarted;
 
-    private bool hasLandedOnce = false;
+    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
+    private bool canDoubleJump = false; // Se double jump pode tocar
+
 
     private AudioSource windSource;
 
-
     private void Awake()
     {
-
         movement = GetComponent<PlayerMovementController>();
         grapple = GetComponent<GrapplingHookController>();
         rb = GetComponent<Rigidbody>();
 
-        wasGrounded = movement.isGrounded;
         stepTimer = stepInterval;
         lastPosition = transform.position;
 
@@ -73,28 +73,30 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private void OnEnable()
     {
-        movement.OnGroundLanded += PlayLand;
-
         if (InputManager.Instance != null)
         {
+            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
             InputManager.Instance.OnSlowTimeStarted += PlayTimeSkillOn;
             InputManager.Instance.OnSlowTimeCanceled += PlayTimeSkillOff;
-
-            InputManager.Instance.OnJumpPerformed += HandleJumpAudio; // novo
         }
+
+        movement.OnGroundLanded += PlayLand;
     }
 
     private void OnDisable()
     {
-        movement.OnGroundLanded -= PlayLand;
-
         if (InputManager.Instance != null)
         {
+            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
             InputManager.Instance.OnSlowTimeStarted -= PlayTimeSkillOn;
             InputManager.Instance.OnSlowTimeCanceled -= PlayTimeSkillOff;
-
-            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio; // novo
         }
+
+        movement.OnGroundLanded -= PlayLand;
     }
 
     private void Update()
@@ -103,25 +105,37 @@ public class PlayerAudioHandler : MonoBehaviour
         DetectRespawn();
         HandleGrappleAudio();
         HandleWindAudio();
-    }
 
+        if (movement.isGrounded)
+        {
+            hasJumpedOnce = false;
+            canDoubleJump = false;
+        }
+    }
 
 
     private void HandleJumpAudio()
     {
         if (movement.isGrounded)
         {
-            // Som do pulo normal
+            // Pulo normal
             AudioManager.instance.PlaySFX(jumpSfx);
+            hasJumpedOnce = true;
+            canDoubleJump = false;
         }
-        else if (!movement.isGrounded && movement.GetType()
-                 .GetField("canDoubleJump", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                 ?.GetValue(movement) is bool canDoubleJump && canDoubleJump)
+        else
         {
-            // Som do double jump (apenas se ainda pode dar double jump)
-            AudioManager.instance.PlaySFX(doubleJumpSfx);
+            if (canDoubleJump)
+            {
+                AudioManager.instance.PlaySFX(doubleJumpSfx);
+                canDoubleJump = false; // só toca uma vez
+            }
         }
     }
+
+ 
+
+
 
 
     private void HandleFootsteps()
@@ -143,50 +157,44 @@ public class PlayerAudioHandler : MonoBehaviour
     private void DetectRespawn()
     {
         float distance = Vector3.Distance(transform.position, lastPosition);
-        if (distance > 10f && wasGrounded && movement.isGrounded)
+        if (distance > 10f && movement.isGrounded)
         {
             AudioManager.instance.PlaySFX(respawnSfx);
-
             if (windSource != null)
             {
                 windSource.Stop();
-                windSource.Play(); // reinicia o loop, com volume zerado
+                windSource.Play();
             }
         }
         lastPosition = transform.position;
     }
 
+    private void HandleGrappleStart() => grappleJustStarted = true;
 
+    // Quando o grappling termina, libera double jump
+    private void HandleGrappleEnd()
+    {
+        AudioManager.instance.PlaySFX(grappleReleaseSfx);
+        grappleJustStarted = false;
+        canDoubleJump = true; // agora o player pode dar double jump
+    }
 
     private void HandleGrappleAudio()
     {
         if (grapple == null) return;
 
-        if (!wasGrappling && grapple.IsGrappling)
+        if (grappleJustStarted)
         {
             AudioManager.instance.PlaySFX(grappleShootSfx);
-            grappleJustStarted = true;
-        }
-
-        if (grappleJustStarted && grapple.IsGrappling)
-        {
             AudioManager.instance.PlaySFX(grappleAttachSfx);
             grappleJustStarted = false;
+            wasGrappling = true;
         }
-
-        if (wasGrappling && !grapple.IsGrappling)
-        {
-            AudioManager.instance.PlaySFX(grappleReleaseSfx);
-            canDoubleJumpSound = true;
-        }
-
-        wasGrappling = grapple.IsGrappling;
     }
-
 
     private void HandleWindAudio()
     {
-        if (windSource == null || rb == null) return;
+        if (windSource == null) return;
 
         float speed = rb.linearVelocity.magnitude;
         float targetVolume = 0f;
@@ -198,9 +206,6 @@ public class PlayerAudioHandler : MonoBehaviour
 
         windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
     }
-
-
-
 
     private void PlayLand()
     {
@@ -216,25 +221,21 @@ public class PlayerAudioHandler : MonoBehaviour
     private void OnCollisionEnter(Collision collision)
     {
         Vector3 normal = collision.contacts[0].normal;
-        if (Vector3.Dot(normal, Vector3.up) < 0.5f)
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
         {
-            if (collision.relativeVelocity.magnitude > wallHitMinForce)
-            {
-                AudioManager.instance.PlaySFX(wallHitSfx);
-            }
+            AudioManager.instance.PlaySFX(wallHitSfx);
         }
     }
 
+    // Funções públicas de áudio
     public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
     public void PlayRespawnManual()
     {
         AudioManager.instance.PlaySFX(respawnSfx);
-
         if (windSource != null)
-            windSource.volume = 0f; // resetar o vento
+            windSource.volume = 0f;
     }
     public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
     public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
-
 

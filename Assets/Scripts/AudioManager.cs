@@ -6,9 +6,36 @@ using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 
 [Serializable]
+public enum GameScene
+{
+    ART_BonesClimbGrayBox,
+    BackGroundTest,
+    BasicMovement,
+    BonesClimbGrayBox,
+    BonesStartGrayBox,
+    CarLevel,
+    ART_BonesClimbGrayBoxCopia,
+    BonesClimbGrayBoxCopia,
+    BonesStartGrayBoxCopia,
+    MenuCaioAUDIO,
+    EricAnimations,
+    EricGraybox,
+    FineTuningMovement,
+    LevelDesignCaio,
+    MainMenu,
+    Menu,
+    MenuCopiaPeu,
+    PrefabsTest,
+    TimeStop,
+    Tutorial,
+    VictorAgarrar,
+    VictorGraybox
+}
+
+[Serializable]
 public class SceneMusic
 {
-    public string sceneName;
+    public GameScene scene;
     public string musicName;
 }
 
@@ -24,8 +51,10 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
 
-    [Header("Configurações de Música por Cena")]
-    [SerializeField] private SceneMusic[] sceneMusics; 
+    [Header("Músicas por Cena (Enum)")]
+    [SerializeField] private SceneMusic[] sceneMusics;
+    //[Header("Configurações de Música por Cena")]
+    //[SerializeField] private SceneMusic[] sceneMusics; 
 
     private void Awake()
     {
@@ -46,7 +75,9 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        PlaySceneMusic(SceneManager.GetActiveScene().name);
+        GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
+        PlaySceneMusic(currentSceneEnum);
+        //PlaySceneMusic(SceneManager.GetActiveScene().name);
     }
 
     private void AddSoundsToDictionary(Sound[] soundArray)
@@ -153,7 +184,7 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    /*private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         PlaySceneMusic(scene.name);
     }
@@ -170,5 +201,37 @@ public class AudioManager : MonoBehaviour
         }
 
         Debug.Log($"Nenhuma música atribuída para a cena: {sceneName}");
+    }*/
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        GameScene sceneEnum = GetSceneEnum(scene.name);
+        PlaySceneMusic(sceneEnum);
+    }
+
+    private void PlaySceneMusic(GameScene sceneEnum)
+    {
+        foreach (var sceneMusic in sceneMusics)
+        {
+            if (sceneMusic.scene == sceneEnum)
+            {
+                PlayMusic(sceneMusic.musicName);
+                return;
+            }
+        }
+
+        Debug.Log($"Nenhuma música atribuída para a cena: {sceneEnum}");
+    }
+
+    /// <summary>
+    /// Converte o nome da cena atual em um valor do enum GameScene.
+    /// </summary>
+    private GameScene GetSceneEnum(string sceneName)
+    {
+        if (Enum.TryParse(sceneName, out GameScene parsedEnum))
+            return parsedEnum;
+
+        Debug.LogWarning($"Cena '{sceneName}' não encontrada no enum GameScene. Retornando MainMenu por padrão.");
+        return GameScene.MainMenu;
     }
 }
