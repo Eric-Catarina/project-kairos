@@ -1,7 +1,6 @@
 // Local: Assets/Scripts/UI/LeaderboardUIController.cs
 
 using UnityEngine;
-using System.Linq; // Necessário para OrderBy
 
 public class LeaderboardUIController : MonoBehaviour
 {
@@ -17,87 +16,73 @@ public class LeaderboardUIController : MonoBehaviour
     
     private float? _lastRunTime;
 
-    public void SetLastRunTime(float time)
+    // Renomeado para maior clareza
+    public void PrepareForDisplay(float time)
     {
         _lastRunTime = time;
-    }
 
-    public async void ShowLeaderboard()
-    {
-        if (levelData == null || LeaderboardManager.Instance == null || PlayerProfile.Instance == null)
-        {
-            Debug.LogError("Dependências não configuradas para o Leaderboard!");
-            return;
-        }
-
+        // Limpa a UI e mostra o painel imediatamente para exibir o tempo da corrida
         ClearLeaderboard();
         gameObject.SetActive(true);
         if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
         loadingIndicator.SetActive(true);
-        
-        // --- Passo 1: Exibição Imediata do Tempo Local ---
-        ScoreEntry localRunEntry = null;
-        if (_lastRunTime.HasValue)
+
+        // Exibe o tempo da corrida atual instantaneamente
+        if (_lastRunTime.HasValue && playerScoreContainer != null && playerScoreUIEntry != null)
         {
-            localRunEntry = new ScoreEntry(
-                PlayFabAuthManager.Instance.PlayFabId, // Usa o PlayFabId para consistência
+            var tempEntry = new ScoreEntry(
+                PlayFabAuthManager.Instance.PlayFabId,
                 PlayerProfile.Instance.CurrentProfile.PlayerName,
                 _lastRunTime.Value,
                 levelData.GetFullLevelId()
             );
-            
-            if (playerScoreContainer != null && playerScoreUIEntry != null)
-            {
-                // Mostra o tempo da corrida atual instantaneamente, com ranking provisório
-                playerScoreUIEntry.Populate(0, localRunEntry, true); 
-                playerScoreContainer.SetActive(true);
-            }
+            playerScoreUIEntry.Populate(0, tempEntry, true); 
+            playerScoreContainer.SetActive(true);
         }
-        
-        // --- Passo 2: Busca dos Dados do Servidor em Segundo Plano ---
+    }
+
+    public async void ShowLeaderboard()
+    {
+        if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
+        {
+            Debug.LogError("Dependências não configuradas para o Leaderboard!");
+            // Esconde o indicador de carregamento se falhar
+            loadingIndicator.SetActive(false);
+            return;
+        }
+
         var leaderboardResult = await LeaderboardManager.Instance.GetLeaderboardWithPlayerAsync(levelData.GetFullLevelId(), 10);
         loadingIndicator.SetActive(false);
+        _lastRunTime = null; // Limpa o tempo da corrida, pois os dados do servidor são a nova fonte da verdade
 
-        // --- Passo 3: Atualização da UI com Dados Completos ---
-        
-        // Popula o Top 10 sem filtrar o jogador local
+        // Limpa as entradas antigas novamente para garantir
+        ClearLeaderboard();
+
+        string localPlayerFabId = PlayFabAuthManager.Instance.PlayFabId;
+
+        // Popula o Top 10
         if (leaderboardResult?.TopEntries != null)
         {
             foreach (var score in leaderboardResult.TopEntries)
             {
                 GameObject entryGO = Instantiate(scoreEntryPrefab, topScoresContentParent);
                 ScoreUIEntry entryUI = entryGO.GetComponent<ScoreUIEntry>();
-                bool isLocalPlayer = score.playerId == PlayFabAuthManager.Instance.PlayFabId;
+                bool isLocalPlayer = score.playerId == localPlayerFabId;
                 entryUI.Populate(score.Position, score, isLocalPlayer);
             }
         }
-
-        // Determina o melhor tempo real do jogador (comparando o da API com o da corrida atual)
-        ScoreEntry bestPlayerEntry = leaderboardResult.PlayerEntry;
-        if (localRunEntry != null)
-        {
-            // Se o tempo da corrida atual for melhor que o recorde online, ou se não houver recorde online
-            if (bestPlayerEntry == null || localRunEntry.scoreTime < bestPlayerEntry.scoreTime)
-            {
-                bestPlayerEntry = localRunEntry;
-                // Como não sabemos a posição real deste novo recorde, o rank fica como provisório ("--")
-                bestPlayerEntry.Position = 0; 
-            }
-        }
         
-        // Atualiza a seção do jogador local com o melhor tempo definitivo
-        if (bestPlayerEntry != null && playerScoreContainer != null && playerScoreUIEntry != null)
+        // Exibe a melhor pontuação oficial do jogador vinda do servidor
+        if (leaderboardResult?.PlayerEntry != null && playerScoreContainer != null && playerScoreUIEntry != null)
         {
-            playerScoreUIEntry.Populate(bestPlayerEntry.Position, bestPlayerEntry, true);
+            playerScoreUIEntry.Populate(leaderboardResult.PlayerEntry.Position, leaderboardResult.PlayerEntry, true);
             playerScoreContainer.SetActive(true);
         }
         else if (playerScoreContainer != null)
         {
-            // Se, mesmo após tudo, não há pontuação, esconde o container
+            // Se o jogador não tem pontuação no servidor (primeira corrida), esconde o container
             playerScoreContainer.SetActive(false);
         }
-
-        _lastRunTime = null; // Reseta para a próxima vez
     }
 
     private void ClearLeaderboard()

@@ -3,6 +3,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Threading.Tasks; // Adicionado para Task.Delay
 
 public class ScoreManager : MonoBehaviour
 {
@@ -12,6 +13,10 @@ public class ScoreManager : MonoBehaviour
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
     
+    [Header("Configurações de UI")]
+    [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
+    [SerializeField] private int leaderboardDisplayDelayMs = 150;
+
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
 
@@ -97,23 +102,31 @@ public class ScoreManager : MonoBehaviour
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
         
-        // Submete a pontuação, mas não espera pela conclusão para mostrar a UI
-        SubmitScoreAsync();
-
+        // Passa o tempo da corrida para a UI antes de qualquer espera
         if (_leaderboardUIController != null)
         {
-            // *** MUDANÇA AQUI: Informa à UI o tempo que acabamos de fazer ***
-            _leaderboardUIController.SetLastRunTime(_levelTimer);
-            _leaderboardUIController.ShowLeaderboard();
+            _leaderboardUIController.PrepareForDisplay(_levelTimer);
         }
+
+        // Espera a submissão do score
+        bool submissionSuccess = await SubmitScoreAsync();
+        
+        // Se a submissão foi bem-sucedida, espera um pouco para dar tempo do PlayFab processar
+        if (submissionSuccess)
+        {
+            await Task.Delay(leaderboardDisplayDelayMs);
+        }
+
+        // Finalmente, mostra o leaderboard
+        _leaderboardUIController?.ShowLeaderboard();
     }
 
-    private async System.Threading.Tasks.Task SubmitScoreAsync()
+    private async Task<bool> SubmitScoreAsync()
     {
         if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
         {
             Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
-            return;
+            return false;
         }
 
         var scoreEntry = new ScoreEntry(
@@ -127,5 +140,7 @@ public class ScoreManager : MonoBehaviour
 
         if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
         else { Debug.LogWarning("Falha ao submeter pontuação."); }
+        
+        return success;
     }
 }
