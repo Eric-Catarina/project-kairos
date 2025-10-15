@@ -14,9 +14,8 @@ public class MainMenu : UIPanel
 
     // A lógica de inicialização deve estar em Awake ou OnEnable para garantir a ordem de execução
 
-    protected override void OnEnable()
+    void OnEnable()
     {
-        base.OnEnable(); // Chama a implementação da classe base (UIPanel)
 
         // Lógica que estava no Start, agora em OnEnable para ser mais robusta
         if (InputStateManager.Instance != null)

@@ -8,21 +8,11 @@ public class WinLogic : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (_levelFinished) return;
+        if (_levelFinished || !collision.gameObject.CompareTag("Player")) return;
 
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            _levelFinished = true;
-            
-            // O jogador não será mais destruído
-            
-            if (ScoreManager.Instance != null)
-            {
-                ScoreManager.Instance.EndLevelTimer();
-            }
-            
-            Time.timeScale = 0f;
-            InputStateManager.Instance.SwitchState(InputState.PostGame);
-        }
+        _levelFinished = true;
+        
+        // Apenas notifica o GameFlowManager, que cuidará do resto.
+        GameFlowManager.Instance.FinishLevel();
     }
 }

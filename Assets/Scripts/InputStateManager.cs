@@ -47,6 +47,8 @@ public class InputStateManager : MonoBehaviour
         _playerControls.UI.Disable();
         _playerControls.PostGame.Disable();
 
+        Debug.Log($"Switching Input State to: {newState}");
+
         switch (newState)
         {
             case InputState.Gameplay:

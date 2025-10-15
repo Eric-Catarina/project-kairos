@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 public class ScoreManager : MonoBehaviour
 {
-    // ... (propriedades e outros métodos permanecem os mesmos) ...
+    // ... (propriedades permanecem as mesmas) ...
     public static ScoreManager Instance { get; private set; }
     public static event Action<float, Rank> OnLevelCompleted;
 
@@ -25,6 +25,9 @@ public class ScoreManager : MonoBehaviour
     private bool _isTimerRunning = false;
     private bool _levelStarted = false;
 
+
+    // OnEnable, OnDisable, OnSceneLoaded, FindSceneReferences, Update, Timers...
+    // ... (todo o resto do script até EndLevelTimer permanece o mesmo) ...
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -103,10 +106,12 @@ public class ScoreManager : MonoBehaviour
 
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
-        
-        // Mostra o painel de resultados gerais e o leaderboard
+
+        // --- LÓGICA DE UI REMOVIDA DAQUI ---
         PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
-        postGamePanel?.GetComponent<UIJuice>()?.PlayAnimation();
+        postGamePanel.gameObject.SetActive(true);
+        postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
+        // --- FIM DA LÓGICA REMOVIDA ---
 
         if (_leaderboardUIController != null)
         {
@@ -125,6 +130,7 @@ public class ScoreManager : MonoBehaviour
 
     private async Task<bool> SubmitScoreAsync()
     {
+        // ... (lógica de submissão permanece a mesma) ...
         if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
         {
             Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
