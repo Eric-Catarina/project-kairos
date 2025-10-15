@@ -4656,7 +4656,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: fovTransitionDuration
-      value: 0.35
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 7023495207989426921, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: shakeMaxSpeedThreshold
@@ -12416,6 +12416,8 @@ GameObject:
   - component: {fileID: 1105370768}
   - component: {fileID: 1105370767}
   - component: {fileID: 1105370769}
+  - component: {fileID: 1105370771}
+  - component: {fileID: 1105370770}
   m_Layer: 5
   m_Name: LeaderboardPanel
   m_TagString: Untagged
@@ -12501,6 +12503,47 @@ MonoBehaviour:
   loadingIndicator: {fileID: 621999721}
   playerScoreContainer: {fileID: 1373573333}
   playerScoreUIEntry: {fileID: 707754072}
+--- !u!114 &1105370770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1105370765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ecdf82a5b99cc48cbbd6145f8502a78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  duration: 0.5
+  delay: 0
+  easeType: 27
+  startScale: {x: 0.1, y: 0.1, z: 0.1}
+  playOnEnable: 1
+  OnPlayStart:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPlayComplete:
+    m_PersistentCalls:
+      m_Calls: []
+  OnReverseStart:
+    m_PersistentCalls:
+      m_Calls: []
+  OnReverseComplete:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!225 &1105370771
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1105370765}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1141680971
 GameObject:
   m_ObjectHideFlags: 0

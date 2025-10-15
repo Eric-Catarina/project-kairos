@@ -5,12 +5,12 @@ using PlayFab.ClientModels;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
-using UnityEngine; // Adicionado para Mathf
+using UnityEngine;
 
 public class LeaderboardResult
 {
     public List<ScoreEntry> TopEntries { get; set; } = new List<ScoreEntry>();
-    public ScoreEntry PlayerEntry { get; set; }
+    public ScoreEntry PlayerEntry { get; set; } // Pode ser nulo se o jogador não tiver pontuação
 }
 
 public class PlayFabLeaderboardService : ILeaderboardService
@@ -19,19 +19,8 @@ public class PlayFabLeaderboardService : ILeaderboardService
 
     public async Task<LeaderboardResult> GetLeaderboardWithPlayerAsync(string levelId, int topCount)
     {
-        var topRequest = new GetLeaderboardRequest
-        {
-            StatisticName = levelId,
-            StartPosition = 0,
-            MaxResultsCount = topCount
-        };
-
-        var playerRequest = new GetLeaderboardAroundPlayerRequest
-        {
-            StatisticName = levelId,
-            PlayFabId = PlayFabAuthManager.Instance.PlayFabId,
-            MaxResultsCount = 1
-        };
+        var topRequest = new GetLeaderboardRequest { StatisticName = levelId, StartPosition = 0, MaxResultsCount = topCount };
+        var playerRequest = new GetLeaderboardAroundPlayerRequest { StatisticName = levelId, PlayFabId = PlayFabAuthManager.Instance.PlayFabId, MaxResultsCount = 1 };
 
         var topTask = GetLeaderboardAsync(topRequest);
         var playerTask = GetLeaderboardAroundPlayerAsync(playerRequest);
@@ -59,6 +48,7 @@ public class PlayFabLeaderboardService : ILeaderboardService
         {
             result.PlayerEntry = ConvertPlayFabEntryToScoreEntry(playerTask.Result.Leaderboard[0], levelId);
         }
+        // Se a tarefa do jogador falhar ou não retornar nada, result.PlayerEntry permanecerá nulo.
 
         return result;
     }
@@ -66,29 +56,13 @@ public class PlayFabLeaderboardService : ILeaderboardService
     public Task<bool> SubmitScoreAsync(ScoreEntry score)
     {
         var tcs = new TaskCompletionSource<bool>();
-        
-        // Garante que o tempo não seja negativo para evitar bugs na lógica de inversão
         if (score.scoreTime < 0) score.scoreTime = 0;
-
-        // Converte para inteiro e inverte o sinal
         int invertedScore = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER) * -1;
-        
-        // *** BLINDAGEM ADICIONAL ***
-        // Garante que o valor final nunca seja maior que zero.
-        // Se invertedScore for positivo (o que não deveria acontecer), ele se torna negativo.
-        // Se for zero, continua zero.
         int finalValue = Mathf.Min(0, invertedScore);
 
         var request = new UpdatePlayerStatisticsRequest
         {
-            Statistics = new List<StatisticUpdate>
-            {
-                new StatisticUpdate
-                {
-                    StatisticName = score.levelId,
-                    Value = finalValue
-                }
-            }
+            Statistics = new List<StatisticUpdate> { new StatisticUpdate { StatisticName = score.levelId, Value = finalValue } }
         };
 
         PlayFabClientAPI.UpdatePlayerStatistics(request, 
@@ -98,7 +72,6 @@ public class PlayFabLeaderboardService : ILeaderboardService
                 tcs.SetResult(false);
             }
         );
-
         return tcs.Task;
     }
 
@@ -118,9 +91,7 @@ public class PlayFabLeaderboardService : ILeaderboardService
 
     private ScoreEntry ConvertPlayFabEntryToScoreEntry(PlayerLeaderboardEntry playfabEntry, string levelId)
     {
-        // Garante que, mesmo que o valor no banco seja positivo, ele seja tratado como tempo inválido ou zero
         float correctedValue = Mathf.Min(0, playfabEntry.StatValue);
-    
         var scoreEntry = new ScoreEntry(
             playfabEntry.PlayFabId,
             playfabEntry.DisplayName ?? "Player",
