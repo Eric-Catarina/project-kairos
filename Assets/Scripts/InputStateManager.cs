@@ -1,12 +1,12 @@
-// Local: Assets/Scripts/InputStateManager.cs
-
+using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-[System.Serializable]
 public enum InputState
 {
     Gameplay,
-    UI
+    UI,
+    PostGame // Novo estado para o final da fase
 }
 
 public class InputStateManager : MonoBehaviour
@@ -24,6 +24,14 @@ public class InputStateManager : MonoBehaviour
         }
         Instance = this;
     }
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
 
     public void Initialize(PlayerControls playerControls)
     {
@@ -34,40 +42,43 @@ public class InputStateManager : MonoBehaviour
     {
         if (_playerControls == null) return;
 
+        // Desabilita todos os mapas de ação primeiro para um estado limpo
+        _playerControls.Player.Disable();
+        _playerControls.UI.Disable();
+        _playerControls.PostGame.Disable();
+
         switch (newState)
         {
             case InputState.Gameplay:
-                _playerControls.UI.Disable();
                 _playerControls.Player.Enable();
                 SetCursorState(false);
                 break;
 
             case InputState.UI:
-                _playerControls.Player.Disable();
                 _playerControls.UI.Enable();
+                SetCursorState(true);
+                break;
+
+            case InputState.PostGame:
+                // Habilita tanto a UI (para os botões) quanto o PostGame (para a tecla R)
+                _playerControls.UI.Enable();
+                _playerControls.PostGame.Enable();
                 SetCursorState(true);
                 break;
         }
     }
 
-    /// <summary>
-    /// Centraliza o controle do estado do cursor.
-    /// </summary>
-    /// <param name="visible">True para o cursor de UI, False para o cursor de gameplay.</param>
     private void SetCursorState(bool visible)
     {
-        if (visible)
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
-        else
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
+        Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = visible;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Sempre começa no estado de Gameplay ao carregar uma nova cena
+        SwitchState(InputState.Gameplay);
     }
     
-    public void SwitchToGameplay() => SwitchState(InputState.Gameplay);
-    public void SwitchToUI() => SwitchState(InputState.UI);
+
 }

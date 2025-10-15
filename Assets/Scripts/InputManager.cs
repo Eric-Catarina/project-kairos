@@ -11,6 +11,7 @@ public class InputManager : MonoBehaviour
 
     public PlayerControls PlayerControls => _playerControls;
 
+    // ... (outros eventos permanecem os mesmos) ...
     public event Action<Vector2> OnMove;
     public event Action OnJumpPerformed;
     public event Action OnJumpCanceled;
@@ -28,8 +29,8 @@ public class InputManager : MonoBehaviour
     public event Action OnToggleInfiniteGrappleCooldown;
     public event Action OnToggleInfiniteGrappleDuration;
     public event Action OnToggleInfiniteTimeStop;
-    public event Action OnToggleAllCheats;
 
+    public event Action OnToggleAllCheats;
 #endif
 
     private PlayerControls _playerControls;
@@ -58,25 +59,28 @@ public class InputManager : MonoBehaviour
     private void OnEnable()
     {
         _playerControls.Enable();
-
+        
         _playerControls.Player.Move.performed += HandleMove;
         _playerControls.Player.Move.canceled += HandleMove;
 
         _playerControls.Player.Jump.performed += HandleJumpPerformed;
         _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-
+        
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-
+        
         _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
         _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
-
+        
         _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        
+        // Ação de restart agora é ouvida de dois mapas diferentes
         _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
-
+        _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
+        
         _playerControls.Player.Pause.performed += HandlePausePressed;
         _playerControls.UI.Unpause.performed += HandlePausePressed;
-
+        
 #if ENABLE_CHEATS
         _playerControls.Debug.Enable();
         _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
@@ -90,28 +94,26 @@ public class InputManager : MonoBehaviour
     private void OnDisable()
     {
         if (_playerControls == null) return;
-
+        
+        // ... (outras desinscrições) ...
         _playerControls.Player.Move.performed -= HandleMove;
         _playerControls.Player.Move.canceled -= HandleMove;
-        
         _playerControls.Player.Jump.performed -= HandleJumpPerformed;
         _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
-        
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        
         _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
         _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
-        
         _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
         _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
-        
+        _playerControls.PostGame.RestartLevel.performed -= HandleRestartLevel;
         _playerControls.Player.Pause.performed -= HandlePausePressed;
         _playerControls.UI.Unpause.performed -= HandlePausePressed;
-        
+
         _playerControls.Disable();
     }
-
+    
+    // ... (outros Handlers) ...
     private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
     private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
     private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();

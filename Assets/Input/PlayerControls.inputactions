@@ -899,6 +899,34 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "PostGame",
+            "id": "6966d594-e2f6-40ce-9baa-382845cb19dd",
+            "actions": [
+                {
+                    "name": "RestartLevel",
+                    "type": "Button",
+                    "id": "ce72410b-5dbc-418d-81c1-540b6a68696d",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "e091d2fd-825e-4689-85cd-145a42ce077a",
+                    "path": "<Keyboard>/r",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "RestartLevel",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": []

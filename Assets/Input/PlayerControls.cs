@@ -985,6 +985,34 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""isPartOfComposite"": false
                 }
             ]
+        },
+        {
+            ""name"": ""PostGame"",
+            ""id"": ""6966d594-e2f6-40ce-9baa-382845cb19dd"",
+            ""actions"": [
+                {
+                    ""name"": ""RestartLevel"",
+                    ""type"": ""Button"",
+                    ""id"": ""ce72410b-5dbc-418d-81c1-540b6a68696d"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""e091d2fd-825e-4689-85cd-145a42ce077a"",
+                    ""path"": ""<Keyboard>/r"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RestartLevel"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
         }
     ],
     ""controlSchemes"": []
@@ -1020,6 +1048,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Debug_ToggleInfiniteGrappleDuration = m_Debug.FindAction("ToggleInfiniteGrappleDuration", throwIfNotFound: true);
         m_Debug_ToggleInfiniteTimeStop = m_Debug.FindAction("ToggleInfiniteTimeStop", throwIfNotFound: true);
         m_Debug_ToggleAllCheats = m_Debug.FindAction("ToggleAllCheats", throwIfNotFound: true);
+        // PostGame
+        m_PostGame = asset.FindActionMap("PostGame", throwIfNotFound: true);
+        m_PostGame_RestartLevel = m_PostGame.FindAction("RestartLevel", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -1027,6 +1058,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         UnityEngine.Debug.Assert(!m_UI.enabled, "This will cause a leak and performance issues, PlayerControls.UI.Disable() has not been called.");
         UnityEngine.Debug.Assert(!m_Player.enabled, "This will cause a leak and performance issues, PlayerControls.Player.Disable() has not been called.");
         UnityEngine.Debug.Assert(!m_Debug.enabled, "This will cause a leak and performance issues, PlayerControls.Debug.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_PostGame.enabled, "This will cause a leak and performance issues, PlayerControls.PostGame.Disable() has not been called.");
     }
 
     /// <summary>
@@ -1628,6 +1660,102 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     /// Provides a new <see cref="DebugActions" /> instance referencing this action map.
     /// </summary>
     public DebugActions @Debug => new DebugActions(this);
+
+    // PostGame
+    private readonly InputActionMap m_PostGame;
+    private List<IPostGameActions> m_PostGameActionsCallbackInterfaces = new List<IPostGameActions>();
+    private readonly InputAction m_PostGame_RestartLevel;
+    /// <summary>
+    /// Provides access to input actions defined in input action map "PostGame".
+    /// </summary>
+    public struct PostGameActions
+    {
+        private @PlayerControls m_Wrapper;
+
+        /// <summary>
+        /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public PostGameActions(@PlayerControls wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "PostGame/RestartLevel".
+        /// </summary>
+        public InputAction @RestartLevel => m_Wrapper.m_PostGame_RestartLevel;
+        /// <summary>
+        /// Provides access to the underlying input action map instance.
+        /// </summary>
+        public InputActionMap Get() { return m_Wrapper.m_PostGame; }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
+        public void Enable() { Get().Enable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
+        public void Disable() { Get().Disable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
+        public bool enabled => Get().enabled;
+        /// <summary>
+        /// Implicitly converts an <see ref="PostGameActions" /> to an <see ref="InputActionMap" /> instance.
+        /// </summary>
+        public static implicit operator InputActionMap(PostGameActions set) { return set.Get(); }
+        /// <summary>
+        /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <param name="instance">Callback instance.</param>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
+        /// </remarks>
+        /// <seealso cref="PostGameActions" />
+        public void AddCallbacks(IPostGameActions instance)
+        {
+            if (instance == null || m_Wrapper.m_PostGameActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_PostGameActionsCallbackInterfaces.Add(instance);
+            @RestartLevel.started += instance.OnRestartLevel;
+            @RestartLevel.performed += instance.OnRestartLevel;
+            @RestartLevel.canceled += instance.OnRestartLevel;
+        }
+
+        /// <summary>
+        /// Removes <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <remarks>
+        /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
+        /// </remarks>
+        /// <seealso cref="PostGameActions" />
+        private void UnregisterCallbacks(IPostGameActions instance)
+        {
+            @RestartLevel.started -= instance.OnRestartLevel;
+            @RestartLevel.performed -= instance.OnRestartLevel;
+            @RestartLevel.canceled -= instance.OnRestartLevel;
+        }
+
+        /// <summary>
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="PostGameActions.UnregisterCallbacks(IPostGameActions)" />.
+        /// </summary>
+        /// <seealso cref="PostGameActions.UnregisterCallbacks(IPostGameActions)" />
+        public void RemoveCallbacks(IPostGameActions instance)
+        {
+            if (m_Wrapper.m_PostGameActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        /// <summary>
+        /// Replaces all existing callback instances and previously registered input action callbacks associated with them with callbacks provided via <param cref="instance" />.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
+        /// </remarks>
+        /// <seealso cref="PostGameActions.AddCallbacks(IPostGameActions)" />
+        /// <seealso cref="PostGameActions.RemoveCallbacks(IPostGameActions)" />
+        /// <seealso cref="PostGameActions.UnregisterCallbacks(IPostGameActions)" />
+        public void SetCallbacks(IPostGameActions instance)
+        {
+            foreach (var item in m_Wrapper.m_PostGameActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_PostGameActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    /// <summary>
+    /// Provides a new <see cref="PostGameActions" /> instance referencing this action map.
+    /// </summary>
+    public PostGameActions @PostGame => new PostGameActions(this);
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.
     /// </summary>
@@ -1826,5 +1954,20 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnToggleAllCheats(InputAction.CallbackContext context);
+    }
+    /// <summary>
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "PostGame" which allows adding and removing callbacks.
+    /// </summary>
+    /// <seealso cref="PostGameActions.AddCallbacks(IPostGameActions)" />
+    /// <seealso cref="PostGameActions.RemoveCallbacks(IPostGameActions)" />
+    public interface IPostGameActions
+    {
+        /// <summary>
+        /// Method invoked when associated input action "RestartLevel" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRestartLevel(InputAction.CallbackContext context);
     }
 }

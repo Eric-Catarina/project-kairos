@@ -3,10 +3,11 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Threading.Tasks; // Adicionado para Task.Delay
+using System.Threading.Tasks;
 
 public class ScoreManager : MonoBehaviour
 {
+    // ... (propriedades e outros métodos permanecem os mesmos) ...
     public static ScoreManager Instance { get; private set; }
     public static event Action<float, Rank> OnLevelCompleted;
 
@@ -15,7 +16,7 @@ public class ScoreManager : MonoBehaviour
     
     [Header("Configurações de UI")]
     [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
-    [SerializeField] private int leaderboardDisplayDelayMs = 150;
+    [SerializeField] private int leaderboardDisplayDelayMs = 750;
 
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
@@ -92,6 +93,7 @@ public class ScoreManager : MonoBehaviour
     }
     private void HandleLevelFinished() { EndLevelTimer(); }
 
+
     public async void EndLevelTimer()
     {
         if (!_isTimerRunning && !_levelStarted) return;
@@ -102,22 +104,22 @@ public class ScoreManager : MonoBehaviour
         Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
         OnLevelCompleted?.Invoke(_levelTimer, finalRank);
         
-        // Passa o tempo da corrida para a UI antes de qualquer espera
+        // Mostra o painel de resultados gerais e o leaderboard
+        PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
+        postGamePanel?.GetComponent<UIJuice>()?.PlayAnimation();
+
         if (_leaderboardUIController != null)
         {
             _leaderboardUIController.PrepareForDisplay(_levelTimer);
         }
 
-        // Espera a submissão do score
         bool submissionSuccess = await SubmitScoreAsync();
         
-        // Se a submissão foi bem-sucedida, espera um pouco para dar tempo do PlayFab processar
         if (submissionSuccess)
         {
             await Task.Delay(leaderboardDisplayDelayMs);
         }
-
-        // Finalmente, mostra o leaderboard
+        
         _leaderboardUIController?.ShowLeaderboard();
     }
 
