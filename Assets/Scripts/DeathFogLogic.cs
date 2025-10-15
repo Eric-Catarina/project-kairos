@@ -1,19 +1,16 @@
-using Unity.VisualScripting;
+// Local: Assets/Scripts/DeathFogLogic.cs
+
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.SocialPlatforms.Impl;
 
 public class DeathFogLogic : MonoBehaviour
 {
-    [SerializeField] SceneManagerLogic sceneManager;
-
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log("Collision detected with: " + collision.gameObject.name);
-
         if (collision.gameObject.CompareTag("Player"))
         {
             Destroy(collision.gameObject);
-            sceneManager.RestartScene();
+            SceneManagerLogic.Instance.RestartScene();
         }
     }
 }

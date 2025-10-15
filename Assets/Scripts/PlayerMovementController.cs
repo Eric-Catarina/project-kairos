@@ -1,3 +1,5 @@
+// Local: Assets/Scripts/PlayerMovementController.cs
+
 using TMPro;
 using System;
 using UnityEngine;
@@ -8,7 +10,7 @@ public class PlayerMovementController : MonoBehaviour
     public event Action OnGroundLanded;
     public event Action<float> OnHorizontalVelocityChanged;
     public event Action OnJumped;
-    public event Action OnLeftGround; // Novo Evento
+    public event Action OnLeftGround;
 
     [Header("Estado Atual")]
     public bool isGrounded;
@@ -18,7 +20,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
+    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f, airControlMultiplier = 5f;
 
     [Header("Configurações de Atrito (Drag)")]
     [SerializeField] private float groundDrag = 6f;
@@ -71,6 +73,8 @@ public class PlayerMovementController : MonoBehaviour
     private bool isJumping;
 
     private Vector3 _groundVelocity;
+    private Rigidbody _currentPlatformRb;
+    private Vector3 _lastPlatformPosition;
 
     public Rigidbody Rb => rb;
 
@@ -106,6 +110,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         UpdateCurrentVelocityInKm();
         CheckGroundedStatus();
+        ApplyPlatformMovement();
         ApplyDrag();
         LimitVelocity();
         MovePlayer();
@@ -151,10 +156,16 @@ public class PlayerMovementController : MonoBehaviour
         if (isGrounded && hitInfo.rigidbody != null)
         {
             _groundVelocity = hitInfo.rigidbody.linearVelocity;
+            if (_currentPlatformRb != hitInfo.rigidbody)
+            {
+                _currentPlatformRb = hitInfo.rigidbody;
+                _lastPlatformPosition = _currentPlatformRb.position;
+            }
         }
         else
         {
             _groundVelocity = Vector3.zero;
+            _currentPlatformRb = null;
         }
 
         if (!wasGrounded && isGrounded)
@@ -177,11 +188,27 @@ public class PlayerMovementController : MonoBehaviour
 
         if (wasGrounded && !isGrounded)
         {
-            if(!isJumping) // Se não está pulando, significa que caiu
+            if(!isJumping)
             {
                  OnLeftGround?.Invoke();
                  coyoteTimeCounter = coyoteTimeDuration;
             }
+        }
+    }
+
+    private void ApplyPlatformMovement()
+    {
+        if (_currentPlatformRb != null && isGrounded)
+        {
+            Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
+            MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
+            float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
+            if (platformDelta != Vector3.zero)
+            {
+                platformDelta *= playerInfluence;
+                rb.position += platformDelta;
+            }
+            _lastPlatformPosition = _currentPlatformRb.position;
         }
     }
 
@@ -202,20 +229,39 @@ public class PlayerMovementController : MonoBehaviour
             rb.linearDamping = airDrag;
         }
     }
-
+    
     private void MovePlayer()
     {
         if (grapplingHookController.IsGrappling) return;
 
         Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
-
-        if (isGrounded)
+        float appliedForceMultiplier = isGrounded ? groundMultiplier : airMultiplier;
+        
+        if (!isGrounded)
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+                Vector3 velocityDir = horizontalVelocity.sqrMagnitude > 0.01f ? horizontalVelocity.normalized : moveDirection;
+                float angle = Vector3.Angle(velocityDir, moveDirection);
+                float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
+                float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
+                rb.AddForce(moveDirection * moveSpeed * 10f * appliedForceMultiplier * lateralInfluence, ForceMode.Force);
+
+                float maxHorizontalSpeed = maxMoveSpeed / 3.6f;
+                if (horizontalVelocity.magnitude > maxHorizontalSpeed)
+                {
+                    Vector3 clampedVelocity = horizontalVelocity.normalized * maxHorizontalSpeed;
+                    rb.linearVelocity = new Vector3(clampedVelocity.x, rb.linearVelocity.y, clampedVelocity.z);
+                }
+            }
         }
         else
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                rb.AddForce(moveDirection * moveSpeed * 10f * appliedForceMultiplier, ForceMode.Force);
+            }
         }
     }
 
@@ -255,10 +301,13 @@ public class PlayerMovementController : MonoBehaviour
                 canDoubleJump = true;
             }
         }
-        else if (canDoubleJump)
+        else if (canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive))
         {
             Jump(doubleJumpForce);
-            canDoubleJump = false;
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
+            {
+                canDoubleJump = false;
+            }
         }
     }
 
@@ -295,11 +344,38 @@ public class PlayerMovementController : MonoBehaviour
         }
     }
 
-    public void EnableDoubleJump()
+    public void ResetDoubleJump()
     {
         if (!canDoubleJump && !isGrounded)
         canDoubleJump = true;
     }
+    
+    public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
+    {
+        if (resetVelocity)
+        {
+            rb.linearVelocity = Vector3.zero;
+        }
+        
+        rb.AddForce(direction * force, ForceMode.Impulse);
+        
+        canDoubleJump = true;
+        isJumping = true;
+        OnLeftGround?.Invoke();
+    }
+
+    public void MultiplyVelocity(float multiplier)
+    {
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Vector3 newVelocity = horizontalVelocity * multiplier;
+        rb.linearVelocity = new Vector3(newVelocity.x, rb.linearVelocity.y, newVelocity.z);
+    }
+    
+    public Transform GetOrientation()
+    {
+        return orientation;
+    }
+
     private void ApplyLandingDampening()
     {
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);

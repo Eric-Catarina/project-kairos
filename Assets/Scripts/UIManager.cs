@@ -1,12 +1,14 @@
+// Local: Assets/Scripts/UI/UIManager.cs
+
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
     private readonly Dictionary<UIPanelType, UIPanel> registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    private readonly Stack<UIPanel> panelStack = new Stack<UIPanel>();
 
     private void Awake()
     {
@@ -16,24 +18,16 @@ public class UIManager : MonoBehaviour
             return;
         }
         Instance = this;
-        
-        FindAndRegisterAllPanels();
     }
 
-    private void OnEnable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed += HandlePauseToggle;
-    }
+    private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
+    private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
 
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnPausePressed -= HandlePauseToggle;
-    }
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => FindAndRegisterAllPanels();
 
     private void FindAndRegisterAllPanels()
     {
+        registeredPanels.Clear();
         UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (UIPanel panel in allPanels)
         {
@@ -46,73 +40,44 @@ public class UIManager : MonoBehaviour
         if (!registeredPanels.ContainsKey(panel.PanelType))
         {
             registeredPanels.Add(panel.PanelType, panel);
-            panel.gameObject.SetActive(false);
+            if (panel.gameObject.activeInHierarchy && panel.PanelType != UIPanelType.MainMenu)
+            {
+                panel.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    public void UnregisterPanel(UIPanel panel)
+    {
+        if (registeredPanels.ContainsKey(panel.PanelType))
+        {
+            registeredPanels.Remove(panel.PanelType);
         }
     }
 
     public void ShowPanel(UIPanelType panelType)
     {
-        if (!registeredPanels.TryGetValue(panelType, out UIPanel panelToShow))
+        if (registeredPanels.TryGetValue(panelType, out UIPanel panel))
         {
-            Debug.LogWarning($"Painel do tipo {panelType} não foi registrado.");
-            return;
-        }
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Hide();
-        }
-
-        panelToShow.Show();
-        panelStack.Push(panelToShow);
-        UpdateInputState();
-    }
-
-    public void CloseCurrentPanel()
-    {
-        if (panelStack.Count == 0) return;
-
-        UIPanel panelToClose = panelStack.Pop();
-        panelToClose.Hide();
-
-        if (panelStack.Count > 0)
-        {
-            panelStack.Peek().Show();
-        }
-
-        UpdateInputState();
-	Time.timeScale = 1;
-    }
-
-    private void HandlePauseToggle()
-    {
-        if (panelStack.Count > 0 && panelStack.Peek().PanelType == UIPanelType.Settings) // Supondo que Settings é o painel de pausa
-        {
-            CloseCurrentPanel();
-            Time.timeScale = 1;
-        }
-        else if (panelStack.Count == 0)
-        {
-            ShowPanel(UIPanelType.Settings);
-            Time.timeScale = 0;
+            panel.Show();
         }
     }
 
-    public void CloseCurrentPanelAndUnpause()
+    public void ClosePanel(UIPanelType panelType)
     {
-        CloseCurrentPanel();
-        Time.timeScale = 1; // Corrige o erro e garante que despausa.
+        if (registeredPanels.TryGetValue(panelType, out UIPanel panel))
+        {
+            panel.Hide();
+        }
     }
 
-    private void UpdateInputState()
+    public void OpenSettingsPanel()
     {
-        if (panelStack.Count > 0)
-        {
-            InputStateManager.Instance.SwitchState(InputState.UI);
-        }
-        else
-        {
-            InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        }
+        ShowPanel(UIPanelType.Settings);
+    }
+    public void CloseSettingsPanel()
+    {
+        ClosePanel(UIPanelType.Settings);
+        GameFlowManager.Instance?.ResumeGame();
     }
 }

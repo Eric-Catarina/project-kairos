@@ -3,15 +3,14 @@
 using UnityEngine;
 
 [RequireComponent(typeof(UIJuice))]
+[System.Serializable]
 public abstract class UIPanel : MonoBehaviour
 {
     [SerializeField] private UIPanelType panelType;
     public UIPanelType PanelType => panelType;
 
     private UIJuice _uiJuice;
-
-    // Usamos uma propriedade para "Lazy Initialization".
-    // O código dentro do 'get' só é executado na primeira vez que UiJuice é acessado.
+    
     protected UIJuice UiJuice
     {
         get
@@ -24,21 +23,32 @@ public abstract class UIPanel : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Ativa o painel e inicia sua animação de entrada.
-    /// </summary>
+    protected virtual void OnEnable()
+    {
+        // Esta chamada é mais relevante para painéis instanciados em tempo de execução.
+        // O UIManager já cuida dos painéis que existem na cena no carregamento.
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.RegisterPanel(this);
+        }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        // Garante que, se o painel for destruído, ele seja removido do dicionário do manager.
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UnregisterPanel(this);
+        }
+    }
+    
     public virtual void Show()
     {
-        // Agora acessamos a propriedade UiJuice, que garante que a referência não seja nula.
         UiJuice.SetActiveAndPlay();
     }
 
-    /// <summary>
-    /// Inicia a animação de saída do painel. O objeto será desativado ao final da animação.
-    /// </summary>
     public virtual void Hide()
     {
-        // O mesmo aqui.
         UiJuice.PlayReverseAnimation();
     }
 }

@@ -1,45 +1,68 @@
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
 using System;
-using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Gerencia o cronômetro, estado do nível e cálculo de pontuação.
-/// Utiliza o padrão Singleton para acesso global fácil.
-/// Dispara um evento OnLevelCompleted para desacoplar a lógica da UI. (Observer Pattern)
-/// </summary>
 public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
-
-    // Evento que a UI e outros sistemas podem ouvir para saber quando o nível terminou.
     public static event Action<float, Rank> OnLevelCompleted;
 
     [Header("Configuração do Nível")]
-    [Tooltip("Os dados de pontuação para o nível atual (tempos para ranques S, A, B, etc.).")]
     [SerializeField] private LevelData currentLevelData;
-    private ScoreUIController scoreUIController;
+    
+    private ScoreUIController _scoreUIController;
+    private LeaderboardUIController _leaderboardUIController;
 
     private float _levelTimer;
     private bool _isTimerRunning = false;
+    private bool _levelStarted = false;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        scoreUIController = FindObjectOfType<ScoreUIController>();
+    }
+    
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLevelFinished += HandleLevelFinished;
+        }
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnGamePaused += PauseTimer;
+            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
+        }
     }
 
-    private void Start()
+    private void OnDisable()
     {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLevelFinished -= HandleLevelFinished;
+        }
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
+            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
+        }
+    }
 
-        //StartCoroutine(WaitAndStartTimer(1f)); // Espera 1 segundo antes de iniciar o cronômetro
-
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        ResetLevelTimer();
+    }
+    
+    private void FindSceneReferences()
+    {
+        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
+        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
     }
 
     private void Update()
@@ -47,61 +70,89 @@ public class ScoreManager : MonoBehaviour
         if (_isTimerRunning)
         {
             _levelTimer += Time.deltaTime;
-            scoreUIController?.UpdateTime(_levelTimer);
+            _scoreUIController?.UpdateTime(_levelTimer);
+        }
+    }
+    
+    public void StartLevelTimer()
+    {
+        if (_levelStarted) return;
+        _levelTimer = 0f;
+        _levelStarted = true;
+        _isTimerRunning = true;
+    }
+
+    private void PauseTimer()
+    {
+        _isTimerRunning = false;
+    }
+
+    private void ResumeTimer()
+    {
+        if (_levelStarted)
+        {
+            _isTimerRunning = true;
         }
     }
 
-    private void OnEnable()
+    public void ResetLevelTimer()
     {
-        InputManager.Instance.OnLevelFinished += EndLevelTimer;
-        InputManager.Instance.OnLevelRestarted += StartLevelTimer;
-    }
-
-    private void OnDisable()
-    {
-        InputManager.Instance.OnLevelFinished -= EndLevelTimer;
-        InputManager.Instance.OnLevelRestarted -= StartLevelTimer;
-    }
-
-    /// <summary>
-    /// Inicia ou reinicia o cronômetro do nível.
-    /// Chame isso quando o jogador começar a fase.
-    /// </summary>
-    public void StartLevelTimer()
-    {
-        if (_isTimerRunning) return;
         _levelTimer = 0f;
-        _isTimerRunning = true;
-        Debug.Log("Cronômetro do nível iniciado!");
+        _isTimerRunning = false;
+        _levelStarted = false;
+        _scoreUIController?.UpdateTime(_levelTimer);
     }
 
-    /// <summary>
-    /// Para o cronômetro, calcula o ranque e notifica os ouvintes.
-    /// Chame isso quando o jogador cruzar a linha de chegada.
-    /// </summary>
-    public void EndLevelTimer()
+    private void HandleLevelFinished()
     {
-        if (!_isTimerRunning) return;
+        EndLevelTimer();
+    }
 
+    public async void EndLevelTimer()
+    {
+        if (!_isTimerRunning && !_levelStarted) return;
         _isTimerRunning = false;
+        _levelStarted = false;
 
-        if (currentLevelData == null)
+        if (currentLevelData == null) { Debug.LogError("LevelData não está configurado!"); return; }
+
+        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
+        
+        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
+        
+        await SubmitScoreAsync();
+
+        if (_leaderboardUIController != null)
         {
-            Debug.LogError("LevelData não está configurado no ScoreManager!");
+            _leaderboardUIController.ShowLeaderboard();
+        }
+    }
+
+    private async System.Threading.Tasks.Task SubmitScoreAsync()
+    {
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance == null || PlayerProfile.Instance.CurrentProfile == null)
+        {
+            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis para submeter a pontuação.");
             return;
         }
 
-        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
+        // CORREÇÃO: Acessar as propriedades através de 'CurrentProfile'
+        var scoreEntry = new ScoreEntry(
+            PlayerProfile.Instance.CurrentProfile.PlayerId,
+            PlayerProfile.Instance.CurrentProfile.PlayerName,
+            _levelTimer,
+            currentLevelData.GetFullLevelId()
+        );
 
-        Debug.Log($"Nível concluído! Tempo: {_levelTimer:F2}s - Ranque: {finalRank}");
+        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
 
-        // Dispara o evento com os resultados finais.
-        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
-    }
-    
-    IEnumerator WaitAndStartTimer(float waitTime)
-    {
-        yield return new WaitForSeconds(waitTime);
-        StartLevelTimer();
+        if (success)
+        {
+            Debug.Log("Pontuação submetida com sucesso!");
+        }
+        else
+        {
+            Debug.LogWarning("Falha ao submeter pontuação.");
+        }
     }
 }
