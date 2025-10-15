@@ -133,7 +133,7 @@ public class GameFlowManager : MonoBehaviour
         _countdownUI.text.text = "1";
         yield return new WaitForSecondsRealtime(1f);
 
-        _countdownUI.text.text = "VAI!";
+        _countdownUI.text.text = "VAI";
         yield return new WaitForSecondsRealtime(0.5f);
 
         _countdownUI.panel.SetActive(false);

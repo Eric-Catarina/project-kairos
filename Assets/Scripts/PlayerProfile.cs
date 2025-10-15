@@ -69,17 +69,17 @@ public class PlayerProfile : MonoBehaviour
             PlayerName = $"Player{UnityEngine.Random.Range(1000, 9999)}"
         };
         
-        AllProfiles.Add(newProfile);
+        AllProfiles.Add(newProfile); // Apenas ADICIONA à lista
         
         if (setActive)
         {
-            SwitchPlayer(newProfile.PlayerId);
+            SwitchPlayer(newProfile.PlayerId); // Troca para o novo perfil sem salvar (SwitchPlayer faz isso)
         }
         else
         {
             SaveChanges();
+            OnProfileChanged?.Invoke();
         }
-        OnProfileChanged?.Invoke();
     }
 
     public void SwitchPlayer(string playerId)
@@ -89,7 +89,7 @@ public class PlayerProfile : MonoBehaviour
         {
             CurrentProfile = profileToSwitch;
             PlayerPrefs.SetString(LastProfileIdKey, CurrentProfile.PlayerId);
-            SaveChanges();
+            SaveChanges(); // Salva a lista completa e o novo ID ativo
             OnProfileChanged?.Invoke();
         }
     }
