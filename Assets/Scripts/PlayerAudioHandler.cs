@@ -106,17 +106,23 @@ public class PlayerAudioHandler : MonoBehaviour
     }
 
 
+
     private void HandleJumpAudio()
     {
         if (movement.isGrounded)
         {
+            // Som do pulo normal
             AudioManager.instance.PlaySFX(jumpSfx);
         }
-        else if (!movement.isGrounded && doubleJumpSfx != null)
+        else if (!movement.isGrounded && movement.GetType()
+                 .GetField("canDoubleJump", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                 ?.GetValue(movement) is bool canDoubleJump && canDoubleJump)
         {
+            // Som do double jump (apenas se ainda pode dar double jump)
             AudioManager.instance.PlaySFX(doubleJumpSfx);
         }
     }
+
 
     private void HandleFootsteps()
     {
