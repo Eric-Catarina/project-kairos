@@ -72,7 +72,8 @@ public class SceneManagerLogic : MonoBehaviour
     public void LoadMainMenu()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(0); // Assumindo que o menu principal é a cena de índice 0
+        SceneManager.LoadScene("MainMenu");
     }
 }
 
+    
