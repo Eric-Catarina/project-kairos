@@ -110,7 +110,7 @@ public class UIManager : MonoBehaviour
         _registeredPanelNames.Clear();
         foreach (var pair in _registeredPanels)
         {
-            _registeredPanelNames.Add($"[{pair.Key}] -> {pair.Value?.gameObject.name ?? "REFERÊNCIA NULA"}");
+            //_registeredPanelNames.Add($"[{pair.Key}] -> {pair.Value?.gameObject.name ?? "REFERÊNCIA NULA"}");
         }
     }
 
