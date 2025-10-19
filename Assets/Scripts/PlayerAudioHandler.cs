@@ -199,34 +199,55 @@ public class PlayerAudioHandler : MonoBehaviour
         lastPosition = transform.position;
     }
 
-    private void HandleGrappleStart() => grappleJustStarted = true;
+    private void HandleGrappleStart()
+    {
+        AudioManager.instance.PlaySFX(grappleShootSfx);
+        grappleJustStarted = true;
+    }
 
-    // Quando o grappling termina, libera double jump
     private void HandleGrappleEnd()
     {
+
         AudioManager.instance.PlaySFX(grappleReleaseSfx);
+
+        // Libera double jump só se tinha realmente se agarrado
+        if (wasGrappling)
+        {
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+
         grappleJustStarted = false;
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
+        wasGrappling = false;
     }
 
     private void HandleGrappleAudio()
     {
-        if (grapple == null) return;
+        if (grapple == null || !grappleJustStarted) return;
 
-        if (grappleJustStarted)
+        // Som e estado só se realmente conectar
+        if (grapple.IsGrappling)
         {
-            AudioManager.instance.PlaySFX(grappleShootSfx);
             AudioManager.instance.PlaySFX(grappleAttachSfx);
-            grappleJustStarted = false;
+
+            // Bloqueia double jump enquanto estiver agarrado
+            doubleJumpAvailable = false;
+            doubleJumpSoundPlayed = false;
+
             wasGrappling = true;
+            grappleJustStarted = false;
         }
+
     }
 
     private void HandleWindAudio()
     {
         if (windSource == null) return;
-
+        if (Time.timeScale == 0f)
+        {
+            windSource.volume = 0f;
+            return;
+        }
         float speed = rb.linearVelocity.magnitude;
         float targetVolume = 0f;
 

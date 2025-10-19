@@ -29,7 +29,8 @@ public enum GameScene
     TimeStop,
     Tutorial,
     VictorAgarrar,
-    VictorGraybox
+    VictorGraybox,
+    MainMenuCópia
 }
 
 [Serializable]
@@ -77,7 +78,6 @@ public class AudioManager : MonoBehaviour
     {
         GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
         PlaySceneMusic(currentSceneEnum);
-        //PlaySceneMusic(SceneManager.GetActiveScene().name);
     }
 
     private void AddSoundsToDictionary(Sound[] soundArray)
@@ -184,24 +184,6 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    /*private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        PlaySceneMusic(scene.name);
-    }
-
-    private void PlaySceneMusic(string sceneName)
-    {
-        foreach (var sceneMusic in sceneMusics)
-        {
-            if (sceneMusic.sceneName == sceneName)
-            {
-                PlayMusic(sceneMusic.musicName);
-                return;
-            }
-        }
-
-        Debug.Log($"Nenhuma música atribuída para a cena: {sceneName}");
-    }*/
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -219,19 +201,13 @@ public class AudioManager : MonoBehaviour
                 return;
             }
         }
-
-        Debug.Log($"Nenhuma música atribuída para a cena: {sceneEnum}");
     }
 
-    /// <summary>
-    /// Converte o nome da cena atual em um valor do enum GameScene.
-    /// </summary>
     private GameScene GetSceneEnum(string sceneName)
     {
         if (Enum.TryParse(sceneName, out GameScene parsedEnum))
             return parsedEnum;
 
-        Debug.LogWarning($"Cena '{sceneName}' não encontrada no enum GameScene. Retornando MainMenu por padrão.");
-        return GameScene.MainMenu;
+        return (GameScene)(-1);
     }
 }
