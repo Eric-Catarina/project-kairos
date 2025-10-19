@@ -2080,11 +2080,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6288892216577708504, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 13.6
       objectReference: {fileID: 0}
     - target: {fileID: 6288892216577708504, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -107.96
       objectReference: {fileID: 0}
     - target: {fileID: 6288892216577708504, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalRotation.w
@@ -6239,17 +6239,6 @@ MonoBehaviour:
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
---- !u!114 &737096092 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6189197513460953321, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-  m_PrefabInstance: {fileID: 3279603993199282714}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d64f8130b069f4047b79572f50f402b1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &790851794
 GameObject:
   m_ObjectHideFlags: 0
@@ -8697,7 +8686,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25d2cf38c8b946f4fbe3de5a7cf4841f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneManager: {fileID: 737096092}
 --- !u!65 &1158275110
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10332,7 +10320,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f0fbd7655cbbf247b29b7b397555727, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneManager: {fileID: 737096092}
 --- !u!43 &1432487873
 Mesh:
   m_ObjectHideFlags: 0
