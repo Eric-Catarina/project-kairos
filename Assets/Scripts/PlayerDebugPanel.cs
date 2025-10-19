@@ -4,6 +4,7 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 
+[RequireComponent(typeof(RectTransform))]
 public class PlayerDebugPanel : MonoBehaviour
 {
     [Header("Referências da UI")]
@@ -13,20 +14,31 @@ public class PlayerDebugPanel : MonoBehaviour
 
     private void OnEnable()
     {
-        PlayerProfile.OnProfileChanged += PopulateDropdown;
-        playerDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
+        PlayerProfile.OnProfileChanged += HandleProfileChanged;
+        if (playerDropdown != null)
+        {
+            playerDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
+        }
         PopulateDropdown();
     }
 
     private void OnDisable()
     {
-        PlayerProfile.OnProfileChanged -= PopulateDropdown;
-        playerDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        PlayerProfile.OnProfileChanged -= HandleProfileChanged;
+        if (playerDropdown != null)
+        {
+            playerDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        }
     }
     
+    private void HandleProfileChanged()
+    {
+        PopulateDropdown();
+    }
+
     private void PopulateDropdown()
     {
-        if (PlayerProfile.Instance == null) return;
+        if (playerDropdown == null || PlayerProfile.Instance == null) return;
         
         _isPopulating = true;
         
@@ -56,7 +68,6 @@ public class PlayerDebugPanel : MonoBehaviour
 
         string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].PlayerId;
         
-        // Evita recarregar se o mesmo perfil for selecionado
         if (PlayerProfile.Instance.CurrentProfile.PlayerId != selectedPlayerId)
         {
             PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
@@ -64,12 +75,11 @@ public class PlayerDebugPanel : MonoBehaviour
         }
     }
 
-    // Função pública para ser chamada pelo botão na UI
     public void CreateNewPlayer()
     {
         if (PlayerProfile.Instance == null) return;
         
-        PlayerProfile.Instance.CreateNewPlayer(true); // Cria e define como ativo
+        PlayerProfile.Instance.CreateNewPlayer(true); 
         PlayFabAuthManager.Instance.Login();
     }
 }
