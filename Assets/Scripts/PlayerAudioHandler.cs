@@ -53,6 +53,9 @@ public class PlayerAudioHandler : MonoBehaviour
     private bool hasJumpedOnce = false; // Já deu o primeiro pulo
     private bool canDoubleJump = false; // Se double jump pode tocar
 
+    private bool doubleJumpAvailable = false;
+    private bool doubleJumpSoundPlayed = false;
+
 
     private AudioSource windSource;
 
@@ -118,11 +121,13 @@ public class PlayerAudioHandler : MonoBehaviour
         DetectRespawn();
         HandleGrappleAudio();
         HandleWindAudio();
+        //HandleDoubleJumpAudio();
 
         if (movement.isGrounded)
         {
             hasJumpedOnce = false;
             canDoubleJump = false;
+            doubleJumpSoundPlayed = false;
         }
     }
 
@@ -133,20 +138,21 @@ public class PlayerAudioHandler : MonoBehaviour
         {
             // Pulo normal
             AudioManager.instance.PlaySFX(jumpSfx);
-            hasJumpedOnce = true;
-            canDoubleJump = false;
+            doubleJumpAvailable = true; // libera double jump para o próximo pulo
+            doubleJumpSoundPlayed = false; // reseta som
         }
         else
         {
-            if (canDoubleJump)
+            // Double jump: toca som apenas se ainda estiver disponível
+            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
             {
                 AudioManager.instance.PlaySFX(doubleJumpSfx);
-                canDoubleJump = false; // só toca uma vez
+                doubleJumpSoundPlayed = true;
+                doubleJumpAvailable = false; // impede som repetido
             }
         }
     }
 
- 
 
 
 
@@ -200,7 +206,8 @@ public class PlayerAudioHandler : MonoBehaviour
     {
         AudioManager.instance.PlaySFX(grappleReleaseSfx);
         grappleJustStarted = false;
-        canDoubleJump = true; // agora o player pode dar double jump
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
     }
 
     private void HandleGrappleAudio()
