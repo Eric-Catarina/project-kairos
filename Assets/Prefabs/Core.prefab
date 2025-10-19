@@ -118,7 +118,7 @@ Transform:
   m_GameObject: {fileID: 233762149061522545}
   serializedVersion: 2
   m_LocalRotation: {x: -0.04017622, y: 0.010463338, z: 0.0004207402, w: 0.99913776}
-  m_LocalPosition: {x: 0.38833085, y: 1.0743352, z: -3.4214501}
+  m_LocalPosition: {x: 0.38833094, y: 1.0743332, z: -3.4214478}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -719,16 +719,23 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2023490099328316449}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 003808b781d723442b657ad7022aaea7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  footstepSfxOptions:
+  - Footstep
+  - Step2
+  - Step3
+  - Step4
   jumpSfx: Jump
   doubleJumpSfx: DoubleJump
   landSfx: Landing
   footstepSfx: Footstep
   wallHitSfx: WallHit
+  ringSfx: Ring
+  jumpPadSfx: JumpPad
   deathSfx: Death
   deathFallSFX: DeathFall
   respawnSfx: Respawn
