@@ -30,7 +30,7 @@ public enum GameScene
     Tutorial,
     VictorAgarrar,
     VictorGraybox,
-    MainMenuCópia
+    MainMenuCopia
 }
 
 [Serializable]
