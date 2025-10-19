@@ -51,7 +51,7 @@ public class MainMenu : UIPanel
         if (SceneManagerLogic.Instance != null)
         {
             // O botão Start deve carregar o primeiro nível (ou o que você definir)
-            startButton?.onClick.AddListener(() => SceneManagerLogic.Instance.LoadSceneByName("Hellcat")); // Exemplo: Carrega a cena "Level 1"
+            startButton?.onClick.AddListener(() => SceneManagerLogic.Instance.LoadNextScene());
             exitButton?.onClick.AddListener(SceneManagerLogic.Instance.QuitGame);
         }
         else
