@@ -11,6 +11,7 @@ public class MainMenu : UIPanel
     [SerializeField] private Button extraButton; // Assumindo que você terá uma lógica para ele
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button exitButton;
+    [SerializeField] private Button selectLevelButton;
 
     // A lógica de inicialização deve estar em Awake ou OnEnable para garantir a ordem de execução
 
@@ -46,12 +47,13 @@ public class MainMenu : UIPanel
         extraButton?.onClick.RemoveAllListeners();
         settingsButton?.onClick.RemoveAllListeners();
         exitButton?.onClick.RemoveAllListeners();
+        selectLevelButton?.onClick.RemoveAllListeners();
 
         // Atribui as funções via código, usando as instâncias atuais dos singletons
         if (SceneManagerLogic.Instance != null)
         {
             // O botão Start deve carregar o primeiro nível (ou o que você definir)
-            startButton?.onClick.AddListener(() => SceneManagerLogic.Instance.LoadSceneByName("Hellcat")); // Exemplo: Carrega a cena "Level 1"
+            startButton?.onClick.AddListener(() => SceneManagerLogic.Instance.LoadNextScene());
             exitButton?.onClick.AddListener(SceneManagerLogic.Instance.QuitGame);
         }
         else
@@ -62,6 +64,7 @@ public class MainMenu : UIPanel
         if (UIManager.Instance != null)
         {
             settingsButton?.onClick.AddListener(UIManager.Instance.OpenSettingsPanel);
+            selectLevelButton?.onClick.AddListener(UIManager.Instance.OpenLevelSelectPanel);
         }
         else
         {

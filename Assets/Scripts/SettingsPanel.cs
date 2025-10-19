@@ -22,7 +22,14 @@ public class SettingsPanel : UIPanel
         // Atribui o listener via código, garantindo a referência correta ao Singleton
         if (UIManager.Instance != null)
         {
-            backButton?.onClick.AddListener(UIManager.Instance.CloseSettingsPanel);
+            if (PanelType == UIPanelType.Settings)
+            {
+                backButton?.onClick.AddListener(UIManager.Instance.CloseSettingsPanel);
+            }
+            else
+            {
+                backButton?.onClick.AddListener(UIManager.Instance.CloseLevelSelectPanel);
+            }
         }
         else
         {

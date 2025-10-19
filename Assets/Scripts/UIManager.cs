@@ -123,4 +123,25 @@ public class UIManager : MonoBehaviour
     {
         ClosePanel(UIPanelType.Settings);
     }
+
+    //public void OpenPausePanel()
+    //{
+    //    ShowPanel(UIPanelType.Pause);
+    //}
+
+    //public void ClosePausePanel()
+    //{
+    //    ClosePanel(UIPanelType.Pause);
+    //}
+
+    public void OpenLevelSelectPanel()
+    {
+        ShowPanel(UIPanelType.LevelSelect);
+    }
+
+    public void CloseLevelSelectPanel()
+    {
+        ClosePanel(UIPanelType.LevelSelect);
+    }
+
 }
