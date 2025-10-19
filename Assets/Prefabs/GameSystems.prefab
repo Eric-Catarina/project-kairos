@@ -45,6 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentLevelData: {fileID: 11400000, guid: 5cf6e0c3fc567f3b58774bd49942bdb1, type: 2}
+  leaderboardDisplayDelayMs: 750
 --- !u!1 &826282399583510400
 GameObject:
   m_ObjectHideFlags: 0
@@ -102,6 +103,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b90a1e69eeab1c85795029124db0bcc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1583092597774985422
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3087973215793397405}
+  - component: {fileID: 4383162726362541002}
+  m_Layer: 0
+  m_Name: PlayFabAuthManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3087973215793397405
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1583092597774985422}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3258515427170321763}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4383162726362541002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1583092597774985422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c665da31c96c597e2a1246b409719648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2581661355542986561
 GameObject:
   m_ObjectHideFlags: 0
@@ -142,6 +187,7 @@ Transform:
   - {fileID: 8151498683566352978}
   - {fileID: 6937575440276055844}
   - {fileID: 6794843359538388208}
+  - {fileID: 3087973215793397405}
   - {fileID: 1628677511505067977}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -201,6 +247,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f3716629dc716ee49597681cc9cd7ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _registeredPanelNames: []
 --- !u!1 &3105831449055954420
 GameObject:
   m_ObjectHideFlags: 0
