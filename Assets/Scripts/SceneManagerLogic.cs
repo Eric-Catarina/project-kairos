@@ -74,6 +74,11 @@ public class SceneManagerLogic : MonoBehaviour
         Time.timeScale = 1f;
         SceneManager.LoadScene("MainMenu");
     }
+
+    public void LoadSceneByBuildIndex(int buildIndex)
+    {
+        SceneManager.LoadScene(buildIndex);
+    }
 }
 
     
