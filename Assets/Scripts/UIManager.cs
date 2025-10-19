@@ -11,8 +11,6 @@ public class UIManager : MonoBehaviour
 
     public event Action<UIPanelType, bool> OnPanelStateChanged; // bool: true para mostrado, false para escondido
 
-    private GameObject activePanel;
-
     private readonly Dictionary<UIPanelType, UIPanel> _registeredPanels = new Dictionary<UIPanelType, UIPanel>();
     
     [Header("Debug Info")]
@@ -124,25 +122,5 @@ public class UIManager : MonoBehaviour
     public void CloseSettingsPanel()
     {
         ClosePanel(UIPanelType.Settings);
-    }
-
-    public void SetActivePanel(GameObject newPanel)
-    {
-        if (activePanel != null)
-            activePanel.SetActive(false);
-
-        newPanel.SetActive(true);
-        activePanel = newPanel;
-    }
-
-    public void LoadScene(string sceneName)
-    {
-        SceneManager.LoadScene(sceneName);
-    }
-
-    public void QuitGame()
-    {
-        Debug.Log("Quit Game!");
-        Application.Quit();
     }
 }
