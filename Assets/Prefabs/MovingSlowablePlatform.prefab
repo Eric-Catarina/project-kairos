@@ -414,7 +414,7 @@ MeshCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 5
-  m_Convex: 0
+  m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
 --- !u!54 &6355814406696542299
@@ -471,6 +471,7 @@ MonoBehaviour:
   targetA: {fileID: 2176480153855055193}
   targetB: {fileID: 2915817236938628363}
   speed: 5
+  playerInfluence: 0.69
   slowDownColor: {r: 0, g: 1, b: 1, a: 1}
 --- !u!1 &8792128842253066858
 GameObject:
