@@ -8,10 +8,50 @@ public class SettingsPanel : UIPanel
     [Header("Referências Internas")]
     [Tooltip("O botão 'Voltar' ou 'Fechar' dentro deste painel.")]
     [SerializeField] private Button backButton;
+    [Header("Referências Sliders")]
+    [SerializeField] private Slider masterSlider;
+    [SerializeField] private Slider musicSlider;
+    [SerializeField] private Slider sfxSlider;
+    [Header("Referências Toggles")]
+    [SerializeField] private Toggle masterToggle;
+    [SerializeField] private Toggle musicToggle;
+    [SerializeField] private Toggle sfxToggle;
 
     private void Awake()
     {
         SetupButtonListeners();
+	SetupVolumeListeners();
+	SetupToggleListeners();
+    }
+
+    private void SetupVolumeListeners()
+    {
+        if (AudioManager.instance == null)
+        {
+            Debug.LogError("AudioManager.instance não foi encontrado. Os sliders de volume não funcionarão.");
+            return;
+        }
+
+        masterSlider?.onValueChanged.RemoveAllListeners();
+        musicSlider?.onValueChanged.RemoveAllListeners();
+        sfxSlider?.onValueChanged.RemoveAllListeners();
+
+        masterSlider?.onValueChanged.AddListener(AudioManager.instance.MasterVolume);
+        musicSlider?.onValueChanged.AddListener(AudioManager.instance.MusicVolume);
+        sfxSlider?.onValueChanged.AddListener(AudioManager.instance.SFXVolume);
+    }
+
+    private void SetupToggleListeners()
+    {
+        if (AudioManager.instance == null) return;
+
+        masterToggle?.onValueChanged.RemoveAllListeners();
+        musicToggle?.onValueChanged.RemoveAllListeners();
+        sfxToggle?.onValueChanged.RemoveAllListeners();
+
+        masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
+        musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
+        sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
     }
 
     private void SetupButtonListeners()

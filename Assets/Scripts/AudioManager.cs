@@ -53,10 +53,8 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
 
-    [Header("Músicas por Cena (Enum)")]
+    [Header("MÃºsicas por Cena (Enum)")]
     [SerializeField] private SceneMusic[] sceneMusics;
-    //[Header("Configurações de Música por Cena")]
-    //[SerializeField] private SceneMusic[] sceneMusics; 
 
     private void Awake()
     {
@@ -145,15 +143,20 @@ public class AudioManager : MonoBehaviour
     public void MusicVolume(float volume) => musicSource.volume = volume * masterSource.volume;
     public void AmbientVolume(float volume) => ambientSource.volume = volume * masterSource.volume;
     public void SFXVolume(float volume) => sfxSource.volume = volume * masterSource.volume;
-
     public void MasterVolume(float volume) => audioMixer.SetFloat("MasterVolume", volume);
 
-    public void ToggleMaster()
+    public void SetMasterMute(bool muteState) 
     {
-        masterSource.mute = !masterSource.mute;
-        musicSource.mute = masterSource.mute;
-        sfxSource.mute = masterSource.mute;
+    	masterSource.mute = muteState;
+    	musicSource.mute = muteState;
+    	sfxSource.mute = muteState;
     }
+
+    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
+
+    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
+
+    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
 
     private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
     private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -184,7 +187,6 @@ public class AudioManager : MonoBehaviour
             return null;
         }
     }
-
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
