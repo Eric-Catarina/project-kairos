@@ -9,8 +9,20 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
       propertyPath: m_LocalPosition.y
@@ -30,11 +42,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -66,14 +78,14 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6815091558107226360}
+      addedObject: {fileID: 5056967517332343098}
   m_SourcePrefab: {fileID: 100100000, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
 --- !u!1 &8937235798362479173 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
   m_PrefabInstance: {fileID: 8126210385658373908}
   m_PrefabAsset: {fileID: 0}
---- !u!64 &6815091558107226360
+--- !u!64 &5056967517332343098
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -94,4 +106,4 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: -3803150520143213110, guid: 6f99dae57ace5614895d1ad8b2868b88, type: 3}
+  m_Mesh: {fileID: -3410443915299085423, guid: 7a5f79a184da9ae4f95a860212ab3843, type: 3}
