@@ -846,7 +846,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""b266fc36-7b92-4158-bd7e-d6fdba8a2faa"",
-                    ""path"": ""<Keyboard>/f1"",
+                    ""path"": ""<Keyboard>/r"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -873,6 +873,142 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Dash"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
+        },
+        {
+            ""name"": ""Debug"",
+            ""id"": ""d31a6e5a-7039-4a98-a484-cb235c40b987"",
+            ""actions"": [
+                {
+                    ""name"": ""ToggleInfiniteJumps"",
+                    ""type"": ""Button"",
+                    ""id"": ""29e0db9d-5517-40c4-a8fb-0b735fa8ec42"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleInfiniteGrappleCooldown"",
+                    ""type"": ""Button"",
+                    ""id"": ""788c93df-4eda-4756-81d3-030d6d88a319"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleInfiniteGrappleDuration"",
+                    ""type"": ""Button"",
+                    ""id"": ""fe7b61a4-cd18-40b5-b3f1-18a0a65dce57"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleInfiniteTimeStop"",
+                    ""type"": ""Button"",
+                    ""id"": ""20ba9a6a-36bb-4719-af9e-41c2ee10f1a9"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleAllCheats"",
+                    ""type"": ""Button"",
+                    ""id"": ""d1951b97-4a33-4b67-9cae-98cd4e3f2956"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""5414136a-a6e5-4a33-b457-d3d17aaf3eaf"",
+                    ""path"": ""<Keyboard>/f1"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleInfiniteJumps"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""c008ccaa-8ed4-4b06-a7d6-1b5da75e099a"",
+                    ""path"": ""<Keyboard>/f2"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleInfiniteGrappleCooldown"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""bcf29069-8f84-49ce-8861-49cfd8278572"",
+                    ""path"": ""<Keyboard>/f3"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleInfiniteGrappleDuration"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b9b15633-1d68-4145-bb04-5fa7476c86e5"",
+                    ""path"": ""<Keyboard>/f4"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleInfiniteTimeStop"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""dd3e4396-8596-42e9-8f76-9c9a3d620a36"",
+                    ""path"": ""<Keyboard>/f12"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleAllCheats"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
+        },
+        {
+            ""name"": ""PostGame"",
+            ""id"": ""6966d594-e2f6-40ce-9baa-382845cb19dd"",
+            ""actions"": [
+                {
+                    ""name"": ""RestartLevel"",
+                    ""type"": ""Button"",
+                    ""id"": ""ce72410b-5dbc-418d-81c1-540b6a68696d"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""e091d2fd-825e-4689-85cd-145a42ce077a"",
+                    ""path"": ""<Keyboard>/r"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RestartLevel"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -905,12 +1041,24 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_RestartLevel = m_Player.FindAction("RestartLevel", throwIfNotFound: true);
         m_Player_Pause = m_Player.FindAction("Pause", throwIfNotFound: true);
         m_Player_Dash = m_Player.FindAction("Dash", throwIfNotFound: true);
+        // Debug
+        m_Debug = asset.FindActionMap("Debug", throwIfNotFound: true);
+        m_Debug_ToggleInfiniteJumps = m_Debug.FindAction("ToggleInfiniteJumps", throwIfNotFound: true);
+        m_Debug_ToggleInfiniteGrappleCooldown = m_Debug.FindAction("ToggleInfiniteGrappleCooldown", throwIfNotFound: true);
+        m_Debug_ToggleInfiniteGrappleDuration = m_Debug.FindAction("ToggleInfiniteGrappleDuration", throwIfNotFound: true);
+        m_Debug_ToggleInfiniteTimeStop = m_Debug.FindAction("ToggleInfiniteTimeStop", throwIfNotFound: true);
+        m_Debug_ToggleAllCheats = m_Debug.FindAction("ToggleAllCheats", throwIfNotFound: true);
+        // PostGame
+        m_PostGame = asset.FindActionMap("PostGame", throwIfNotFound: true);
+        m_PostGame_RestartLevel = m_PostGame.FindAction("RestartLevel", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
     {
         UnityEngine.Debug.Assert(!m_UI.enabled, "This will cause a leak and performance issues, PlayerControls.UI.Disable() has not been called.");
         UnityEngine.Debug.Assert(!m_Player.enabled, "This will cause a leak and performance issues, PlayerControls.Player.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_Debug.enabled, "This will cause a leak and performance issues, PlayerControls.Debug.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_PostGame.enabled, "This will cause a leak and performance issues, PlayerControls.PostGame.Disable() has not been called.");
     }
 
     /// <summary>
@@ -1372,6 +1520,242 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     /// Provides a new <see cref="PlayerActions" /> instance referencing this action map.
     /// </summary>
     public PlayerActions @Player => new PlayerActions(this);
+
+    // Debug
+    private readonly InputActionMap m_Debug;
+    private List<IDebugActions> m_DebugActionsCallbackInterfaces = new List<IDebugActions>();
+    private readonly InputAction m_Debug_ToggleInfiniteJumps;
+    private readonly InputAction m_Debug_ToggleInfiniteGrappleCooldown;
+    private readonly InputAction m_Debug_ToggleInfiniteGrappleDuration;
+    private readonly InputAction m_Debug_ToggleInfiniteTimeStop;
+    private readonly InputAction m_Debug_ToggleAllCheats;
+    /// <summary>
+    /// Provides access to input actions defined in input action map "Debug".
+    /// </summary>
+    public struct DebugActions
+    {
+        private @PlayerControls m_Wrapper;
+
+        /// <summary>
+        /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public DebugActions(@PlayerControls wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "Debug/ToggleInfiniteJumps".
+        /// </summary>
+        public InputAction @ToggleInfiniteJumps => m_Wrapper.m_Debug_ToggleInfiniteJumps;
+        /// <summary>
+        /// Provides access to the underlying input action "Debug/ToggleInfiniteGrappleCooldown".
+        /// </summary>
+        public InputAction @ToggleInfiniteGrappleCooldown => m_Wrapper.m_Debug_ToggleInfiniteGrappleCooldown;
+        /// <summary>
+        /// Provides access to the underlying input action "Debug/ToggleInfiniteGrappleDuration".
+        /// </summary>
+        public InputAction @ToggleInfiniteGrappleDuration => m_Wrapper.m_Debug_ToggleInfiniteGrappleDuration;
+        /// <summary>
+        /// Provides access to the underlying input action "Debug/ToggleInfiniteTimeStop".
+        /// </summary>
+        public InputAction @ToggleInfiniteTimeStop => m_Wrapper.m_Debug_ToggleInfiniteTimeStop;
+        /// <summary>
+        /// Provides access to the underlying input action "Debug/ToggleAllCheats".
+        /// </summary>
+        public InputAction @ToggleAllCheats => m_Wrapper.m_Debug_ToggleAllCheats;
+        /// <summary>
+        /// Provides access to the underlying input action map instance.
+        /// </summary>
+        public InputActionMap Get() { return m_Wrapper.m_Debug; }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
+        public void Enable() { Get().Enable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
+        public void Disable() { Get().Disable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
+        public bool enabled => Get().enabled;
+        /// <summary>
+        /// Implicitly converts an <see ref="DebugActions" /> to an <see ref="InputActionMap" /> instance.
+        /// </summary>
+        public static implicit operator InputActionMap(DebugActions set) { return set.Get(); }
+        /// <summary>
+        /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <param name="instance">Callback instance.</param>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
+        /// </remarks>
+        /// <seealso cref="DebugActions" />
+        public void AddCallbacks(IDebugActions instance)
+        {
+            if (instance == null || m_Wrapper.m_DebugActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_DebugActionsCallbackInterfaces.Add(instance);
+            @ToggleInfiniteJumps.started += instance.OnToggleInfiniteJumps;
+            @ToggleInfiniteJumps.performed += instance.OnToggleInfiniteJumps;
+            @ToggleInfiniteJumps.canceled += instance.OnToggleInfiniteJumps;
+            @ToggleInfiniteGrappleCooldown.started += instance.OnToggleInfiniteGrappleCooldown;
+            @ToggleInfiniteGrappleCooldown.performed += instance.OnToggleInfiniteGrappleCooldown;
+            @ToggleInfiniteGrappleCooldown.canceled += instance.OnToggleInfiniteGrappleCooldown;
+            @ToggleInfiniteGrappleDuration.started += instance.OnToggleInfiniteGrappleDuration;
+            @ToggleInfiniteGrappleDuration.performed += instance.OnToggleInfiniteGrappleDuration;
+            @ToggleInfiniteGrappleDuration.canceled += instance.OnToggleInfiniteGrappleDuration;
+            @ToggleInfiniteTimeStop.started += instance.OnToggleInfiniteTimeStop;
+            @ToggleInfiniteTimeStop.performed += instance.OnToggleInfiniteTimeStop;
+            @ToggleInfiniteTimeStop.canceled += instance.OnToggleInfiniteTimeStop;
+            @ToggleAllCheats.started += instance.OnToggleAllCheats;
+            @ToggleAllCheats.performed += instance.OnToggleAllCheats;
+            @ToggleAllCheats.canceled += instance.OnToggleAllCheats;
+        }
+
+        /// <summary>
+        /// Removes <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <remarks>
+        /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
+        /// </remarks>
+        /// <seealso cref="DebugActions" />
+        private void UnregisterCallbacks(IDebugActions instance)
+        {
+            @ToggleInfiniteJumps.started -= instance.OnToggleInfiniteJumps;
+            @ToggleInfiniteJumps.performed -= instance.OnToggleInfiniteJumps;
+            @ToggleInfiniteJumps.canceled -= instance.OnToggleInfiniteJumps;
+            @ToggleInfiniteGrappleCooldown.started -= instance.OnToggleInfiniteGrappleCooldown;
+            @ToggleInfiniteGrappleCooldown.performed -= instance.OnToggleInfiniteGrappleCooldown;
+            @ToggleInfiniteGrappleCooldown.canceled -= instance.OnToggleInfiniteGrappleCooldown;
+            @ToggleInfiniteGrappleDuration.started -= instance.OnToggleInfiniteGrappleDuration;
+            @ToggleInfiniteGrappleDuration.performed -= instance.OnToggleInfiniteGrappleDuration;
+            @ToggleInfiniteGrappleDuration.canceled -= instance.OnToggleInfiniteGrappleDuration;
+            @ToggleInfiniteTimeStop.started -= instance.OnToggleInfiniteTimeStop;
+            @ToggleInfiniteTimeStop.performed -= instance.OnToggleInfiniteTimeStop;
+            @ToggleInfiniteTimeStop.canceled -= instance.OnToggleInfiniteTimeStop;
+            @ToggleAllCheats.started -= instance.OnToggleAllCheats;
+            @ToggleAllCheats.performed -= instance.OnToggleAllCheats;
+            @ToggleAllCheats.canceled -= instance.OnToggleAllCheats;
+        }
+
+        /// <summary>
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="DebugActions.UnregisterCallbacks(IDebugActions)" />.
+        /// </summary>
+        /// <seealso cref="DebugActions.UnregisterCallbacks(IDebugActions)" />
+        public void RemoveCallbacks(IDebugActions instance)
+        {
+            if (m_Wrapper.m_DebugActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        /// <summary>
+        /// Replaces all existing callback instances and previously registered input action callbacks associated with them with callbacks provided via <param cref="instance" />.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
+        /// </remarks>
+        /// <seealso cref="DebugActions.AddCallbacks(IDebugActions)" />
+        /// <seealso cref="DebugActions.RemoveCallbacks(IDebugActions)" />
+        /// <seealso cref="DebugActions.UnregisterCallbacks(IDebugActions)" />
+        public void SetCallbacks(IDebugActions instance)
+        {
+            foreach (var item in m_Wrapper.m_DebugActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_DebugActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    /// <summary>
+    /// Provides a new <see cref="DebugActions" /> instance referencing this action map.
+    /// </summary>
+    public DebugActions @Debug => new DebugActions(this);
+
+    // PostGame
+    private readonly InputActionMap m_PostGame;
+    private List<IPostGameActions> m_PostGameActionsCallbackInterfaces = new List<IPostGameActions>();
+    private readonly InputAction m_PostGame_RestartLevel;
+    /// <summary>
+    /// Provides access to input actions defined in input action map "PostGame".
+    /// </summary>
+    public struct PostGameActions
+    {
+        private @PlayerControls m_Wrapper;
+
+        /// <summary>
+        /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public PostGameActions(@PlayerControls wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "PostGame/RestartLevel".
+        /// </summary>
+        public InputAction @RestartLevel => m_Wrapper.m_PostGame_RestartLevel;
+        /// <summary>
+        /// Provides access to the underlying input action map instance.
+        /// </summary>
+        public InputActionMap Get() { return m_Wrapper.m_PostGame; }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
+        public void Enable() { Get().Enable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
+        public void Disable() { Get().Disable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
+        public bool enabled => Get().enabled;
+        /// <summary>
+        /// Implicitly converts an <see ref="PostGameActions" /> to an <see ref="InputActionMap" /> instance.
+        /// </summary>
+        public static implicit operator InputActionMap(PostGameActions set) { return set.Get(); }
+        /// <summary>
+        /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <param name="instance">Callback instance.</param>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
+        /// </remarks>
+        /// <seealso cref="PostGameActions" />
+        public void AddCallbacks(IPostGameActions instance)
+        {
+            if (instance == null || m_Wrapper.m_PostGameActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_PostGameActionsCallbackInterfaces.Add(instance);
+            @RestartLevel.started += instance.OnRestartLevel;
+            @RestartLevel.performed += instance.OnRestartLevel;
+            @RestartLevel.canceled += instance.OnRestartLevel;
+        }
+
+        /// <summary>
+        /// Removes <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <remarks>
+        /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
+        /// </remarks>
+        /// <seealso cref="PostGameActions" />
+        private void UnregisterCallbacks(IPostGameActions instance)
+        {
+            @RestartLevel.started -= instance.OnRestartLevel;
+            @RestartLevel.performed -= instance.OnRestartLevel;
+            @RestartLevel.canceled -= instance.OnRestartLevel;
+        }
+
+        /// <summary>
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="PostGameActions.UnregisterCallbacks(IPostGameActions)" />.
+        /// </summary>
+        /// <seealso cref="PostGameActions.UnregisterCallbacks(IPostGameActions)" />
+        public void RemoveCallbacks(IPostGameActions instance)
+        {
+            if (m_Wrapper.m_PostGameActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        /// <summary>
+        /// Replaces all existing callback instances and previously registered input action callbacks associated with them with callbacks provided via <param cref="instance" />.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
+        /// </remarks>
+        /// <seealso cref="PostGameActions.AddCallbacks(IPostGameActions)" />
+        /// <seealso cref="PostGameActions.RemoveCallbacks(IPostGameActions)" />
+        /// <seealso cref="PostGameActions.UnregisterCallbacks(IPostGameActions)" />
+        public void SetCallbacks(IPostGameActions instance)
+        {
+            foreach (var item in m_Wrapper.m_PostGameActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_PostGameActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    /// <summary>
+    /// Provides a new <see cref="PostGameActions" /> instance referencing this action map.
+    /// </summary>
+    public PostGameActions @PostGame => new PostGameActions(this);
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.
     /// </summary>
@@ -1527,5 +1911,63 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnDash(InputAction.CallbackContext context);
+    }
+    /// <summary>
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Debug" which allows adding and removing callbacks.
+    /// </summary>
+    /// <seealso cref="DebugActions.AddCallbacks(IDebugActions)" />
+    /// <seealso cref="DebugActions.RemoveCallbacks(IDebugActions)" />
+    public interface IDebugActions
+    {
+        /// <summary>
+        /// Method invoked when associated input action "ToggleInfiniteJumps" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleInfiniteJumps(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleInfiniteGrappleCooldown" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleInfiniteGrappleCooldown(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleInfiniteGrappleDuration" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleInfiniteGrappleDuration(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleInfiniteTimeStop" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleInfiniteTimeStop(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleAllCheats" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleAllCheats(InputAction.CallbackContext context);
+    }
+    /// <summary>
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "PostGame" which allows adding and removing callbacks.
+    /// </summary>
+    /// <seealso cref="PostGameActions.AddCallbacks(IPostGameActions)" />
+    /// <seealso cref="PostGameActions.RemoveCallbacks(IPostGameActions)" />
+    public interface IPostGameActions
+    {
+        /// <summary>
+        /// Method invoked when associated input action "RestartLevel" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRestartLevel(InputAction.CallbackContext context);
     }
 }

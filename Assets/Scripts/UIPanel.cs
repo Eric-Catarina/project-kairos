@@ -3,7 +3,6 @@
 using UnityEngine;
 
 [RequireComponent(typeof(UIJuice))]
-[System.Serializable]
 public abstract class UIPanel : MonoBehaviour
 {
     [SerializeField] private UIPanelType panelType;
@@ -23,10 +22,9 @@ public abstract class UIPanel : MonoBehaviour
         }
     }
 
-    protected virtual void OnEnable()
+    protected virtual void Awake()
     {
-        // Esta chamada é mais relevante para painéis instanciados em tempo de execução.
-        // O UIManager já cuida dos painéis que existem na cena no carregamento.
+        // Tenta se registrar o mais cedo possível
         if (UIManager.Instance != null)
         {
             UIManager.Instance.RegisterPanel(this);
@@ -35,7 +33,6 @@ public abstract class UIPanel : MonoBehaviour
 
     protected virtual void OnDestroy()
     {
-        // Garante que, se o painel for destruído, ele seja removido do dicionário do manager.
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UnregisterPanel(this);
@@ -44,7 +41,13 @@ public abstract class UIPanel : MonoBehaviour
     
     public virtual void Show()
     {
-        UiJuice.SetActiveAndPlay();
+        // *** MUDANÇA CRÍTICA ***
+        // Garante que o GameObject esteja ativo antes de iniciar a animação.
+        if (!gameObject.activeInHierarchy)
+        {
+            gameObject.SetActive(true);
+        }
+        UiJuice.PlayAnimation();
     }
 
     public virtual void Hide()

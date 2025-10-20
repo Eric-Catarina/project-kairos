@@ -760,7 +760,7 @@
                 {
                     "name": "",
                     "id": "b266fc36-7b92-4158-bd7e-d6fdba8a2faa",
-                    "path": "<Keyboard>/f1",
+                    "path": "<Keyboard>/r",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -787,6 +787,142 @@
                     "processors": "",
                     "groups": "",
                     "action": "Dash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "Debug",
+            "id": "d31a6e5a-7039-4a98-a484-cb235c40b987",
+            "actions": [
+                {
+                    "name": "ToggleInfiniteJumps",
+                    "type": "Button",
+                    "id": "29e0db9d-5517-40c4-a8fb-0b735fa8ec42",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleInfiniteGrappleCooldown",
+                    "type": "Button",
+                    "id": "788c93df-4eda-4756-81d3-030d6d88a319",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleInfiniteGrappleDuration",
+                    "type": "Button",
+                    "id": "fe7b61a4-cd18-40b5-b3f1-18a0a65dce57",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleInfiniteTimeStop",
+                    "type": "Button",
+                    "id": "20ba9a6a-36bb-4719-af9e-41c2ee10f1a9",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleAllCheats",
+                    "type": "Button",
+                    "id": "d1951b97-4a33-4b67-9cae-98cd4e3f2956",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "5414136a-a6e5-4a33-b457-d3d17aaf3eaf",
+                    "path": "<Keyboard>/f1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleInfiniteJumps",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c008ccaa-8ed4-4b06-a7d6-1b5da75e099a",
+                    "path": "<Keyboard>/f2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleInfiniteGrappleCooldown",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "bcf29069-8f84-49ce-8861-49cfd8278572",
+                    "path": "<Keyboard>/f3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleInfiniteGrappleDuration",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b9b15633-1d68-4145-bb04-5fa7476c86e5",
+                    "path": "<Keyboard>/f4",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleInfiniteTimeStop",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "dd3e4396-8596-42e9-8f76-9c9a3d620a36",
+                    "path": "<Keyboard>/f12",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleAllCheats",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "PostGame",
+            "id": "6966d594-e2f6-40ce-9baa-382845cb19dd",
+            "actions": [
+                {
+                    "name": "RestartLevel",
+                    "type": "Button",
+                    "id": "ce72410b-5dbc-418d-81c1-540b6a68696d",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "e091d2fd-825e-4689-85cd-145a42ce077a",
+                    "path": "<Keyboard>/r",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "RestartLevel",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

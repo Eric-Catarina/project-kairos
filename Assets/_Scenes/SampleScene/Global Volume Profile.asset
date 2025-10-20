@@ -90,7 +90,7 @@ MonoBehaviour:
     m_OverrideState: 0
     m_Value: 4
   chromaticAbberationIntensity:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0.5
 --- !u!114 &11400000
 MonoBehaviour:
@@ -110,6 +110,7 @@ MonoBehaviour:
   - {fileID: -8494036570134029129}
   - {fileID: -3413723964400007527}
   - {fileID: 7304215702504000644}
+  - {fileID: 5602874615403059791}
 --- !u!114 &675408731466677650
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -138,6 +139,31 @@ MonoBehaviour:
   rounded:
     m_OverrideState: 1
     m_Value: 0
+--- !u!114 &5602874615403059791
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ccf1aba9553839d41ae37dd52e9ebcce, type: 3}
+  m_Name: MotionBlur
+  m_EditorClassIdentifier: 
+  active: 1
+  mode:
+    m_OverrideState: 1
+    m_Value: 0
+  quality:
+    m_OverrideState: 1
+    m_Value: 0
+  intensity:
+    m_OverrideState: 1
+    m_Value: 1
+  clamp:
+    m_OverrideState: 1
+    m_Value: 0.0174
 --- !u!114 &6525378193539459120
 MonoBehaviour:
   m_ObjectHideFlags: 3

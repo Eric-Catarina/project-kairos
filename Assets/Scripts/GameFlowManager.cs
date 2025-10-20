@@ -4,22 +4,26 @@ using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public enum GameState { MainMenu, Playing, Paused, LevelFinished }
 
 public class GameFlowManager : MonoBehaviour
 {
     public static GameFlowManager Instance { get; private set; }
+    public GameState CurrentState { get; private set; }
 
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
-    [Header("Referências da UI")]
-    [SerializeField] private UIManager uiManager;
-    [SerializeField] private GameObject countdownPanel;
-    [SerializeField] private TextMeshProUGUI countdownText;
-
-    private bool _isPaused = false;
+    private UIManager _uiManager;
+    private CountdownUI _countdownUI;
+    
     private bool _isCountingDown = false;
     private Coroutine _countdownCoroutine;
+    private bool _isSettingsPanelOpen = false;
+
+    private bool IsInMainMenu => SceneManager.GetActiveScene().buildIndex == 0;
 
     private void Awake()
     {
@@ -34,112 +38,145 @@ public class GameFlowManager : MonoBehaviour
 
     private void OnEnable()
     {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnPausePressed += HandlePauseRequest;
-        }
+        InputManager.Instance.OnPausePressed += HandlePauseRequest;
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void OnDisable()
     {
-        if (InputManager.Instance != null)
+        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        _isSettingsPanelOpen = false;
+        
+        if (IsInMainMenu)
         {
-            InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+            CurrentState = GameState.MainMenu;
+            Time.timeScale = 1f;
         }
+        else
+        {
+            CurrentState = GameState.Playing;
+            Time.timeScale = 1f;
+        }
+    }
+
+    private void FindSceneReferences()
+    {
+        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
+        _uiManager = FindObjectOfType<UIManager>(true);
+        _countdownUI = FindObjectOfType<CountdownUI>(true);
+        if (_uiManager != null) _uiManager.OnPanelStateChanged += HandlePanelStateChanged;
+    }
+    
+    private void HandlePanelStateChanged(UIPanelType type, bool isOpen)
+    {
+        if (type == UIPanelType.Settings)
+        {
+            _isSettingsPanelOpen = isOpen;
+        }
+    }
+
+    // NOVA FUNÇÃO PÚBLICA CHAMADA PELO WinLogic
+    public void FinishLevel()
+    {
+        if (CurrentState != GameState.Playing) return;
+
+        CurrentState = GameState.LevelFinished;
+        Time.timeScale = 0f;
+        InputStateManager.Instance.SwitchState(InputState.PostGame);
+        ScoreManager.Instance.EndLevelTimer();
     }
 
     private void HandlePauseRequest()
     {
-        // Se estivermos em contagem regressiva, pausar interrompe a contagem e volta ao menu de pausa.
-        if (_isCountingDown)
-        {
-            PauseGame();
-            return;
-        }
+        if (_uiManager == null || CurrentState == GameState.LevelFinished) return;
 
-        // Caso contrário, alterna normalmente entre pausado e despausado.
-        if (_isPaused)
+        if (IsInMainMenu)
         {
-            ResumeGame();
+            if (_isSettingsPanelOpen) _uiManager.ClosePanel(UIPanelType.Settings);
+            else _uiManager.ShowPanel(UIPanelType.Settings);
         }
-        else
+        else // Em Gameplay
         {
-            PauseGame();
+            if (_isCountingDown)
+            {
+                StopResumeCountdown();
+                PauseGame();
+                return;
+            }
+
+            if (CurrentState == GameState.Paused)
+            {
+                // Se estamos pausados, ESC sempre tenta despausar
+                _uiManager.ClosePanel(UIPanelType.Settings);
+                ResumeGame();
+            }
+            else if (CurrentState == GameState.Playing)
+            {
+                // Se estamos jogando, ESC pausa
+                PauseGame();
+            }
         }
     }
 
     private void PauseGame()
     {
-        if (_isPaused) return;
+        if (CurrentState != GameState.Playing) return;
 
-        // Se uma contagem regressiva estiver em andamento, pare-a.
-        if (_countdownCoroutine != null)
-        {
-            StopCoroutine(_countdownCoroutine);
-            _countdownCoroutine = null;
-            _isCountingDown = false;
-            if (countdownPanel != null) countdownPanel.SetActive(false);
-        }
-
-        _isPaused = true;
+        CurrentState = GameState.Paused;
         Time.timeScale = 0f;
         InputStateManager.Instance.SwitchState(InputState.UI);
-        uiManager.ShowPanel(UIPanelType.Settings);
-        
+        _uiManager?.ShowPanel(UIPanelType.Settings);
         OnGamePaused?.Invoke();
-        Debug.Log("Game Paused");
     }
 
     public void ResumeGame()
     {
-        if (!_isPaused || _isCountingDown) return;
-
-        uiManager.ClosePanel(UIPanelType.Settings);
+        if (CurrentState != GameState.Paused || _isCountingDown) return;
         
         _countdownCoroutine = StartCoroutine(ResumeCountdown());
+    }
+
+    private void StopResumeCountdown()
+    {
+        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
+        _isCountingDown = false;
+        if (_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
     }
 
     private IEnumerator ResumeCountdown()
     {
         _isCountingDown = true;
-
-        if (countdownPanel == null || countdownText == null)
+        InputStateManager.Instance.SwitchState(InputState.UI);
+        if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
         {
-            Debug.LogWarning("Referências do painel de contagem regressiva não estão atribuídas. Pulando contagem.");
-            Time.timeScale = 1f;
-            _isPaused = false;
-            _isCountingDown = false;
-            _countdownCoroutine = null;
-            InputStateManager.Instance.SwitchState(InputState.Gameplay);
-            OnGameResumed?.Invoke();
+            FinishResume();
             yield break;
         }
-
-        if (countdownPanel != null) countdownPanel.SetActive(true);
-
-        countdownText.text = "3";
+        _countdownUI.panel.SetActive(true);
+        _countdownUI.text.text = "3";
         yield return new WaitForSecondsRealtime(1f);
-
-        countdownText.text = "2";
+        _countdownUI.text.text = "2";
         yield return new WaitForSecondsRealtime(1f);
-
-        countdownText.text = "1";
+        _countdownUI.text.text = "1";
         yield return new WaitForSecondsRealtime(1f);
+        _countdownUI.panel.SetActive(false);
+        FinishResume();
+    }
 
-        countdownText.text = "VAI!";
-        yield return new WaitForSecondsRealtime(0.5f);
-
-        if (countdownPanel != null) countdownPanel.SetActive(false);
-
-        Time.timeScale = 1f;
-        _isPaused = false;
+    private void FinishResume()
+    {
+        CurrentState = GameState.Playing;
         _isCountingDown = false;
         _countdownCoroutine = null;
+        Time.timeScale = 1f;
         InputStateManager.Instance.SwitchState(InputState.Gameplay);
-
         OnGameResumed?.Invoke();
-        Debug.Log("Game Resumed");
-        
-        
     }
 }
