@@ -117,8 +117,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 233762149061522545}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.04017626, y: 0.010463345, z: 0.0004207409, w: 0.99913776}
-  m_LocalPosition: {x: -1.4616692, y: 13.074335, z: -124.42145}
+  m_LocalRotation: {x: -0.04017622, y: 0.010463338, z: 0.0004207402, w: 0.99913776}
+  m_LocalPosition: {x: 0.38833094, y: 1.0743332, z: -3.4214478}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -158,7 +158,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 100
+  field of view: 70
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -311,7 +311,7 @@ Transform:
   m_GameObject: {fileID: 2023490099328316449}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -2.72, y: 12, z: -121}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -360,15 +360,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d9e8c580abd1d6c7917f676f3833876, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
-  minSensitivityGainX: 0.5
-  maxSensitivityGainX: 60
-  minSensitivityGainY: 0.5
-  maxSensitivityGainY: 60
-  playerRotationSpeed: 5
+  playerMovementController: {fileID: 4943271865898170268}
   playerModel: {fileID: 151514582113188091}
   orientation: {fileID: 927678618167759292}
   cameraTransform: {fileID: 4759079753940297690}
   cinemachineInputAxisController: {fileID: 7367121302637036677}
+  freeLookCamera: {fileID: 722441998437464358}
+  minSensitivityGainX: 0.5
+  maxSensitivityGainX: 60
+  minSensitivityGainY: 0.5
+  maxSensitivityGainY: 60
+  maxFov: 130
+  fovMinSpeedThreshold: 41.66667
+  fovMaxSpeedThreshold: 83.33334
+  fovTransitionDuration: 0.5
+  maxShakeAmplitudeGain: 1.5
+  maxShakeFrequencyGain: 1.5
+  shakeMinSpeedThreshold: 41.66667
+  shakeMaxSpeedThreshold: 83.33334
+  playerRotationSpeed: 5
 --- !u!114 &4943271865898170268
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -388,16 +398,17 @@ MonoBehaviour:
   maxGrappleMoveSpeed: 300
   airMultiplier: 0.3
   groundMultiplier: 2
+  airControlMultiplier: 5
   groundDrag: 6
   airDrag: 0.5
   grappleAirDrag: 0.5
-  allowDoubleJumpFromGround: 0
+  allowDoubleJumpFromGround: 1
   jumpForce: 35
   doubleJumpForce: 60
   gravityMultiplier: 8
   jumpForwardBoost: 5
   landingVelocityDampening: 0.423
-  jumpReleaseMultiplier: 0.5
+  jumpReleaseMultiplier: 0.8
   coyoteTimeDuration: 0.1
   jumpBufferDuration: 0.1
   bunnyHopWindow: 0
@@ -421,11 +432,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1ebf9413a3e092ac82d2e5e5ec57d7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrapplingHookController
-  canDoMultipleGrapple: 0
+  canDoMultipleGrapple: 1
   isGrappling: 0
   maximumTimeGrappling: 3
-  maxGrappleDistance: 40
-  grappleCooldown: 0.05
+  maxGrappleDistance: 50
+  grappleCooldown: 0.1
   grappleLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -440,6 +451,7 @@ MonoBehaviour:
   lineRenderer: {fileID: 8457320095464866033}
   predictionPointPrefab: {fileID: 2661843310905415723, guid: 2bee631aaa2f55027842afeaae93a372, type: 3}
   grappleDistance: 0
+  grappleInputBufferTime: 0.5
 --- !u!120 &8457320095464866033
 LineRenderer:
   serializedVersion: 2
@@ -566,7 +578,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.55
+  m_Radius: 0.12442784
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
@@ -707,16 +719,23 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2023490099328316449}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 003808b781d723442b657ad7022aaea7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  footstepSfxOptions:
+  - Footstep
+  - Step2
+  - Step3
+  - Step4
   jumpSfx: Jump
   doubleJumpSfx: DoubleJump
   landSfx: Landing
   footstepSfx: Footstep
   wallHitSfx: WallHit
+  ringSfx: Ring
+  jumpPadSfx: JumpPad
   deathSfx: Death
   deathFallSFX: DeathFall
   respawnSfx: Respawn
@@ -811,6 +830,7 @@ GameObject:
   - component: {fileID: 4380719686431282926}
   - component: {fileID: 6809659283351516432}
   - component: {fileID: 7367121302637036677}
+  - component: {fileID: 7212131229837519159}
   m_Layer: 0
   m_Name: FreeLook Camera
   m_TagString: Untagged
@@ -826,8 +846,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4110254221261267479}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.040176257, y: 0.010463344, z: 0.0004207408, w: 0.99913776}
-  m_LocalPosition: {x: -1.4616692, y: 13.074335, z: -124.42145}
+  m_LocalRotation: {x: -0.040176217, y: 0.010463337, z: 0.00042074005, w: 0.99913776}
+  m_LocalPosition: {x: 0.38833085, y: 1.0743352, z: -3.4214501}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -857,7 +877,7 @@ MonoBehaviour:
     LookAtTarget: {fileID: 1615927059740956077}
     CustomLookAtTarget: 1
   Lens:
-    FieldOfView: 100
+    FieldOfView: 70
     OrthographicSize: 5
     NearClipPlane: 0.3
     FarClipPlane: 1000
@@ -1037,6 +1057,23 @@ MonoBehaviour:
         DecelTime: 0
   PlayerIndex: -1
   AutoEnableInputs: 1
+--- !u!114 &7212131229837519159
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4110254221261267479}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68bb026fafb42b14791938953eaace77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NoiseProfile: {fileID: 11400000, guid: 69ce8388f6785dd4c8c39915efece2f4, type: 2}
+  PivotOffset: {x: 0, y: 0, z: 0}
+  AmplitudeGain: 1
+  FrequencyGain: 1
+  m_NoiseOffsets: {x: -892.5233, y: 840.5747, z: -814.4874}
 --- !u!1 &4917945035735817318
 GameObject:
   m_ObjectHideFlags: 0
@@ -1111,6 +1148,8 @@ GameObject:
   - component: {fileID: 6924190449495164270}
   - component: {fileID: 6924190449495164271}
   - component: {fileID: 8328204614404352248}
+  - component: {fileID: 8409990896886713116}
+  - component: {fileID: 4545875104959430810}
   m_Layer: 0
   m_Name: VelocityParticle
   m_TagString: Untagged
@@ -1126,13 +1165,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6924190449495164268}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.022167526, y: 0.040143315, z: 0.7067593, w: 0.7059664}
-  m_LocalPosition: {x: -0.34, y: -0.08, z: 1.26}
-  m_LocalScale: {x: 1.77, y: 1.6100001, z: 1.6100001}
-  m_ConstrainProportionsScale: 0
+  m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
+  m_LocalPosition: {x: 0.05, y: -0.02, z: 1.76}
+  m_LocalScale: {x: 1.41, y: 1.2825425, z: 1.2825425}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 4759079753940297690}
-  m_LocalEulerAnglesHint: {x: -1.458, y: 5.051, z: 90}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!198 &6924190449495164270
 ParticleSystem:
   m_ObjectHideFlags: 0
@@ -5945,10 +5984,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f047e6860e5bbb4059da2f355d5b23e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minSpeedThreshold: 100
+  minSpeedThreshold: 200
   maxSpeedThreshold: 300
   minAlpha: 0.1
-  maxAlpha: 1
+  maxAlpha: 0.9
+--- !u!114 &8409990896886713116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6924190449495164268}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75bc445264e203cf489dd07e49cbd5ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cinemachineCamera: {fileID: 722441998437464358}
+  vfxTransform: {fileID: 6924190449495164241}
+--- !u!114 &4545875104959430810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6924190449495164268}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75bc445264e203cf489dd07e49cbd5ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cinemachineCamera: {fileID: 722441998437464358}
+  vfxTransform: {fileID: 6924190449495164241}
 --- !u!1 &6990175475540841401
 GameObject:
   m_ObjectHideFlags: 0
@@ -6060,7 +6127,7 @@ Transform:
   m_GameObject: {fileID: 7286203179897614550}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.33, y: 1.3500004, z: 0}
+  m_LocalPosition: {x: 0.46, y: 1.3500004, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

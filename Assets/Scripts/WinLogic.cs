@@ -1,23 +1,18 @@
+// Local: Assets/Scripts/WinLogic.cs
+
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
 
 public class WinLogic : MonoBehaviour
 {
-    [SerializeField] SceneManagerLogic sceneManager;
+    private bool _levelFinished = false;
 
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log("Collision detected with: " + collision.gameObject.name);
+        if (_levelFinished || !collision.gameObject.CompareTag("Player")) return;
 
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            if (ScoreManager.Instance != null)
-            {
-                ScoreManager.Instance.EndLevelTimer();
-                
-            }
-            Destroy(collision.gameObject);
-            sceneManager.LoadNextScene();
-        }
+        _levelFinished = true;
+        
+        // Apenas notifica o GameFlowManager, que cuidará do resto.
+        GameFlowManager.Instance.FinishLevel();
     }
 }

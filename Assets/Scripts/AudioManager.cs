@@ -6,9 +6,38 @@ using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 
 [Serializable]
+public enum GameScene
+{
+    ART_BonesClimbGrayBox,
+    BackGroundTest,
+    BasicMovement,
+    BonesClimbGrayBox,
+    BonesStartGrayBox,
+    CarLevel,
+    ART_BonesClimbGrayBoxCopia,
+    BonesClimbGrayBoxCopia,
+    BonesStartGrayBoxCopia,
+    MenuCaioAUDIO,
+    EricAnimations,
+    EricGraybox,
+    FineTuningMovement,
+    LevelDesignCaio,
+    MainMenu,
+    Menu,
+    MenuCopiaPeu,
+    PrefabsTest,
+    TimeStop,
+    Tutorial,
+    VictorAgarrar,
+    VictorGraybox,
+    MainMenuCopia,
+    Hellcat
+}
+
+[Serializable]
 public class SceneMusic
 {
-    public string sceneName;
+    public GameScene scene;
     public string musicName;
 }
 
@@ -24,8 +53,8 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
 
-    [Header("Configurações de Música por Cena")]
-    [SerializeField] private SceneMusic[] sceneMusics; 
+    [Header("MÃºsicas por Cena (Enum)")]
+    [SerializeField] private SceneMusic[] sceneMusics;
 
     private void Awake()
     {
@@ -46,7 +75,8 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        PlaySceneMusic(SceneManager.GetActiveScene().name);
+        GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
+        PlaySceneMusic(currentSceneEnum);
     }
 
     private void AddSoundsToDictionary(Sound[] soundArray)
@@ -113,15 +143,20 @@ public class AudioManager : MonoBehaviour
     public void MusicVolume(float volume) => musicSource.volume = volume * masterSource.volume;
     public void AmbientVolume(float volume) => ambientSource.volume = volume * masterSource.volume;
     public void SFXVolume(float volume) => sfxSource.volume = volume * masterSource.volume;
-
     public void MasterVolume(float volume) => audioMixer.SetFloat("MasterVolume", volume);
 
-    public void ToggleMaster()
+    public void SetMasterMute(bool muteState) 
     {
-        masterSource.mute = !masterSource.mute;
-        musicSource.mute = masterSource.mute;
-        sfxSource.mute = masterSource.mute;
+    	masterSource.mute = muteState;
+    	musicSource.mute = muteState;
+    	sfxSource.mute = muteState;
     }
+
+    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
+
+    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
+
+    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
 
     private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
     private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -155,20 +190,27 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        PlaySceneMusic(scene.name);
+        GameScene sceneEnum = GetSceneEnum(scene.name);
+        PlaySceneMusic(sceneEnum);
     }
 
-    private void PlaySceneMusic(string sceneName)
+    private void PlaySceneMusic(GameScene sceneEnum)
     {
         foreach (var sceneMusic in sceneMusics)
         {
-            if (sceneMusic.sceneName == sceneName)
+            if (sceneMusic.scene == sceneEnum)
             {
                 PlayMusic(sceneMusic.musicName);
                 return;
             }
         }
+    }
 
-        Debug.Log($"Nenhuma música atribuída para a cena: {sceneName}");
+    private GameScene GetSceneEnum(string sceneName)
+    {
+        if (Enum.TryParse(sceneName, out GameScene parsedEnum))
+            return parsedEnum;
+
+        return (GameScene)(-1);
     }
 }

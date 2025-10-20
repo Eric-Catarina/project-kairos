@@ -1,3 +1,5 @@
+// Local: Assets/Scripts/PlayerMovementController.cs
+
 using TMPro;
 using System;
 using UnityEngine;
@@ -18,7 +20,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float maxMoveSpeed = 30f;
     [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f;
+    [SerializeField] private float airMultiplier = 0.6f, groundMultiplier = 2.0f, airControlMultiplier = 5f;
 
     [Header("Configurações de Atrito (Drag)")]
     [SerializeField] private float groundDrag = 6f;
@@ -227,20 +229,39 @@ public class PlayerMovementController : MonoBehaviour
             rb.linearDamping = airDrag;
         }
     }
-
+    
     private void MovePlayer()
     {
         if (grapplingHookController.IsGrappling) return;
 
         Vector3 moveDirection = (orientation.forward * moveInput.y + orientation.right * moveInput.x).normalized;
-
-        if (isGrounded)
+        float appliedForceMultiplier = isGrounded ? groundMultiplier : airMultiplier;
+        
+        if (!isGrounded)
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+                Vector3 velocityDir = horizontalVelocity.sqrMagnitude > 0.01f ? horizontalVelocity.normalized : moveDirection;
+                float angle = Vector3.Angle(velocityDir, moveDirection);
+                float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
+                float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
+                rb.AddForce(moveDirection * moveSpeed * 10f * appliedForceMultiplier * lateralInfluence, ForceMode.Force);
+
+                float maxHorizontalSpeed = maxMoveSpeed / 3.6f;
+                if (horizontalVelocity.magnitude > maxHorizontalSpeed)
+                {
+                    Vector3 clampedVelocity = horizontalVelocity.normalized * maxHorizontalSpeed;
+                    rb.linearVelocity = new Vector3(clampedVelocity.x, rb.linearVelocity.y, clampedVelocity.z);
+                }
+            }
         }
         else
         {
-            rb.AddForce(moveDirection * moveSpeed * 10f * airMultiplier, ForceMode.Force);
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                rb.AddForce(moveDirection * moveSpeed * 10f * appliedForceMultiplier, ForceMode.Force);
+            }
         }
     }
 
@@ -280,10 +301,13 @@ public class PlayerMovementController : MonoBehaviour
                 canDoubleJump = true;
             }
         }
-        else if (canDoubleJump)
+        else if (canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive))
         {
             Jump(doubleJumpForce);
-            canDoubleJump = false;
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
+            {
+                canDoubleJump = false;
+            }
         }
     }
 
