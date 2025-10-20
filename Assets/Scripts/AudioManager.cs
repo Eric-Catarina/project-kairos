@@ -31,7 +31,8 @@ public enum GameScene
     VictorAgarrar,
     VictorGraybox,
     MainMenuCopia,
-    Hellcat
+    Hellcat,
+    ViniciusLevelDesign
 }
 
 [Serializable]
