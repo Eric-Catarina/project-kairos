@@ -24,7 +24,7 @@ public class LeaderboardUIController : MonoBehaviour
         GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
     }
 
-    private void HandleLevelCompleted(float finalTime, Rank finalRank)
+    private void HandleLevelCompleted(float finalTime)
     {
         PrepareForDisplay(finalTime);
     }

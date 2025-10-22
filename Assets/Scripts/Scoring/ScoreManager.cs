@@ -85,7 +85,7 @@ public class ScoreManager : MonoBehaviour
     {
         if (!_levelStarted)
         {
-            finalTime = -1f;
+            finalTime = 100f;
             finalRank = Rank.None;
             return;
         }
@@ -105,7 +105,7 @@ public class ScoreManager : MonoBehaviour
         _scoreUIController?.UpdateTime(_levelTimer);
     }
 
-    private async void ProcessLevelCompletion(float finalTime, Rank finalRank)
+    private async void ProcessLevelCompletion(float finalTime)
     {
         PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
         postGamePanel.gameObject.SetActive(true);

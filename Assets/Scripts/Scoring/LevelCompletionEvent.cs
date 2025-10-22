@@ -3,10 +3,10 @@ using System;
 
 public class LevelCompletionEvent
 {
-    public event Action<float, Rank> OnLevelCompleted;
+    public event Action<float> OnLevelCompleted;
 
     public void Invoke(float time, Rank rank)
     {
-        OnLevelCompleted?.Invoke(time, rank);
+        OnLevelCompleted?.Invoke(time);
     }
 }

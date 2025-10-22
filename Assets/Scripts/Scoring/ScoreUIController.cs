@@ -20,16 +20,17 @@ public class ScoreUIController : MonoBehaviour
         GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
     }
 
-    private void HandleLevelCompleted(float finalTime, Rank finalRank)
+    private void HandleLevelCompleted(float finalTime)
     {
         if (finalTimeText != null)
         {
             finalTimeText.text = $"Tempo: {finalTime:F2}s";
         }
 
+        // O rank não é mais fornecido pelo evento; podemos calcular localmente se necessário
         if (rankText != null)
         {
-            rankText.text = $"Ranque: {finalRank}";
+            rankText.text = "Ranque: -";
         }
 
         if (resultsPanel != null)

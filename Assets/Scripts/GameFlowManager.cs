@@ -13,7 +13,7 @@ public class GameFlowManager : MonoBehaviour
     public static GameFlowManager Instance { get; private set; }
     public GameState CurrentState { get; private set; }
 
-    public static event Action<float, Rank> OnLevelCompleted;
+    public static event Action<float> OnLevelCompleted;
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
@@ -93,7 +93,7 @@ public class GameFlowManager : MonoBehaviour
 
         ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank);
         
-        OnLevelCompleted?.Invoke(finalTime, finalRank);
+        OnLevelCompleted?.Invoke(finalTime);
     }
 
     private void HandlePauseRequest()
