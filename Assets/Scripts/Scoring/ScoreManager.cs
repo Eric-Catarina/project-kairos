@@ -10,6 +10,8 @@ public class ScoreManager : MonoBehaviour
 
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
+    [Tooltip("Se marcado, o timer da fase começará com o primeiro input de movimento, pulo ou grapple.")]
+    [SerializeField] private bool startLevelOnFirstMoveInput = false;
     
     [Header("Configurações de UI")]
     [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
@@ -17,6 +19,8 @@ public class ScoreManager : MonoBehaviour
 
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
+    private PlayerMovementController _playerMovementController;
+    private GrapplingHookController _grapplingHookController;
 
     private float _levelTimer;
     private bool _isTimerRunning = false;
@@ -38,6 +42,8 @@ public class ScoreManager : MonoBehaviour
             GameFlowManager.Instance.OnGamePaused += PauseTimer;
             GameFlowManager.Instance.OnGameResumed += ResumeTimer;
         }
+        
+        SubscribeToFirstInputEvents();
     }
 
     private void OnDisable()
@@ -50,18 +56,23 @@ public class ScoreManager : MonoBehaviour
             GameFlowManager.Instance.OnGamePaused -= PauseTimer;
             GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
         }
+        
+        UnsubscribeFromFirstInputEvents();
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         FindSceneReferences();
         ResetLevelTimer();
+        SubscribeToFirstInputEvents();
     }
     
     private void FindSceneReferences()
     {
         _scoreUIController = FindObjectOfType<ScoreUIController>(true);
         _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
     }
 
     private void Update()
@@ -79,13 +90,14 @@ public class ScoreManager : MonoBehaviour
         _levelTimer = 0f;
         _levelStarted = true;
         _isTimerRunning = true;
+        UnsubscribeFromFirstInputEvents();
     }
     
     public void StopTimerAndGetResults(out float finalTime, out Rank finalRank)
     {
         if (!_levelStarted)
         {
-            finalTime = 100f;
+            finalTime = -1f;
             finalRank = Rank.None;
             return;
         }
@@ -142,5 +154,41 @@ public class ScoreManager : MonoBehaviour
         else { Debug.LogWarning("Falha ao submeter pontuação."); }
         
         return success;
+    }
+    
+    private void HandleFirstInput()
+    {
+        if (startLevelOnFirstMoveInput && !_levelStarted)
+        {
+            StartLevelTimer();
+        }
+    }
+
+    private void HandleFirstMoveInput(Vector2 moveValue)
+    {
+        if (moveValue.sqrMagnitude > 0.1f)
+        {
+            HandleFirstInput();
+        }
+    }
+    
+    private void SubscribeToFirstInputEvents()
+    {
+        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
+        {
+            InputManager.Instance.OnMove += HandleFirstMoveInput;
+            _playerMovementController.OnJumped += HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+        }
+    }
+
+    private void UnsubscribeFromFirstInputEvents()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnMove -= HandleFirstMoveInput;
+            _playerMovementController.OnJumped -= HandleFirstInput;
+           _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+        }
     }
 }

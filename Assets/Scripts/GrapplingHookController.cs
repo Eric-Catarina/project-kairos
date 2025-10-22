@@ -1,9 +1,14 @@
 // Local: Assets/Scripts/GrapplingHookController.cs
 
 using UnityEngine;
+using System;
 
 public class GrapplingHookController : MonoBehaviour
 {
+
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleStopped;
+
     [Header("Estado")]
     [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private bool isGrappling = false;
@@ -193,6 +198,7 @@ public class GrapplingHookController : MonoBehaviour
     
     private void StartGrappleInternal()
     {
+        OnGrappleStarted?.Invoke();
         isGrappling = true;
         grappleTimer = maximumTimeGrappling;
 
@@ -232,6 +238,7 @@ public class GrapplingHookController : MonoBehaviour
     
     private void OnGrappleCanceled()
     {
+        OnGrappleStopped?.Invoke();
         StopGrapple();
         grappleInputBuffered = false;
         grappleInputBufferTimer = 0f;
