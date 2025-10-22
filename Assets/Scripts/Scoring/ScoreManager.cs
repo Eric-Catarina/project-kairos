@@ -80,7 +80,7 @@ public class ScoreManager : MonoBehaviour
         if (_isTimerRunning)
         {
             _levelTimer += Time.deltaTime;
-            _scoreUIController?.UpdateTime(_levelTimer);
+            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
         }
     }
     
@@ -114,7 +114,14 @@ public class ScoreManager : MonoBehaviour
         _levelTimer = 0f;
         _isTimerRunning = false;
         _levelStarted = false;
-        _scoreUIController?.UpdateTime(_levelTimer);
+        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+    }
+
+    // Retorna o Rank correspondente para um determinado tempo usando o LevelData atual.
+    public Rank GetRankForTime(float time)
+    {
+        if (currentLevelData == null) return Rank.None;
+        return currentLevelData.GetRankForTime(time);
     }
 
     private async void ProcessLevelCompletion(float finalTime)
