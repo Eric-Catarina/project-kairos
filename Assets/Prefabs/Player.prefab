@@ -337,13 +337,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d9e8c580abd1d6c7917f676f3833876, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
-  minSensitivityGain: 0.5
-  maxSensitivityGain: 10
-  playerRotationSpeed: 5
+  playerMovementController: {fileID: 0}
   playerModel: {fileID: 3839808659883977850}
   orientation: {fileID: 7139269696694118602}
   cameraTransform: {fileID: 0}
   cinemachineInputAxisController: {fileID: 0}
+  freeLookCamera: {fileID: 0}
+  minSensitivityGainX: 0.5
+  maxSensitivityGainX: 10
+  minSensitivityGainY: 0.5
+  maxSensitivityGainY: 10
+  maxFov: 70
+  fovMinSpeedThreshold: 15
+  fovMaxSpeedThreshold: 40
+  fovTransitionDuration: 0.5
+  maxShakeAmplitudeGain: 1.5
+  maxShakeFrequencyGain: 1.5
+  shakeMinSpeedThreshold: 25
+  shakeMaxSpeedThreshold: 60
+  playerRotationSpeed: 5
 --- !u!114 &4718093597253859438
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -375,12 +387,16 @@ MonoBehaviour:
   maxGrappleMoveSpeed: 150
   airMultiplier: 0.88
   groundMultiplier: 2
+  airControlMultiplier: 5
   groundDrag: 3.8
   airDrag: 1.66
   grappleAirDrag: 0.68
+  allowDoubleJumpFromGround: 0
   jumpForce: 40
   doubleJumpForce: 100
   gravityMultiplier: 7.85
+  jumpForwardBoost: 5
+  landingVelocityDampening: 0.9
   jumpReleaseMultiplier: 0.5
   coyoteTimeDuration: 0.1
   jumpBufferDuration: 0.1
@@ -424,6 +440,7 @@ MonoBehaviour:
   lineRenderer: {fileID: 1607888781051044274}
   predictionPointPrefab: {fileID: 2661843310905415723, guid: 2bee631aaa2f55027842afeaae93a372, type: 3}
   grappleDistance: 0
+  grappleInputBufferTime: 1
 --- !u!120 &1607888781051044274
 LineRenderer:
   serializedVersion: 2
@@ -708,11 +725,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 003808b781d723442b657ad7022aaea7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  footstepSfxOptions: []
   jumpSfx: Jump
   doubleJumpSfx: DoubleJump
   landSfx: Landing
   footstepSfx: Footstep
   wallHitSfx: WallHit
+  ringSfx: Ring
+  jumpPadSfx: JumpPad
   deathSfx: Death
   deathFallSFX: DeathFall
   respawnSfx: Respawn

@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 698449100367407296}
   - component: {fileID: 5731725957460096231}
   - component: {fileID: 7991265649606773232}
-  - component: {fileID: 6375160245834130899}
-  - component: {fileID: 3778992322320607817}
+  - component: {fileID: 5430319378919380786}
+  - component: {fileID: 3792434112282903341}
   m_Layer: 0
   m_Name: DeathFog
   m_TagString: Untagged
@@ -88,19 +88,7 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &6375160245834130899
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8301453384047728709}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 25d2cf38c8b946f4fbe3de5a7cf4841f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!65 &3778992322320607817
+--- !u!65 &5430319378919380786
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -121,3 +109,15 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 10.000001, y: 2.2204463e-16, z: 10.000001}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &3792434112282903341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8301453384047728709}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25d2cf38c8b946f4fbe3de5a7cf4841f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
