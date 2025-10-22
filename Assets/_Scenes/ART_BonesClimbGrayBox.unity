@@ -908,11 +908,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 8924559350124366435, guid: 5ac36d780c4ca9e499cb0024e1787267, type: 3}
   m_PrefabInstance: {fileID: 79940020}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &80071478 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-  m_PrefabInstance: {fileID: 560601397}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &82942356
 GameObject:
   m_ObjectHideFlags: 0
@@ -4548,6 +4543,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: c34ba7682aeada2488725696e07cc9d7, type: 2}
+    - target: {fileID: 3745821304575632516, guid: 466f462801f851443a75502718cf823b, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: c34ba7682aeada2488725696e07cc9d7, type: 2}
     - target: {fileID: 3953714868489903040, guid: 466f462801f851443a75502718cf823b, type: 3}
       propertyPath: m_Name
       value: CyberpunkBlimp
@@ -4653,53 +4652,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &213774719
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 213774721}
-  - component: {fileID: 213774720}
-  m_Layer: 6
-  m_Name: CyberpunkBlimp (3)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &213774720
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 213774719}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b0587296f10c64547a38b13f7a982835, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 25
-  turnSpeed: 2
---- !u!4 &213774721
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 213774719}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.4913501, z: -0, w: 0.87096214}
-  m_LocalPosition: {x: 99, y: 951, z: -148}
-  m_LocalScale: {x: 39.663002, y: 39.663002, z: 39.663002}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 80071478}
-  m_Father: {fileID: 1923306879}
-  m_LocalEulerAnglesHint: {x: 0, y: -58.859, z: 0}
 --- !u!1 &217297036
 GameObject:
   m_ObjectHideFlags: 0
@@ -14342,79 +14294,6 @@ Mesh:
     offset: 0
     size: 0
     path: 
---- !u!1001 &560601397
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 213774721}
-    m_Modifications:
-    - target: {fileID: 3305244969004628501, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 2100000, guid: c34ba7682aeada2488725696e07cc9d7, type: 2}
-    - target: {fileID: 3953714868489903040, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_Name
-      value: CyberpunkBlimp
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 466f462801f851443a75502718cf823b, type: 3}
 --- !u!1 &566812459
 GameObject:
   m_ObjectHideFlags: 0
@@ -15250,11 +15129,6 @@ MonoBehaviour:
   m_SelectedFaces: 
   m_SelectedEdges: []
   m_SelectedVertices: 
---- !u!4 &610310123 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-  m_PrefabInstance: {fileID: 1668870165}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &621776244
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -44688,79 +44562,6 @@ Mesh:
     offset: 0
     size: 0
     path: 
---- !u!1001 &1668870165
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1905860745}
-    m_Modifications:
-    - target: {fileID: 3305244969004628501, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 2100000, guid: c34ba7682aeada2488725696e07cc9d7, type: 2}
-    - target: {fileID: 3953714868489903040, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_Name
-      value: CyberpunkBlimp
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4437657608227455354, guid: 466f462801f851443a75502718cf823b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 466f462801f851443a75502718cf823b, type: 3}
 --- !u!43 &1669005939
 Mesh:
   m_ObjectHideFlags: 0
@@ -57665,53 +57466,6 @@ MonoBehaviour:
   m_SelectedFaces: 
   m_SelectedEdges: []
   m_SelectedVertices: 
---- !u!1 &1905860743
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1905860745}
-  - component: {fileID: 1905860744}
-  m_Layer: 6
-  m_Name: CyberpunkBlimp (2)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1905860744
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1905860743}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b0587296f10c64547a38b13f7a982835, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 25
-  turnSpeed: 2
---- !u!4 &1905860745
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1905860743}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.59207463, z: -0, w: 0.80588317}
-  m_LocalPosition: {x: -457, y: 951, z: 594}
-  m_LocalScale: {x: 39.663, y: 39.663002, z: 39.663}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 610310123}
-  m_Father: {fileID: 1923306879}
-  m_LocalEulerAnglesHint: {x: 0, y: 72.609, z: 0}
 --- !u!1 &1910495924
 GameObject:
   m_ObjectHideFlags: 0
@@ -58258,8 +58012,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1905860745}
-  - {fileID: 213774721}
   - {fileID: 1542023599}
   - {fileID: 2119580644}
   - {fileID: 1377755310}
@@ -64539,15 +64291,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -306.43167
+      value: -306.42416
       objectReference: {fileID: 0}
     - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 117.714325
+      value: 117.2942
       objectReference: {fileID: 0}
     - target: {fileID: 315774020330070608, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 107.228546
+      value: 107.587494
       objectReference: {fileID: 0}
     - target: {fileID: 722441998437464358, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: Lens.FarClipPlane
@@ -64563,15 +64315,31 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -306.43167
+      value: -306.42416
       objectReference: {fileID: 0}
     - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 117.71433
+      value: 117.2942
       objectReference: {fileID: 0}
     - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 107.228546
+      value: 107.587494
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.9937158
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.11144149
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.010406577
+      objectReference: {fileID: 0}
+    - target: {fileID: 4759079753940297690, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.0011670586
       objectReference: {fileID: 0}
     - target: {fileID: 4943271865898170268, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: distanceText

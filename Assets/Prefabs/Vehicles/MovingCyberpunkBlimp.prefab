@@ -66,7 +66,7 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: c34ba7682aeada2488725696e07cc9d7, type: 2}
     - target: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       propertyPath: m_Name
-      value: CyberpunkBlimp
+      value: MovingCyberpunkBlimp
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       propertyPath: m_Layer
@@ -91,6 +91,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4932448424701894239}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -3221585205553453066}
   m_SourcePrefab: {fileID: 100100000, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
 --- !u!1 &3953714868489903040 stripped
 GameObject:
@@ -205,3 +208,17 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.22326262, y: 1.341181, z: 2.0243366}
   m_Center: {x: -0.6758159, y: -2.5107236, z: -0.0010805511}
+--- !u!114 &-3221585205553453066
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3953714868489903040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0587296f10c64547a38b13f7a982835, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 5
+  turnSpeed: 15
