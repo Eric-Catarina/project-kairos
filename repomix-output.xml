@@ -54,6 +54,7 @@ Assets/
       PositionMemory.cs
       ResetTrigger.cs
     Scoring/
+      LevelCompletionEvent.cs
       ScoreManager.cs
       ScoreUIController.cs
       StartScoreTimer.cs
@@ -220,81 +221,6 @@ public class ResetTrigger : MonoBehaviour
             {
                 memory.ResetPosition();
             }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
-// Local: Assets/Scripts/Scoring/ScoreUIController.cs
-
-using TMPro;
-using UnityEngine;
-
-/// <summary>
-/// Controla a exibição da UI de resultados do final do nível.
-/// Ouve o evento OnLevelCompleted do ScoreManager para se atualizar.
-/// </summary>
-public class ScoreUIController : MonoBehaviour
-{
-    [Header("Referências da UI")]
-    [SerializeField] private TextMeshProUGUI finalTimeText;
-    [SerializeField] private TextMeshProUGUI rankText;
-    [SerializeField] private GameObject resultsPanel; // O painel pai que contém os textos
-
-    private void OnEnable()
-    {
-        // Inscreve-se no evento para ser notificado quando o nível terminar.
-        ScoreManager.OnLevelCompleted += HandleLevelCompleted;
-    }
-
-
-
-    private void OnDisable()
-    {
-        // Remove a inscrição para evitar erros e memory leaks.
-        ScoreManager.OnLevelCompleted -= HandleLevelCompleted;
-    }
-
-    private void Start()
-    {
-        // Garante que o painel esteja escondido no início.
-        if (resultsPanel != null)
-        {
-            // resultsPanel.SetActive(false);
-        }
-    }
-
-    /// <summary>
-    /// Método chamado pelo evento OnLevelCompleted.
-    /// Atualiza os textos e exibe o painel de resultados.
-    /// </summary>
-    /// <param name="finalTime">O tempo final do jogador.</param>
-    /// <param name="finalRank">O ranque final do jogador.</param>
-    private void HandleLevelCompleted(float finalTime, Rank finalRank)
-    {
-        if (finalTimeText != null)
-        {
-            // Formata o tempo para ter duas casas decimais (ex: 34.56s).
-            finalTimeText.text = $"Tempo: {finalTime:F2}s";
-        }
-
-        if (rankText != null)
-        {
-            rankText.text = $"Ranque: {finalRank}";
-        }
-
-        if (resultsPanel != null)
-        {
-            resultsPanel.SetActive(true);
-        }
-    }
-    
-    public void UpdateTime(float newTime)
-    {
-        if (finalTimeText != null)
-        {
-            finalTimeText.text = $"Tempo: {newTime:F2}s";
         }
     }
 }
@@ -2160,6 +2086,225 @@ public class PlayerAnimationController : MonoBehaviour
     private void HandleLeftGround()
     {
         _animator.SetBool(_hashIsGrounded, false);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerLookController.cs">
+// Local: Assets/Scripts/PlayerLookController.cs
+
+using Unity.Cinemachine;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using DG.Tweening;
+
+public class PlayerLookController : MonoBehaviour
+{
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+    [SerializeField] private Transform playerModel;
+    [SerializeField] private Transform orientation;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
+    [SerializeField] private CinemachineCamera freeLookCamera;
+    private CinemachineBasicMultiChannelPerlin _cameraNoise;
+    
+    [Header("Sensibilidade")]
+    [SerializeField] private float minSensitivityGainX = 0.5f;
+    [SerializeField] private float maxSensitivityGainX = 10f;
+    [SerializeField] private float minSensitivityGainY = 0.5f;
+    [SerializeField] private float maxSensitivityGainY = 10f;
+
+    [Header("FOV Dinâmico")]
+    [SerializeField] private float maxFov = 70f;
+    [SerializeField] private float fovMinSpeedThreshold = 15f;
+    [SerializeField] private float fovMaxSpeedThreshold = 40f;
+    [SerializeField] private float fovTransitionDuration = 0.5f;
+
+    [Header("Camera Shake (Noise)")]
+    [Tooltip("A intensidade máxima do tremor em altas velocidades (multiplicador).")]
+    [SerializeField] private float maxShakeAmplitudeGain = 1.5f;
+    [Tooltip("A rapidez máxima do tremor em altas velocidades (multiplicador).")]
+    [SerializeField] private float maxShakeFrequencyGain = 1.5f;
+    [Tooltip("Velocidade (m/s) a partir da qual o tremor começa.")]
+    [SerializeField] private float shakeMinSpeedThreshold = 25f;
+    [Tooltip("Velocidade (m/s) na qual o tremor atinge sua intensidade máxima.")]
+    [SerializeField] private float shakeMaxSpeedThreshold = 60f;
+
+    [Header("Outras Configurações")]
+    [SerializeField] private float playerRotationSpeed = 10f;
+
+    private float _baseFov;
+    private Tweener _fovTween;
+    private LensSettings _tempLens;
+
+    void Awake()
+    {
+        if (freeLookCamera != null)
+        {
+            _cameraNoise = freeLookCamera.GetComponent<CinemachineBasicMultiChannelPerlin>();
+            if (_cameraNoise == null)
+            {
+                Debug.LogError("CinemachineBasicMultiChannelPerlin não encontrado no FreeLook Camera.");
+            }
+        }
+    }
+
+    private void OnEnable()
+    {
+        GameSettingsManager.OnMouseSensitivityXChanged += HandleMouseSensitivityXChanged;
+        GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
+        
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        GameSettingsManager.OnMouseSensitivityXChanged -= HandleMouseSensitivityXChanged;
+        GameSettingsManager.OnMouseSensitivityYChanged -= HandleMouseSensitivityYChanged;
+
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        }
+    }
+
+    private void Start()
+    {
+        if (InputManager.Instance == null)
+        {
+            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
+            return;
+        }
+
+        if (freeLookCamera == null)
+        {
+            Debug.LogError("CinemachineCamera (FreeLook) não atribuída no PlayerLookController.");
+            enabled = false;
+            return;
+        }
+
+        _baseFov = freeLookCamera.Lens.FieldOfView;
+        
+        // Garante que o tremor comece desativado
+        _cameraNoise.AmplitudeGain = 0;
+        _cameraNoise.FrequencyGain = 0;
+
+        ConnectCinemachineToInputManager();
+        
+        if (GameSettingsManager.Instance != null)
+        {
+            HandleMouseSensitivityXChanged(GameSettingsManager.Instance.MouseSensitivityX);
+            HandleMouseSensitivityYChanged(GameSettingsManager.Instance.MouseSensitivityY);
+        }
+    }
+
+    private void Update()
+    {
+        HandlePlayerModelRotation();
+    }
+
+    private void HandleVelocityChanged(float currentHorizontalSpeed)
+    {
+        UpdateFov(currentHorizontalSpeed);
+        UpdateCameraShake(currentHorizontalSpeed);
+    }
+
+    private void UpdateFov(float speed)
+    {
+        if (freeLookCamera == null) return;
+        
+        float normalizedSpeed = Mathf.InverseLerp(fovMinSpeedThreshold, fovMaxSpeedThreshold, speed);
+        float targetFov = Mathf.Lerp(_baseFov, maxFov, normalizedSpeed);
+
+        _fovTween?.Kill();
+        _fovTween = DOTween.To(
+            () => freeLookCamera.Lens.FieldOfView,
+            x => SetCameraFOV(x),
+            targetFov,
+            fovTransitionDuration
+        ).SetEase(Ease.OutQuad);
+    }
+
+    private void UpdateCameraShake(float speed)
+    {
+        if (freeLookCamera == null) return;
+
+        float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
+        
+        // CORREÇÃO: Modifica AmplitudeGain e FrequencyGain diretamente no componente CinemachineCamera
+        _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
+        _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
+    }
+    
+    private void SetCameraFOV(float fov)
+    {
+        _tempLens = freeLookCamera.Lens;
+        _tempLens.FieldOfView = fov;
+        freeLookCamera.Lens = _tempLens;
+    }
+    
+    private void HandleMouseSensitivityXChanged(float normalizedValue)
+    {
+        if (cinemachineInputAxisController == null) return;
+        float newGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, normalizedValue);
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit X" || controller.Name == "X")
+            {
+                controller.Input.Gain = newGain;
+            }
+        }
+    }
+    
+    private void HandleMouseSensitivityYChanged(float normalizedValue)
+    {
+        if (cinemachineInputAxisController == null) return;
+        float newGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, normalizedValue);
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
+            {
+                controller.Input.Gain = -newGain;
+            }
+        }
+    }
+
+    private void ConnectCinemachineToInputManager()
+    {
+        if (cinemachineInputAxisController == null) return;
+        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
+            controller.Input.InputAction = lookActionReference;
+        }
+    }
+    
+    private void HandlePlayerModelRotation()
+    {
+        if (cameraTransform == null || orientation == null || playerModel == null) return;
+        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+        if (viewDirection != Vector3.zero)
+        {
+            orientation.forward = viewDirection;
+        }
+        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+    }
+
+    private void OnDestroy()
+    {
+        _fovTween?.Kill();
+        
+        // Reseta o Noise ao sair da cena para evitar que ele persista
+        if (freeLookCamera != null)
+        {
+            _cameraNoise.AmplitudeGain = 0;
+            _cameraNoise.FrequencyGain = 0;
+        }
     }
 }
 </file>
@@ -5245,136 +5390,6 @@ public interface ILeaderboardService
 }
 </file>
 
-<file path="Assets/Scripts/InputManager.cs">
-// Local: Assets/Scripts/InputManager.cs
-
-using System;
-using UnityEngine;
-using UnityEngine.InputSystem;
-
-[RequireComponent(typeof(InputStateManager))]
-public class InputManager : MonoBehaviour
-{
-    public static InputManager Instance { get; private set; }
-
-    public PlayerControls PlayerControls => _playerControls;
-
-    // ... (outros eventos permanecem os mesmos) ...
-    public event Action<Vector2> OnMove;
-    public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-    public event Action OnSlowTimeStarted;
-    public event Action OnSlowTimeCanceled;
-    
-    public event Action OnLevelFinished;
-    public event Action OnLevelRestarted;
-    public event Action OnPausePressed;
-
-#if ENABLE_CHEATS
-    public event Action OnToggleInfiniteJumps;
-    public event Action OnToggleInfiniteGrappleCooldown;
-    public event Action OnToggleInfiniteGrappleDuration;
-    public event Action OnToggleInfiniteTimeStop;
-
-    public event Action OnToggleAllCheats;
-#endif
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        _playerControls = new PlayerControls();
-        
-        InputStateManager stateManager = GetComponent<InputStateManager>();
-        stateManager.Initialize(_playerControls);
-    }
-
-    private void Start()
-    {
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
-    }
-
-    private void OnEnable()
-    {
-        _playerControls.Enable();
-        
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-
-        _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-        
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
-        
-        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        
-        // Ação de restart agora é ouvida de dois mapas diferentes
-        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
-        _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
-        
-        _playerControls.Player.Pause.performed += HandlePausePressed;
-        _playerControls.UI.Unpause.performed += HandlePausePressed;
-        
-#if ENABLE_CHEATS
-        _playerControls.Debug.Enable();
-        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
-        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
-        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
-        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
-        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
-#endif
-    }
-
-    private void OnDisable()
-    {
-        if (_playerControls == null) return;
-        
-        // ... (outras desinscrições) ...
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
-        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
-        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
-        _playerControls.PostGame.RestartLevel.performed -= HandleRestartLevel;
-        _playerControls.Player.Pause.performed -= HandlePausePressed;
-        _playerControls.UI.Unpause.performed -= HandlePausePressed;
-
-        _playerControls.Disable();
-    }
-    
-    // ... (outros Handlers) ...
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
-    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
-    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
-    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
-    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
-    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
-}
-</file>
-
 <file path="Assets/Scripts/LaserBarrier.cs">
 // Local: Assets/Scripts/Scenario/LaserBarrier.cs
 
@@ -5720,225 +5735,6 @@ public class PlayerDropdownController : MonoBehaviour
         string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].PlayerId;
         PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
         PlayFabAuthManager.Instance.Login();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerLookController.cs">
-// Local: Assets/Scripts/PlayerLookController.cs
-
-using Unity.Cinemachine;
-using UnityEngine;
-using UnityEngine.InputSystem;
-using DG.Tweening;
-
-public class PlayerLookController : MonoBehaviour
-{
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovementController;
-    [SerializeField] private Transform playerModel;
-    [SerializeField] private Transform orientation;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
-    [SerializeField] private CinemachineCamera freeLookCamera;
-    private CinemachineBasicMultiChannelPerlin _cameraNoise;
-    
-    [Header("Sensibilidade")]
-    [SerializeField] private float minSensitivityGainX = 0.5f;
-    [SerializeField] private float maxSensitivityGainX = 10f;
-    [SerializeField] private float minSensitivityGainY = 0.5f;
-    [SerializeField] private float maxSensitivityGainY = 10f;
-
-    [Header("FOV Dinâmico")]
-    [SerializeField] private float maxFov = 70f;
-    [SerializeField] private float fovMinSpeedThreshold = 15f;
-    [SerializeField] private float fovMaxSpeedThreshold = 40f;
-    [SerializeField] private float fovTransitionDuration = 0.5f;
-
-    [Header("Camera Shake (Noise)")]
-    [Tooltip("A intensidade máxima do tremor em altas velocidades (multiplicador).")]
-    [SerializeField] private float maxShakeAmplitudeGain = 1.5f;
-    [Tooltip("A rapidez máxima do tremor em altas velocidades (multiplicador).")]
-    [SerializeField] private float maxShakeFrequencyGain = 1.5f;
-    [Tooltip("Velocidade (m/s) a partir da qual o tremor começa.")]
-    [SerializeField] private float shakeMinSpeedThreshold = 25f;
-    [Tooltip("Velocidade (m/s) na qual o tremor atinge sua intensidade máxima.")]
-    [SerializeField] private float shakeMaxSpeedThreshold = 60f;
-
-    [Header("Outras Configurações")]
-    [SerializeField] private float playerRotationSpeed = 10f;
-
-    private float _baseFov;
-    private Tweener _fovTween;
-    private LensSettings _tempLens;
-
-    void Awake()
-    {
-        if (freeLookCamera != null)
-        {
-            _cameraNoise = freeLookCamera.GetComponent<CinemachineBasicMultiChannelPerlin>();
-            if (_cameraNoise == null)
-            {
-                Debug.LogError("CinemachineBasicMultiChannelPerlin não encontrado no FreeLook Camera.");
-            }
-        }
-    }
-
-    private void OnEnable()
-    {
-        GameSettingsManager.OnMouseSensitivityXChanged += HandleMouseSensitivityXChanged;
-        GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
-        
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
-        }
-    }
-
-    private void OnDisable()
-    {
-        GameSettingsManager.OnMouseSensitivityXChanged -= HandleMouseSensitivityXChanged;
-        GameSettingsManager.OnMouseSensitivityYChanged -= HandleMouseSensitivityYChanged;
-
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
-        }
-    }
-
-    private void Start()
-    {
-        if (InputManager.Instance == null)
-        {
-            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
-            return;
-        }
-
-        if (freeLookCamera == null)
-        {
-            Debug.LogError("CinemachineCamera (FreeLook) não atribuída no PlayerLookController.");
-            enabled = false;
-            return;
-        }
-
-        _baseFov = freeLookCamera.Lens.FieldOfView;
-        
-        // Garante que o tremor comece desativado
-        _cameraNoise.AmplitudeGain = 0;
-        _cameraNoise.FrequencyGain = 0;
-
-        ConnectCinemachineToInputManager();
-        
-        if (GameSettingsManager.Instance != null)
-        {
-            HandleMouseSensitivityXChanged(GameSettingsManager.Instance.MouseSensitivityX);
-            HandleMouseSensitivityYChanged(GameSettingsManager.Instance.MouseSensitivityY);
-        }
-    }
-
-    private void Update()
-    {
-        HandlePlayerModelRotation();
-    }
-
-    private void HandleVelocityChanged(float currentHorizontalSpeed)
-    {
-        UpdateFov(currentHorizontalSpeed);
-        UpdateCameraShake(currentHorizontalSpeed);
-    }
-
-    private void UpdateFov(float speed)
-    {
-        if (freeLookCamera == null) return;
-        
-        float normalizedSpeed = Mathf.InverseLerp(fovMinSpeedThreshold, fovMaxSpeedThreshold, speed);
-        float targetFov = Mathf.Lerp(_baseFov, maxFov, normalizedSpeed);
-
-        _fovTween?.Kill();
-        _fovTween = DOTween.To(
-            () => freeLookCamera.Lens.FieldOfView,
-            x => SetCameraFOV(x),
-            targetFov,
-            fovTransitionDuration
-        ).SetEase(Ease.OutQuad);
-    }
-
-    private void UpdateCameraShake(float speed)
-    {
-        if (freeLookCamera == null) return;
-
-        float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
-        
-        // CORREÇÃO: Modifica AmplitudeGain e FrequencyGain diretamente no componente CinemachineCamera
-        _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
-        _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
-    }
-    
-    private void SetCameraFOV(float fov)
-    {
-        _tempLens = freeLookCamera.Lens;
-        _tempLens.FieldOfView = fov;
-        freeLookCamera.Lens = _tempLens;
-    }
-    
-    private void HandleMouseSensitivityXChanged(float normalizedValue)
-    {
-        if (cinemachineInputAxisController == null) return;
-        float newGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, normalizedValue);
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            if (controller.Name == "Look Orbit X" || controller.Name == "X")
-            {
-                controller.Input.Gain = newGain;
-            }
-        }
-    }
-    
-    private void HandleMouseSensitivityYChanged(float normalizedValue)
-    {
-        if (cinemachineInputAxisController == null) return;
-        float newGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, normalizedValue);
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
-            {
-                controller.Input.Gain = -newGain;
-            }
-        }
-    }
-
-    private void ConnectCinemachineToInputManager()
-    {
-        if (cinemachineInputAxisController == null) return;
-        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
-            controller.Input.InputAction = lookActionReference;
-        }
-    }
-    
-    private void HandlePlayerModelRotation()
-    {
-        if (cameraTransform == null || orientation == null || playerModel == null) return;
-        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-        if (viewDirection != Vector3.zero)
-        {
-            orientation.forward = viewDirection;
-        }
-        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
-    }
-
-    private void OnDestroy()
-    {
-        _fovTween?.Kill();
-        
-        // Reseta o Noise ao sair da cena para evitar que ele persista
-        if (freeLookCamera != null)
-        {
-            _cameraNoise.AmplitudeGain = 0;
-            _cameraNoise.FrequencyGain = 0;
-        }
     }
 }
 </file>
@@ -6311,33 +6107,108 @@ public enum UIPanelType
 }
 </file>
 
-<file path="Assets/Scripts/GameFlowManager.cs">
-// Local: Assets/Scripts/Core/GameFlowManager.cs
-
+<file path="Assets/Scripts/Scoring/LevelCompletionEvent.cs">
+// Local: Assets/Scripts/Core/LevelCompletionEvent.cs
 using System;
-using System.Collections;
+
+public class LevelCompletionEvent
+{
+    public event Action<float> OnLevelCompleted;
+
+    public void Invoke(float time, Rank rank)
+    {
+        OnLevelCompleted?.Invoke(time);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
+// Local: Assets/Scripts/Scoring/ScoreUIController.cs
+
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
-public enum GameState { MainMenu, Playing, Paused, LevelFinished }
-
-public class GameFlowManager : MonoBehaviour
+public class ScoreUIController : MonoBehaviour
 {
-    public static GameFlowManager Instance { get; private set; }
-    public GameState CurrentState { get; private set; }
+    [Header("Referências da UI")]
+    [SerializeField] private TextMeshProUGUI finalTimeText;
+    [SerializeField] private TextMeshProUGUI rankText;
+    [SerializeField] private GameObject resultsPanel;
 
-    public event Action OnGamePaused;
-    public event Action OnGameResumed;
+    private void OnEnable()
+    {
+        GameFlowManager.OnLevelCompleted += HandleLevelCompleted;
+    }
 
-    private UIManager _uiManager;
-    private CountdownUI _countdownUI;
+    private void OnDisable()
+    {
+        GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
+    }
+
+    private void HandleLevelCompleted(float finalTime)
+    {
+        if (finalTimeText != null)
+        {
+            finalTimeText.text = $"Tempo: {finalTime:F2}s";
+        }
+
+        // O rank não é mais fornecido pelo evento; podemos calcular localmente se necessário
+        if (rankText != null)
+        {
+            rankText.text = "Ranque: -";
+        }
+
+        if (resultsPanel != null)
+        {
+            resultsPanel.SetActive(true);
+        }
+    }
     
-    private bool _isCountingDown = false;
-    private Coroutine _countdownCoroutine;
-    private bool _isSettingsPanelOpen = false;
+    public void UpdateTime(float newTime)
+    {
+        if (finalTimeText != null)
+        {
+            finalTimeText.text = $"Tempo: {newTime:F2}s";
+        }
+    }
+}
+</file>
 
-    private bool IsInMainMenu => SceneManager.GetActiveScene().buildIndex == 0;
+<file path="Assets/Scripts/InputManager.cs">
+// Local: Assets/Scripts/InputManager.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(InputStateManager))]
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public PlayerControls PlayerControls => _playerControls;
+
+    public event Action<Vector2> OnMove;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+    public event Action OnSlowTimeStarted;
+    public event Action OnSlowTimeCanceled;
+    
+    public event Action OnLevelRestarted;
+    public event Action OnPausePressed;
+
+#if ENABLE_CHEATS
+    public event Action OnToggleInfiniteJumps;
+    public event Action OnToggleInfiniteGrappleCooldown;
+    public event Action OnToggleInfiniteGrappleDuration;
+    public event Action OnToggleInfiniteTimeStop;
+
+    public event Action OnToggleAllCheats;
+#endif
+
+    private PlayerControls _playerControls;
 
     private void Awake()
     {
@@ -6348,151 +6219,83 @@ public class GameFlowManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        
+        InputStateManager stateManager = GetComponent<InputStateManager>();
+        stateManager.Initialize(_playerControls);
+    }
+
+    private void Start()
+    {
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
     }
 
     private void OnEnable()
     {
-        InputManager.Instance.OnPausePressed += HandlePauseRequest;
-        SceneManager.sceneLoaded += OnSceneLoaded;
+        _playerControls.Enable();
+        
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
+        
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
+        
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        
+        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
+        _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
+        
+        _playerControls.Player.Pause.performed += HandlePausePressed;
+        _playerControls.UI.Unpause.performed += HandlePausePressed;
+        
+#if ENABLE_CHEATS
+        _playerControls.Debug.Enable();
+        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
+        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
+        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
+#endif
     }
 
     private void OnDisable()
     {
-        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindSceneReferences();
-        _isSettingsPanelOpen = false;
+        if (_playerControls == null) return;
         
-        if (IsInMainMenu)
-        {
-            CurrentState = GameState.MainMenu;
-            Time.timeScale = 1f;
-        }
-        else
-        {
-            CurrentState = GameState.Playing;
-            Time.timeScale = 1f;
-        }
-    }
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
+        _playerControls.PostGame.RestartLevel.performed -= HandleRestartLevel;
+        _playerControls.Player.Pause.performed -= HandlePausePressed;
+        _playerControls.UI.Unpause.performed -= HandlePausePressed;
 
-    private void FindSceneReferences()
-    {
-        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
-        _uiManager = FindObjectOfType<UIManager>(true);
-        _countdownUI = FindObjectOfType<CountdownUI>(true);
-        if (_uiManager != null) _uiManager.OnPanelStateChanged += HandlePanelStateChanged;
+        _playerControls.Disable();
     }
     
-    private void HandlePanelStateChanged(UIPanelType type, bool isOpen)
-    {
-        if (type == UIPanelType.Settings)
-        {
-            _isSettingsPanelOpen = isOpen;
-        }
-    }
-
-    // NOVA FUNÇÃO PÚBLICA CHAMADA PELO WinLogic
-    public void FinishLevel()
-    {
-        if (CurrentState != GameState.Playing) return;
-
-        CurrentState = GameState.LevelFinished;
-        Time.timeScale = 0f;
-        InputStateManager.Instance.SwitchState(InputState.PostGame);
-        ScoreManager.Instance.EndLevelTimer();
-    }
-
-    private void HandlePauseRequest()
-    {
-        if (_uiManager == null || CurrentState == GameState.LevelFinished) return;
-
-        if (IsInMainMenu)
-        {
-            if (_isSettingsPanelOpen) _uiManager.ClosePanel(UIPanelType.Settings);
-            else _uiManager.ShowPanel(UIPanelType.Settings);
-        }
-        else // Em Gameplay
-        {
-            if (_isCountingDown)
-            {
-                StopResumeCountdown();
-                PauseGame();
-                return;
-            }
-
-            if (CurrentState == GameState.Paused)
-            {
-                // Se estamos pausados, ESC sempre tenta despausar
-                _uiManager.ClosePanel(UIPanelType.Settings);
-                ResumeGame();
-            }
-            else if (CurrentState == GameState.Playing)
-            {
-                // Se estamos jogando, ESC pausa
-                PauseGame();
-            }
-        }
-    }
-
-    private void PauseGame()
-    {
-        if (CurrentState != GameState.Playing) return;
-
-        CurrentState = GameState.Paused;
-        Time.timeScale = 0f;
-        InputStateManager.Instance.SwitchState(InputState.UI);
-        _uiManager?.ShowPanel(UIPanelType.Settings);
-        OnGamePaused?.Invoke();
-    }
-
-    public void ResumeGame()
-    {
-        if (CurrentState != GameState.Paused || _isCountingDown) return;
-        
-        _countdownCoroutine = StartCoroutine(ResumeCountdown());
-    }
-
-    private void StopResumeCountdown()
-    {
-        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
-        _isCountingDown = false;
-        if (_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
-    }
-
-    private IEnumerator ResumeCountdown()
-    {
-        _isCountingDown = true;
-        InputStateManager.Instance.SwitchState(InputState.UI);
-        if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
-        {
-            FinishResume();
-            yield break;
-        }
-        _countdownUI.panel.SetActive(true);
-        _countdownUI.text.text = "3";
-        yield return new WaitForSecondsRealtime(1f);
-        _countdownUI.text.text = "2";
-        yield return new WaitForSecondsRealtime(1f);
-        _countdownUI.text.text = "1";
-        yield return new WaitForSecondsRealtime(1f);
-        _countdownUI.panel.SetActive(false);
-        FinishResume();
-    }
-
-    private void FinishResume()
-    {
-        CurrentState = GameState.Playing;
-        _isCountingDown = false;
-        _countdownCoroutine = null;
-        Time.timeScale = 1f;
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        OnGameResumed?.Invoke();
-    }
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
+    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
+    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }
 </file>
 
@@ -6684,27 +6487,6 @@ public class PlayFabAuthManager : MonoBehaviour
     public bool IsLoggedIn()
     {
         return PlayFabClientAPI.IsClientLoggedIn();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/WinLogic.cs">
-// Local: Assets/Scripts/WinLogic.cs
-
-using UnityEngine;
-
-public class WinLogic : MonoBehaviour
-{
-    private bool _levelFinished = false;
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (_levelFinished || !collision.gameObject.CompareTag("Player")) return;
-
-        _levelFinished = true;
-        
-        // Apenas notifica o GameFlowManager, que cuidará do resto.
-        GameFlowManager.Instance.FinishLevel();
     }
 }
 </file>
@@ -7517,100 +7299,208 @@ public class SettingsPanel : UIPanel
 }
 </file>
 
-<file path="Assets/Scripts/LeaderboardUIController.cs">
-// Local: Assets/Scripts/UI/LeaderboardUIController.cs
+<file path="Assets/Scripts/WinLogic.cs">
+// Local: Assets/Scripts/WinLogic.cs
 
 using UnityEngine;
 
-public class LeaderboardUIController : MonoBehaviour
+public class WinLogic : MonoBehaviour
 {
-    [Header("Referências")]
-    [SerializeField] private LevelData levelData;
-    [SerializeField] private GameObject scoreEntryPrefab;
-    [SerializeField] private Transform topScoresContentParent;
-    [SerializeField] private GameObject loadingIndicator;
+    private bool _levelFinished = false;
 
-    [Header("UI do Jogador Local")]
-    [SerializeField] private GameObject playerScoreContainer;
-    [SerializeField] private ScoreUIEntry playerScoreUIEntry;
-    
-    private float? _lastRunTime;
-
-    // Renomeado para maior clareza
-    public void PrepareForDisplay(float time)
+    private void OnCollisionEnter(Collision collision)
     {
-        _lastRunTime = time;
+        if (_levelFinished || !collision.gameObject.CompareTag("Player")) return;
 
-        // Limpa a UI e mostra o painel imediatamente para exibir o tempo da corrida
-        ClearLeaderboard();
-        gameObject.SetActive(true);
-        if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
-        loadingIndicator.SetActive(true);
-
-        // Exibe o tempo da corrida atual instantaneamente
-        if (_lastRunTime.HasValue && playerScoreContainer != null && playerScoreUIEntry != null)
-        {
-            var tempEntry = new ScoreEntry(
-                PlayFabAuthManager.Instance.PlayFabId,
-                PlayerProfile.Instance.CurrentProfile.PlayerName,
-                _lastRunTime.Value,
-                levelData.GetFullLevelId()
-            );
-            playerScoreUIEntry.Populate(0, tempEntry, true); 
-            playerScoreContainer.SetActive(true);
-        }
+        _levelFinished = true;
+        
+        GameFlowManager.Instance.CompleteLevel();
     }
+}
+</file>
 
-    public async void ShowLeaderboard()
+<file path="Assets/Scripts/GameFlowManager.cs">
+// Local: Assets/Scripts/Core/GameFlowManager.cs
+
+using System;
+using System.Collections;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public enum GameState { MainMenu, Playing, Paused, LevelFinished }
+
+public class GameFlowManager : MonoBehaviour
+{
+    public static GameFlowManager Instance { get; private set; }
+    public GameState CurrentState { get; private set; }
+
+    public static event Action<float> OnLevelCompleted;
+    public event Action OnGamePaused;
+    public event Action OnGameResumed;
+
+    private UIManager _uiManager;
+    private CountdownUI _countdownUI;
+    
+    private bool _isCountingDown = false;
+    private Coroutine _countdownCoroutine;
+    private bool _isSettingsPanelOpen = false;
+
+    private bool IsInMainMenu => SceneManager.GetActiveScene().buildIndex == 0;
+
+    private void Awake()
     {
-        if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
+        if (Instance != null && Instance != this)
         {
-            Debug.LogError("Dependências não configuradas para o Leaderboard!");
-            // Esconde o indicador de carregamento se falhar
-            loadingIndicator.SetActive(false);
+            Destroy(gameObject);
             return;
         }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
 
-        var leaderboardResult = await LeaderboardManager.Instance.GetLeaderboardWithPlayerAsync(levelData.GetFullLevelId(), 10);
-        loadingIndicator.SetActive(false);
-        _lastRunTime = null; // Limpa o tempo da corrida, pois os dados do servidor são a nova fonte da verdade
+    private void OnEnable()
+    {
+        InputManager.Instance.OnPausePressed += HandlePauseRequest;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
 
-        // Limpa as entradas antigas novamente para garantir
-        ClearLeaderboard();
+    private void OnDisable()
+    {
+        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
+    }
 
-        string localPlayerFabId = PlayFabAuthManager.Instance.PlayFabId;
-
-        // Popula o Top 10
-        if (leaderboardResult?.TopEntries != null)
-        {
-            foreach (var score in leaderboardResult.TopEntries)
-            {
-                GameObject entryGO = Instantiate(scoreEntryPrefab, topScoresContentParent);
-                ScoreUIEntry entryUI = entryGO.GetComponent<ScoreUIEntry>();
-                bool isLocalPlayer = score.playerId == localPlayerFabId;
-                entryUI.Populate(score.Position, score, isLocalPlayer);
-            }
-        }
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        _isSettingsPanelOpen = false;
         
-        // Exibe a melhor pontuação oficial do jogador vinda do servidor
-        if (leaderboardResult?.PlayerEntry != null && playerScoreContainer != null && playerScoreUIEntry != null)
+        if (IsInMainMenu)
         {
-            playerScoreUIEntry.Populate(leaderboardResult.PlayerEntry.Position, leaderboardResult.PlayerEntry, true);
-            playerScoreContainer.SetActive(true);
+            CurrentState = GameState.MainMenu;
+            Time.timeScale = 1f;
         }
-        else if (playerScoreContainer != null)
+        else
         {
-            // Se o jogador não tem pontuação no servidor (primeira corrida), esconde o container
-            playerScoreContainer.SetActive(false);
+            CurrentState = GameState.Playing;
+            Time.timeScale = 1f;
         }
     }
 
-    private void ClearLeaderboard()
+    private void FindSceneReferences()
     {
-        foreach (Transform child in topScoresContentParent)
+        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
+        _uiManager = FindObjectOfType<UIManager>(true);
+        _countdownUI = FindObjectOfType<CountdownUI>(true);
+        if (_uiManager != null) _uiManager.OnPanelStateChanged += HandlePanelStateChanged;
+    }
+    
+    private void HandlePanelStateChanged(UIPanelType type, bool isOpen)
+    {
+        if (type == UIPanelType.Settings)
         {
-            Destroy(child.gameObject);
+            _isSettingsPanelOpen = isOpen;
         }
+    }
+
+    public void CompleteLevel()
+    {
+        if (CurrentState != GameState.Playing) return;
+
+        CurrentState = GameState.LevelFinished;
+        Time.timeScale = 0f;
+        InputStateManager.Instance.SwitchState(InputState.PostGame);
+
+        ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank);
+        
+        OnLevelCompleted?.Invoke(finalTime);
+    }
+
+    private void HandlePauseRequest()
+    {
+        if (_uiManager == null || CurrentState == GameState.LevelFinished) return;
+
+        if (IsInMainMenu)
+        {
+            if (_isSettingsPanelOpen) _uiManager.ClosePanel(UIPanelType.Settings);
+            else _uiManager.ShowPanel(UIPanelType.Settings);
+        }
+        else 
+        {
+            if (_isCountingDown)
+            {
+                StopResumeCountdown();
+                PauseGame();
+                return;
+            }
+
+            if (CurrentState == GameState.Paused)
+            {
+                _uiManager.ClosePanel(UIPanelType.Settings);
+                ResumeGame();
+            }
+            else if (CurrentState == GameState.Playing)
+            {
+                PauseGame();
+            }
+        }
+    }
+
+    private void PauseGame()
+    {
+        if (CurrentState != GameState.Playing) return;
+
+        CurrentState = GameState.Paused;
+        Time.timeScale = 0f;
+        InputStateManager.Instance.SwitchState(InputState.UI);
+        _uiManager?.ShowPanel(UIPanelType.Settings);
+        OnGamePaused?.Invoke();
+    }
+
+    public void ResumeGame()
+    {
+        if (CurrentState != GameState.Paused || _isCountingDown) return;
+        
+        _countdownCoroutine = StartCoroutine(ResumeCountdown());
+    }
+
+    private void StopResumeCountdown()
+    {
+        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
+        _isCountingDown = false;
+        if (_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
+    }
+
+    private IEnumerator ResumeCountdown()
+    {
+        _isCountingDown = true;
+        InputStateManager.Instance.SwitchState(InputState.UI);
+        if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
+        {
+            FinishResume();
+            yield break;
+        }
+        _countdownUI.panel.SetActive(true);
+        _countdownUI.text.text = "3";
+        yield return new WaitForSecondsRealtime(1f);
+        _countdownUI.text.text = "2";
+        yield return new WaitForSecondsRealtime(1f);
+        _countdownUI.text.text = "1";
+        yield return new WaitForSecondsRealtime(1f);
+        _countdownUI.panel.SetActive(false);
+        FinishResume();
+    }
+
+    private void FinishResume()
+    {
+        CurrentState = GameState.Playing;
+        _isCountingDown = false;
+        _countdownCoroutine = null;
+        Time.timeScale = 1f;
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
+        OnGameResumed?.Invoke();
     }
 }
 </file>
@@ -8072,19 +7962,116 @@ public class UIManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/LeaderboardUIController.cs">
+// Local: Assets/Scripts/UI/LeaderboardUIController.cs
+
+using UnityEngine;
+
+public class LeaderboardUIController : MonoBehaviour
+{
+    [Header("Referências")]
+    [SerializeField] private LevelData levelData;
+    [SerializeField] private GameObject scoreEntryPrefab;
+    [SerializeField] private Transform topScoresContentParent;
+    [SerializeField] private GameObject loadingIndicator;
+
+    [Header("UI do Jogador Local")]
+    [SerializeField] private GameObject playerScoreContainer;
+    [SerializeField] private ScoreUIEntry playerScoreUIEntry;
+    
+    private void OnEnable()
+    {
+        GameFlowManager.OnLevelCompleted += HandleLevelCompleted;
+    }
+
+    private void OnDisable()
+    {
+        GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
+    }
+
+    private void HandleLevelCompleted(float finalTime)
+    {
+        PrepareForDisplay(finalTime);
+    }
+    
+    public void PrepareForDisplay(float time)
+    {
+        ClearLeaderboard();
+        gameObject.SetActive(true);
+        if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
+        loadingIndicator.SetActive(true);
+
+        if (playerScoreContainer != null && playerScoreUIEntry != null)
+        {
+            var tempEntry = new ScoreEntry(
+                PlayFabAuthManager.Instance.PlayFabId,
+                PlayerProfile.Instance.CurrentProfile.PlayerName,
+                time,
+                levelData.GetFullLevelId()
+            );
+            playerScoreUIEntry.Populate(0, tempEntry, true); 
+            playerScoreContainer.SetActive(true);
+        }
+    }
+
+    public async void ShowLeaderboard()
+    {
+        if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
+        {
+            Debug.LogError("Dependências não configuradas para o Leaderboard!");
+            loadingIndicator.SetActive(false);
+            return;
+        }
+
+        var leaderboardResult = await LeaderboardManager.Instance.GetLeaderboardWithPlayerAsync(levelData.GetFullLevelId(), 10);
+        loadingIndicator.SetActive(false);
+
+        ClearLeaderboard();
+
+        string localPlayerFabId = PlayFabAuthManager.Instance.PlayFabId;
+
+        if (leaderboardResult?.TopEntries != null)
+        {
+            foreach (var score in leaderboardResult.TopEntries)
+            {
+                GameObject entryGO = Instantiate(scoreEntryPrefab, topScoresContentParent);
+                ScoreUIEntry entryUI = entryGO.GetComponent<ScoreUIEntry>();
+                bool isLocalPlayer = score.playerId == localPlayerFabId;
+                entryUI.Populate(score.Position, score, isLocalPlayer);
+            }
+        }
+        
+        if (leaderboardResult?.PlayerEntry != null && playerScoreContainer != null && playerScoreUIEntry != null)
+        {
+            playerScoreUIEntry.Populate(leaderboardResult.PlayerEntry.Position, leaderboardResult.PlayerEntry, true);
+            playerScoreContainer.SetActive(true);
+        }
+        else if (playerScoreContainer != null)
+        {
+            playerScoreContainer.SetActive(false);
+        }
+    }
+
+    private void ClearLeaderboard()
+    {
+        foreach (Transform child in topScoresContentParent)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/Scoring/ScoreManager.cs">
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
-using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 
 public class ScoreManager : MonoBehaviour
 {
-    // ... (propriedades permanecem as mesmas) ...
     public static ScoreManager Instance { get; private set; }
-    public static event Action<float, Rank> OnLevelCompleted;
 
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
@@ -8100,9 +8087,6 @@ public class ScoreManager : MonoBehaviour
     private bool _isTimerRunning = false;
     private bool _levelStarted = false;
 
-
-    // OnEnable, OnDisable, OnSceneLoaded, FindSceneReferences, Update, Timers...
-    // ... (todo o resto do script até EndLevelTimer permanece o mesmo) ...
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -8112,7 +8096,8 @@ public class ScoreManager : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-        if (InputManager.Instance != null) { InputManager.Instance.OnLevelFinished += HandleLevelFinished; }
+        GameFlowManager.OnLevelCompleted += ProcessLevelCompletion;
+
         if (GameFlowManager.Instance != null)
         {
             GameFlowManager.Instance.OnGamePaused += PauseTimer;
@@ -8123,7 +8108,8 @@ public class ScoreManager : MonoBehaviour
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        if (InputManager.Instance != null) { InputManager.Instance.OnLevelFinished -= HandleLevelFinished; }
+        GameFlowManager.OnLevelCompleted -= ProcessLevelCompletion;
+
         if (GameFlowManager.Instance != null)
         {
             GameFlowManager.Instance.OnGamePaused -= PauseTimer;
@@ -8159,9 +8145,23 @@ public class ScoreManager : MonoBehaviour
         _levelStarted = true;
         _isTimerRunning = true;
     }
+    
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank)
+    {
+        if (!_levelStarted)
+        {
+            finalTime = 100f;
+            finalRank = Rank.None;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(_levelTimer);
+    }
 
     private void PauseTimer() { _isTimerRunning = false; }
     private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+    
     public void ResetLevelTimer()
     {
         _levelTimer = 0f;
@@ -8169,31 +8169,14 @@ public class ScoreManager : MonoBehaviour
         _levelStarted = false;
         _scoreUIController?.UpdateTime(_levelTimer);
     }
-    private void HandleLevelFinished() { EndLevelTimer(); }
 
-
-    public async void EndLevelTimer()
+    private async void ProcessLevelCompletion(float finalTime)
     {
-        if (!_isTimerRunning && !_levelStarted) return;
-        _isTimerRunning = false;
-        
-        if (currentLevelData == null) { Debug.LogError("LevelData não está configurado!"); return; }
-
-        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
-        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
-
-        // --- LÓGICA DE UI REMOVIDA DAQUI ---
         PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
         postGamePanel.gameObject.SetActive(true);
         postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
-        // --- FIM DA LÓGICA REMOVIDA ---
 
-        if (_leaderboardUIController != null)
-        {
-            _leaderboardUIController.PrepareForDisplay(_levelTimer);
-        }
-
-        bool submissionSuccess = await SubmitScoreAsync();
+        bool submissionSuccess = await SubmitScoreAsync(finalTime);
         
         if (submissionSuccess)
         {
@@ -8203,9 +8186,8 @@ public class ScoreManager : MonoBehaviour
         _leaderboardUIController?.ShowLeaderboard();
     }
 
-    private async Task<bool> SubmitScoreAsync()
+    private async Task<bool> SubmitScoreAsync(float finalTime)
     {
-        // ... (lógica de submissão permanece a mesma) ...
         if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
         {
             Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
@@ -8215,7 +8197,7 @@ public class ScoreManager : MonoBehaviour
         var scoreEntry = new ScoreEntry(
             PlayerProfile.Instance.CurrentProfile.PlayerId,
             PlayerProfile.Instance.CurrentProfile.PlayerName,
-            _levelTimer,
+            finalTime,
             currentLevelData.GetFullLevelId()
         );
 
