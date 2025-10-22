@@ -4366,6 +4366,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8193728221058597174}
   - component: {fileID: 8680795111115809046}
+  - component: {fileID: 3493636507829053705}
   m_Layer: 5
   m_Name: IntertYCheck
   m_TagString: Untagged
@@ -4441,6 +4442,19 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_IsOn: 1
+--- !u!114 &3493636507829053705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3174699958542792840}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af0d12bbe292184a889d6d921ae167ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  axisToControl: 1
 --- !u!1 &3208061441096099269
 GameObject:
   m_ObjectHideFlags: 0
@@ -5006,6 +5020,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4132671738317480693}
   - component: {fileID: 2526260661480421029}
+  - component: {fileID: 2640837642306328035}
   m_Layer: 5
   m_Name: IntertXCheck
   m_TagString: Untagged
@@ -5081,6 +5096,19 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_IsOn: 1
+--- !u!114 &2640837642306328035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3771785367134895869}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af0d12bbe292184a889d6d921ae167ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  axisToControl: 0
 --- !u!1 &3800635060747739024
 GameObject:
   m_ObjectHideFlags: 0

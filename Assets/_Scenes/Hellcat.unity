@@ -3986,6 +3986,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7367121302637036677, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: m_ControllerManager.Controllers.Array.data[1].Input.Gain
+      value: -2
+      objectReference: {fileID: 0}
     - target: {fileID: 7596768071946879737, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: grappleCooldown
       value: 1
@@ -20572,7 +20576,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ec0dfd48eab18ff479d58b2f18df90c2, type: 2}
+  - {fileID: 2100000, guid: d3d50b37b3e90e74984e81f602a9e1de, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

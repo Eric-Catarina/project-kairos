@@ -10,7 +10,7 @@ public class MotionBlurSlider : MonoBehaviour
 {
     [Header("Dependências")]
     [Tooltip("Arraste aqui o Volume Global que contém o override de Motion Blur.")]
-    [SerializeField] private Volume globalVolume;
+private Volume globalVolume;
 
     [Header("Configurações de Clamp")]
     [SerializeField] private float minClamp = 0f;
