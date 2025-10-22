@@ -11,7 +11,6 @@ public class InputManager : MonoBehaviour
 
     public PlayerControls PlayerControls => _playerControls;
 
-    // ... (outros eventos permanecem os mesmos) ...
     public event Action<Vector2> OnMove;
     public event Action OnJumpPerformed;
     public event Action OnJumpCanceled;
@@ -20,7 +19,6 @@ public class InputManager : MonoBehaviour
     public event Action OnSlowTimeStarted;
     public event Action OnSlowTimeCanceled;
     
-    public event Action OnLevelFinished;
     public event Action OnLevelRestarted;
     public event Action OnPausePressed;
 
@@ -74,7 +72,6 @@ public class InputManager : MonoBehaviour
         
         _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
         
-        // Ação de restart agora é ouvida de dois mapas diferentes
         _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
         _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
         
@@ -95,7 +92,6 @@ public class InputManager : MonoBehaviour
     {
         if (_playerControls == null) return;
         
-        // ... (outras desinscrições) ...
         _playerControls.Player.Move.performed -= HandleMove;
         _playerControls.Player.Move.canceled -= HandleMove;
         _playerControls.Player.Jump.performed -= HandleJumpPerformed;
@@ -113,7 +109,6 @@ public class InputManager : MonoBehaviour
         _playerControls.Disable();
     }
     
-    // ... (outros Handlers) ...
     private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
     private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
     private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
@@ -121,7 +116,7 @@ public class InputManager : MonoBehaviour
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
     private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
     private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
     private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
     private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }

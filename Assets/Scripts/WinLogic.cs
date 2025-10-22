@@ -12,7 +12,6 @@ public class WinLogic : MonoBehaviour
 
         _levelFinished = true;
         
-        // Apenas notifica o GameFlowManager, que cuidará do resto.
-        GameFlowManager.Instance.FinishLevel();
+        GameFlowManager.Instance.CompleteLevel();
     }
 }

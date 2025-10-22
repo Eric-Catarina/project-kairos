@@ -13,6 +13,7 @@ public class GameFlowManager : MonoBehaviour
     public static GameFlowManager Instance { get; private set; }
     public GameState CurrentState { get; private set; }
 
+    public static event Action<float, Rank> OnLevelCompleted;
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
@@ -82,15 +83,17 @@ public class GameFlowManager : MonoBehaviour
         }
     }
 
-    // NOVA FUNÇÃO PÚBLICA CHAMADA PELO WinLogic
-    public void FinishLevel()
+    public void CompleteLevel()
     {
         if (CurrentState != GameState.Playing) return;
 
         CurrentState = GameState.LevelFinished;
         Time.timeScale = 0f;
         InputStateManager.Instance.SwitchState(InputState.PostGame);
-        ScoreManager.Instance.EndLevelTimer();
+
+        ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank);
+        
+        OnLevelCompleted?.Invoke(finalTime, finalRank);
     }
 
     private void HandlePauseRequest()
@@ -102,7 +105,7 @@ public class GameFlowManager : MonoBehaviour
             if (_isSettingsPanelOpen) _uiManager.ClosePanel(UIPanelType.Settings);
             else _uiManager.ShowPanel(UIPanelType.Settings);
         }
-        else // Em Gameplay
+        else 
         {
             if (_isCountingDown)
             {
@@ -113,13 +116,11 @@ public class GameFlowManager : MonoBehaviour
 
             if (CurrentState == GameState.Paused)
             {
-                // Se estamos pausados, ESC sempre tenta despausar
                 _uiManager.ClosePanel(UIPanelType.Settings);
                 ResumeGame();
             }
             else if (CurrentState == GameState.Playing)
             {
-                // Se estamos jogando, ESC pausa
                 PauseGame();
             }
         }

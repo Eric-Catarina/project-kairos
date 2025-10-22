@@ -1,22 +1,19 @@
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
-using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 
 public class ScoreManager : MonoBehaviour
 {
-    // ... (propriedades permanecem as mesmas) ...
     public static ScoreManager Instance { get; private set; }
-    public static event Action<float, Rank> OnLevelCompleted;
 
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
     
     [Header("Configurações de UI")]
     [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
-    [SerializeField] private int leaderboardDisplayDelayMs = 750;
+    private int leaderboardDisplayDelayMs = 750;
 
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
@@ -25,9 +22,6 @@ public class ScoreManager : MonoBehaviour
     private bool _isTimerRunning = false;
     private bool _levelStarted = false;
 
-
-    // OnEnable, OnDisable, OnSceneLoaded, FindSceneReferences, Update, Timers...
-    // ... (todo o resto do script até EndLevelTimer permanece o mesmo) ...
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -37,7 +31,8 @@ public class ScoreManager : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-        if (InputManager.Instance != null) { InputManager.Instance.OnLevelFinished += HandleLevelFinished; }
+        GameFlowManager.OnLevelCompleted += ProcessLevelCompletion;
+
         if (GameFlowManager.Instance != null)
         {
             GameFlowManager.Instance.OnGamePaused += PauseTimer;
@@ -48,7 +43,8 @@ public class ScoreManager : MonoBehaviour
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        if (InputManager.Instance != null) { InputManager.Instance.OnLevelFinished -= HandleLevelFinished; }
+        GameFlowManager.OnLevelCompleted -= ProcessLevelCompletion;
+
         if (GameFlowManager.Instance != null)
         {
             GameFlowManager.Instance.OnGamePaused -= PauseTimer;
@@ -84,9 +80,23 @@ public class ScoreManager : MonoBehaviour
         _levelStarted = true;
         _isTimerRunning = true;
     }
+    
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank)
+    {
+        if (!_levelStarted)
+        {
+            finalTime = -1f;
+            finalRank = Rank.None;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(_levelTimer);
+    }
 
     private void PauseTimer() { _isTimerRunning = false; }
     private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+    
     public void ResetLevelTimer()
     {
         _levelTimer = 0f;
@@ -94,31 +104,14 @@ public class ScoreManager : MonoBehaviour
         _levelStarted = false;
         _scoreUIController?.UpdateTime(_levelTimer);
     }
-    private void HandleLevelFinished() { EndLevelTimer(); }
 
-
-    public async void EndLevelTimer()
+    private async void ProcessLevelCompletion(float finalTime, Rank finalRank)
     {
-        if (!_isTimerRunning && !_levelStarted) return;
-        _isTimerRunning = false;
-        
-        if (currentLevelData == null) { Debug.LogError("LevelData não está configurado!"); return; }
-
-        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
-        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
-
-        // --- LÓGICA DE UI REMOVIDA DAQUI ---
         PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
         postGamePanel.gameObject.SetActive(true);
         postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
-        // --- FIM DA LÓGICA REMOVIDA ---
 
-        if (_leaderboardUIController != null)
-        {
-            _leaderboardUIController.PrepareForDisplay(_levelTimer);
-        }
-
-        bool submissionSuccess = await SubmitScoreAsync();
+        bool submissionSuccess = await SubmitScoreAsync(finalTime);
         
         if (submissionSuccess)
         {
@@ -128,9 +121,8 @@ public class ScoreManager : MonoBehaviour
         _leaderboardUIController?.ShowLeaderboard();
     }
 
-    private async Task<bool> SubmitScoreAsync()
+    private async Task<bool> SubmitScoreAsync(float finalTime)
     {
-        // ... (lógica de submissão permanece a mesma) ...
         if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
         {
             Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
@@ -140,7 +132,7 @@ public class ScoreManager : MonoBehaviour
         var scoreEntry = new ScoreEntry(
             PlayerProfile.Instance.CurrentProfile.PlayerId,
             PlayerProfile.Instance.CurrentProfile.PlayerName,
-            _levelTimer,
+            finalTime,
             currentLevelData.GetFullLevelId()
         );
 
