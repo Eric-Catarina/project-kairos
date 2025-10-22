@@ -10337,6 +10337,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1077177448281888736}
   - component: {fileID: 6950206953999442134}
+  - component: {fileID: 7323347897813179810}
   m_Layer: 5
   m_Name: 'MotionBlur Slider '
   m_TagString: Untagged
@@ -10417,6 +10418,21 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7323347897813179810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7724513017828951608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9dbdf16b88e3a36f8be428eca122387, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  globalVolume: {fileID: 0}
+  minClamp: 0
+  maxClamp: 0.02
 --- !u!1 &7761174039947544440
 GameObject:
   m_ObjectHideFlags: 0
