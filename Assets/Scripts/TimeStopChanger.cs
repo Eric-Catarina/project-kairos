@@ -29,12 +29,12 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	private void Awake()
 	{
+		RestoreVolumes();
 		SceneManager.sceneLoaded += OnSceneLoaded;
 	}
 
 	private void Start()
 	{
-		RestoreVolumes();
 		RebindInputActions();
 		ResetStaminaAndVolumes();
 	}
@@ -117,7 +117,6 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	private void RestoreVolumes()
 	{
-		// Try to restore by name
 		string volumeAName = PlayerPrefs.GetString(VolumeAKey, "");
 		string volumeBName = PlayerPrefs.GetString(VolumeBKey, "");
 
@@ -129,12 +128,11 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		if (!string.IsNullOrEmpty(volumeBName))
 			volumeB = System.Array.Find(allVolumes, v => v.name == volumeBName);
 
-		// Fallback if not found
-		if (volumeA == null || volumeB == null)
-		{
-			volumeA = allVolumes.Length > 0 ? allVolumes[0] : null;
-			volumeB = allVolumes.Length > 1 ? allVolumes[1] : null;
-		}
+		// Only fallback if both are missing
+		if (volumeA == null && allVolumes.Length > 0)
+			volumeA = allVolumes[0];
+		if (volumeB == null && allVolumes.Length > 1)
+			volumeB = allVolumes[1];
 
 		if (volumeA == null || volumeB == null)
 			Debug.LogWarning($"{name}: Could not find both volumes in scene.");
@@ -230,3 +228,4 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		return Mathf.Clamp01(currentStamina / maxHoldTime);
 	}
 }
+
