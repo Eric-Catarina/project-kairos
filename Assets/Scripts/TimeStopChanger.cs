@@ -3,43 +3,49 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using System.Collections;
 
-public class HoldGlobalVolumeWithMaxTime : MonoBehaviour
+public class HoldGlobalVolumeStamina : MonoBehaviour
 {
 	[Header("Assign the Global Volumes")]
 	public Volume volumeA;
 	public Volume volumeB;
 
 	[Header("Input Action Reference (from Input System)")]
-	public InputActionReference toggleAction;
+	public InputActionReference holdAction;
 
-	[Header("Max Hold Time (seconds)")]
-	[Tooltip("Maximum time the button can be held before automatically returning to Volume A.")]
+	[Header("Stamina Settings")]
+	[Tooltip("Maximum active time (in seconds) Volume B can stay on with full stamina.")]
 	public float maxHoldTime = 3f;
 
-	private Coroutine holdTimerCoroutine;
+	[Tooltip("Recharge rate (seconds of stamina recovered per second).")]
+	public float rechargeRate = 1.5f;
+
+	private float currentStamina;
+	private bool isHolding = false;
 
 	private void OnEnable()
 	{
-		if (toggleAction != null)
+		if (holdAction != null)
 		{
-			toggleAction.action.performed += OnPress;
-			toggleAction.action.canceled += OnRelease;
-			toggleAction.action.Enable();
+			holdAction.action.performed += OnPress;
+			holdAction.action.canceled += OnRelease;
+			holdAction.action.Enable();
 		}
 	}
 
 	private void OnDisable()
 	{
-		if (toggleAction != null)
+		if (holdAction != null)
 		{
-			toggleAction.action.performed -= OnPress;
-			toggleAction.action.canceled -= OnRelease;
-			toggleAction.action.Disable();
+			holdAction.action.performed -= OnPress;
+			holdAction.action.canceled -= OnRelease;
+			holdAction.action.Disable();
 		}
 	}
 
 	private void Start()
 	{
+		currentStamina = maxHoldTime;
+
 		if (volumeA == null || volumeB == null)
 		{
 			Debug.LogWarning("Please assign both Volume A and Volume B in the inspector.");
@@ -50,38 +56,59 @@ public class HoldGlobalVolumeWithMaxTime : MonoBehaviour
 		volumeB.enabled = false;
 	}
 
+	private void Update()
+	{
+		// Handle stamina drain and recharge
+		if (isHolding)
+		{
+			currentStamina -= Time.deltaTime;
+			if (currentStamina <= 0f)
+			{
+				currentStamina = 0f;
+				StopHolding();
+			}
+		}
+		else
+		{
+			if (currentStamina < maxHoldTime)
+			{
+				currentStamina += Time.deltaTime * rechargeRate;
+				if (currentStamina > maxHoldTime)
+					currentStamina = maxHoldTime;
+			}
+		}
+	}
+
 	private void OnPress(InputAction.CallbackContext ctx)
 	{
-		// Activate B, disable A
-		volumeA.enabled = false;
-		volumeB.enabled = true;
-
-		// Start max-hold timer
-		if (holdTimerCoroutine != null)
-			StopCoroutine(holdTimerCoroutine);
-		holdTimerCoroutine = StartCoroutine(HoldTimer());
+		if (currentStamina > 0f)
+			StartHolding();
 	}
 
 	private void OnRelease(InputAction.CallbackContext ctx)
 	{
-		ReturnToA();
+		StopHolding();
 	}
 
-	private IEnumerator HoldTimer()
+	private void StartHolding()
 	{
-		yield return new WaitForSeconds(maxHoldTime);
-		ReturnToA();
+		isHolding = true;
+		volumeA.enabled = false;
+		volumeB.enabled = true;
 	}
 
-	private void ReturnToA()
+	private void StopHolding()
 	{
-		if (holdTimerCoroutine != null)
-		{
-			StopCoroutine(holdTimerCoroutine);
-			holdTimerCoroutine = null;
-		}
-
+		isHolding = false;
 		volumeA.enabled = true;
 		volumeB.enabled = false;
+	}
+
+	/// <summary>
+	/// Returns current stamina percentage (0–1) for UI bars etc.
+	/// </summary>
+	public float GetStaminaNormalized()
+	{
+		return currentStamina / maxHoldTime;
 	}
 }
