@@ -12454,6 +12454,59 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: -1
   m_Mesh: {fileID: -8039613103989778838, guid: 6cee491f7e2a05f4885adcfd1b71250d, type: 3}
+--- !u!1 &1492944738
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1492944740}
+  - component: {fileID: 1492944739}
+  m_Layer: 0
+  m_Name: BuildingShooter (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1492944739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492944738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 135fedc4ef4cb5a4e89243b5abd6ab5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 7288747964007725100, guid: 1e84c3f44336a9443bd13acfcafbd32a, type: 3}
+  - {fileID: 4652275098067166153, guid: c794c31122b04014fb9c18730866c37e, type: 3}
+  - {fileID: 5941019290404975366, guid: cad01522886f5174a81dcf11e515c6de, type: 3}
+  - {fileID: 672173605794239328, guid: 2000f6cfee6bbb749bee40a53a2d86b9, type: 3}
+  - {fileID: 2807630263471072714, guid: 4f92e9215aa77db48bbe402e024d471c, type: 3}
+  shootInterval: 0.5
+  shootForce: 200
+  prefabLifetime: 10
+--- !u!4 &1492944740
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492944738}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: 434, y: -47.3, z: 1173}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!1 &1495267347
 GameObject:
   m_ObjectHideFlags: 0
@@ -15296,6 +15349,59 @@ Transform:
   m_Children: []
   m_Father: {fileID: 131842468}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1862863193
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1862863195}
+  - component: {fileID: 1862863194}
+  m_Layer: 0
+  m_Name: BuildingShooter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1862863194
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1862863193}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 135fedc4ef4cb5a4e89243b5abd6ab5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 7288747964007725100, guid: 1e84c3f44336a9443bd13acfcafbd32a, type: 3}
+  - {fileID: 4652275098067166153, guid: c794c31122b04014fb9c18730866c37e, type: 3}
+  - {fileID: 5941019290404975366, guid: cad01522886f5174a81dcf11e515c6de, type: 3}
+  - {fileID: 672173605794239328, guid: 2000f6cfee6bbb749bee40a53a2d86b9, type: 3}
+  - {fileID: 2807630263471072714, guid: 4f92e9215aa77db48bbe402e024d471c, type: 3}
+  shootInterval: 0.5
+  shootForce: 200
+  prefabLifetime: 10
+--- !u!4 &1862863195
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1862863193}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: -224.7, y: -47.3, z: 1173}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!1001 &1864104762
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17507,3 +17613,5 @@ SceneRoots:
   - {fileID: 121133018}
   - {fileID: 781771395}
   - {fileID: 862660635}
+  - {fileID: 1862863195}
+  - {fileID: 1492944740}
