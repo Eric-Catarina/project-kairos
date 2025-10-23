@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 {
@@ -16,13 +17,26 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	public float maxHoldTime = 3f;
 	public float rechargeRate = 1.5f;
 
+	[Header("Transition Settings")]
+	public float transitionDuration = 0.5f;
+
 	private float currentStamina;
 	private bool isHolding = false;
+	private Coroutine transitionCoroutine;
+
+	private const string VolumeAKey = "HoldGlobalVolumeStaminaSafe_VolumeA";
+	private const string VolumeBKey = "HoldGlobalVolumeStaminaSafe_VolumeB";
 
 	private void Awake()
 	{
 		SceneManager.sceneLoaded += OnSceneLoaded;
-		FindVolumes(force: true);
+	}
+
+	private void Start()
+	{
+		RestoreVolumes();
+		RebindInputActions();
+		ResetStaminaAndVolumes();
 	}
 
 	private void OnDestroy()
@@ -32,10 +46,9 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 	{
-		// Always re-find volumes after scene reload
-		FindVolumes(force: true);
-		ResetStaminaAndVolumes();
+		RestoreVolumes();
 		RebindInputActions();
+		ResetStaminaAndVolumes();
 	}
 
 	private void OnEnable()
@@ -46,11 +59,7 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	private void OnDisable()
 	{
 		UnbindInputActions();
-	}
-
-	private void Start()
-	{
-		ResetStaminaAndVolumes();
+		SaveVolumes();
 	}
 
 	private void Update()
@@ -87,8 +96,7 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		if (volumeA == null || volumeB == null) return;
 
 		isHolding = true;
-		SafeSetVolumeState(volumeA, false);
-		SafeSetVolumeState(volumeB, true);
+		StartTransition(volumeA, volumeB);
 	}
 
 	private void StopHolding()
@@ -96,36 +104,103 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		if (volumeA == null || volumeB == null) return;
 
 		isHolding = false;
-		SafeSetVolumeState(volumeA, true);
-		SafeSetVolumeState(volumeB, false);
+		StartTransition(volumeB, volumeA);
 	}
 
 	private void ResetStaminaAndVolumes()
 	{
 		currentStamina = maxHoldTime;
 		isHolding = false;
-		SafeSetVolumeState(volumeA, true);
-		SafeSetVolumeState(volumeB, false);
+		SetVolumesInstant(volumeA, 1f, true);
+		SetVolumesInstant(volumeB, 0f, false);
 	}
 
-	private void FindVolumes(bool force = false)
+	private void RestoreVolumes()
 	{
-		// Always search and assign volumes after scene reload
-		if (force || volumeA == null || volumeB == null)
+		// Try to restore by name
+		string volumeAName = PlayerPrefs.GetString(VolumeAKey, "");
+		string volumeBName = PlayerPrefs.GetString(VolumeBKey, "");
+
+		Volume[] allVolumes = GameObject.FindObjectsOfType<Volume>(true);
+
+		if (!string.IsNullOrEmpty(volumeAName))
+			volumeA = System.Array.Find(allVolumes, v => v.name == volumeAName);
+
+		if (!string.IsNullOrEmpty(volumeBName))
+			volumeB = System.Array.Find(allVolumes, v => v.name == volumeBName);
+
+		// Fallback if not found
+		if (volumeA == null || volumeB == null)
 		{
-			Volume[] allVolumes = GameObject.FindObjectsOfType<Volume>();
 			volumeA = allVolumes.Length > 0 ? allVolumes[0] : null;
 			volumeB = allVolumes.Length > 1 ? allVolumes[1] : null;
+		}
 
-			if (volumeA == null || volumeB == null)
-				Debug.LogWarning($"{name}: Could not find both volumes in scene.");
+		if (volumeA == null || volumeB == null)
+			Debug.LogWarning($"{name}: Could not find both volumes in scene.");
+	}
+
+	private void SaveVolumes()
+	{
+		if (volumeA != null)
+			PlayerPrefs.SetString(VolumeAKey, volumeA.name);
+		if (volumeB != null)
+			PlayerPrefs.SetString(VolumeBKey, volumeB.name);
+		PlayerPrefs.Save();
+	}
+
+	private void SetVolumesInstant(Volume active, float activeWeight, bool activeEnabled)
+	{
+		if (volumeA != null)
+		{
+			volumeA.weight = (active == volumeA) ? activeWeight : 0f;
+			volumeA.enabled = (active == volumeA) ? activeEnabled : false;
+		}
+		if (volumeB != null)
+		{
+			volumeB.weight = (active == volumeB) ? activeWeight : 0f;
+			volumeB.enabled = (active == volumeB) ? activeEnabled : false;
 		}
 	}
 
-	private void SafeSetVolumeState(Volume vol, bool state)
+	private void StartTransition(Volume from, Volume to)
 	{
-		if (vol == null) return;
-		vol.enabled = state;
+		if (transitionCoroutine != null)
+			StopCoroutine(transitionCoroutine);
+		transitionCoroutine = StartCoroutine(TransitionVolumes(from, to, transitionDuration));
+	}
+
+	private IEnumerator TransitionVolumes(Volume from, Volume to, float duration)
+	{
+		if (from != null) from.enabled = true;
+		if (to != null) to.enabled = true;
+
+		float time = 0f;
+		float fromStart = from != null ? from.weight : 0f;
+		float toStart = to != null ? to.weight : 0f;
+
+		while (time < duration)
+		{
+			time += Time.deltaTime;
+			float t = Mathf.Clamp01(time / duration);
+
+			if (from != null) from.weight = Mathf.Lerp(fromStart, 0f, t);
+			if (to != null) to.weight = Mathf.Lerp(toStart, 1f, t);
+
+			yield return null;
+		}
+
+		if (from != null)
+		{
+			from.weight = 0f;
+			from.enabled = false;
+		}
+		if (to != null)
+		{
+			to.weight = 1f;
+			to.enabled = true;
+		}
+		transitionCoroutine = null;
 	}
 
 	private void RebindInputActions()

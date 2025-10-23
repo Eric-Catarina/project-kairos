@@ -5350,11 +5350,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6d8a6fd30e1f4f40abe0076824ce002, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  volumeA: {fileID: 1431693404}
+  volumeA: {fileID: 697174766}
   volumeB: {fileID: 2003541228}
   holdAction: {fileID: -2305771769175242205, guid: f3baaf6744183cd8283bd7e915bf4332, type: 3}
   maxHoldTime: 3
   rechargeRate: 1
+  transitionDuration: 0.2
 --- !u!1 &752610810 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 399371227267623753, guid: 24c3d01d8983e624494df4630063ea0f, type: 3}
@@ -8958,7 +8959,7 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 3258515427170321763, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      insertIndex: 0
+      insertIndex: -1
       addedObject: {fileID: 892347315}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8110280352970941500, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
@@ -12072,17 +12073,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1431693404 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7108288391252255758, guid: e845135526f54be26836a8c0237d8347, type: 3}
-  m_PrefabInstance: {fileID: 96570897}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
 --- !u!1 &1436402660
 GameObject:
   m_ObjectHideFlags: 0
