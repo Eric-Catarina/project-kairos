@@ -3,33 +3,21 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
-<<<<<<< HEAD
 public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
-=======
-public class HoldGlobalVolumeWithMaxTime : MonoBehaviour
->>>>>>> parent of defd300 (everything working)
 {
 	[Header("Assign the Global Volumes")]
 	public Volume volumeA;
 	public Volume volumeB;
 
 	[Header("Input Action Reference (from Input System)")]
-	public InputActionReference toggleAction;
+	public InputActionReference holdAction;
 
-<<<<<<< HEAD
 	[Header("Stamina Settings")]
 	public float maxHoldTime = 3f;
 	public float rechargeRate = 1.5f;
 
 	private float currentStamina;
 	private bool isHolding = false;
-=======
-	[Header("Max Hold Time (seconds)")]
-	[Tooltip("Maximum time the button can be held before automatically returning to Volume A.")]
-	public float maxHoldTime = 3f;
-
-	private Coroutine holdTimerCoroutine;
->>>>>>> parent of defd300 (everything working)
 
 	private void Awake()
 	{
@@ -51,35 +39,26 @@ public class HoldGlobalVolumeWithMaxTime : MonoBehaviour
 
 	private void OnEnable()
 	{
-<<<<<<< HEAD
 		if (holdAction?.action != null)
-=======
-		if (toggleAction != null)
->>>>>>> parent of defd300 (everything working)
 		{
-			toggleAction.action.performed += OnPress;
-			toggleAction.action.canceled += OnRelease;
-			toggleAction.action.Enable();
+			holdAction.action.performed += OnPress;
+			holdAction.action.canceled += OnRelease;
+			holdAction.action.Enable();
 		}
 	}
 
 	private void OnDisable()
 	{
-<<<<<<< HEAD
 		if (holdAction?.action != null)
-=======
-		if (toggleAction != null)
->>>>>>> parent of defd300 (everything working)
 		{
-			toggleAction.action.performed -= OnPress;
-			toggleAction.action.canceled -= OnRelease;
-			toggleAction.action.Disable();
+			holdAction.action.performed -= OnPress;
+			holdAction.action.canceled -= OnRelease;
+			holdAction.action.Disable();
 		}
 	}
 
 	private void Start()
 	{
-<<<<<<< HEAD
 		// Ensure volumes are active and stamina is full at start
 		ResetStaminaAndVolumes();
 	}
@@ -105,52 +84,28 @@ public class HoldGlobalVolumeWithMaxTime : MonoBehaviour
 		}
 	}
 
-=======
-		if (volumeA == null || volumeB == null)
-		{
-			Debug.LogWarning("Please assign both Volume A and Volume B in the inspector.");
-			return;
-		}
-
-		volumeA.enabled = true;
-		volumeB.enabled = false;
-	}
-
->>>>>>> parent of defd300 (everything working)
 	private void OnPress(InputAction.CallbackContext ctx)
 	{
-		// Activate B, disable A
-		volumeA.enabled = false;
-		volumeB.enabled = true;
-
-		// Start max-hold timer
-		if (holdTimerCoroutine != null)
-			StopCoroutine(holdTimerCoroutine);
-		holdTimerCoroutine = StartCoroutine(HoldTimer());
+		if (currentStamina > 0f)
+			StartHolding();
 	}
 
 	private void OnRelease(InputAction.CallbackContext ctx)
 	{
-		ReturnToA();
+		StopHolding();
 	}
 
-	private IEnumerator HoldTimer()
+	private void StartHolding()
 	{
-<<<<<<< HEAD
 		if (volumeA == null || volumeB == null) return;
 
 		isHolding = true;
 		SafeSetVolumeState(volumeA, false);
 		SafeSetVolumeState(volumeB, true);
-=======
-		yield return new WaitForSeconds(maxHoldTime);
-		ReturnToA();
->>>>>>> parent of defd300 (everything working)
 	}
 
-	private void ReturnToA()
+	private void StopHolding()
 	{
-<<<<<<< HEAD
 		if (volumeA == null || volumeB == null) return;
 
 		isHolding = false;
@@ -199,15 +154,4 @@ public class HoldGlobalVolumeWithMaxTime : MonoBehaviour
 	{
 		return Mathf.Clamp01(currentStamina / maxHoldTime);
 	}
-=======
-		if (holdTimerCoroutine != null)
-		{
-			StopCoroutine(holdTimerCoroutine);
-			holdTimerCoroutine = null;
-		}
-
-		volumeA.enabled = true;
-		volumeB.enabled = false;
-	}
->>>>>>> parent of defd300 (everything working)
 }
