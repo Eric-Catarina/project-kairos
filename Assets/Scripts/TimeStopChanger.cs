@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
-using System.Collections;
+using UnityEngine.SceneManagement;
 
-public class HoldGlobalVolumeStamina : MonoBehaviour
+public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 {
 	[Header("Assign the Global Volumes")]
 	public Volume volumeA;
@@ -13,18 +13,33 @@ public class HoldGlobalVolumeStamina : MonoBehaviour
 	public InputActionReference holdAction;
 
 	[Header("Stamina Settings")]
-	[Tooltip("Maximum active time (in seconds) Volume B can stay on with full stamina.")]
 	public float maxHoldTime = 3f;
-
-	[Tooltip("Recharge rate (seconds of stamina recovered per second).")]
 	public float rechargeRate = 1.5f;
 
 	private float currentStamina;
 	private bool isHolding = false;
 
+	private void Awake()
+	{
+		SceneManager.sceneLoaded += OnSceneLoaded;
+		FindVolumesIfMissing();
+	}
+
+	private void OnDestroy()
+	{
+		SceneManager.sceneLoaded -= OnSceneLoaded;
+	}
+
+	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+	{
+		// Re-find volumes and reset everything
+		FindVolumesIfMissing();
+		ResetStaminaAndVolumes();
+	}
+
 	private void OnEnable()
 	{
-		if (holdAction != null)
+		if (holdAction?.action != null)
 		{
 			holdAction.action.performed += OnPress;
 			holdAction.action.canceled += OnRelease;
@@ -34,7 +49,7 @@ public class HoldGlobalVolumeStamina : MonoBehaviour
 
 	private void OnDisable()
 	{
-		if (holdAction != null)
+		if (holdAction?.action != null)
 		{
 			holdAction.action.performed -= OnPress;
 			holdAction.action.canceled -= OnRelease;
@@ -44,21 +59,15 @@ public class HoldGlobalVolumeStamina : MonoBehaviour
 
 	private void Start()
 	{
-		currentStamina = maxHoldTime;
-
-		if (volumeA == null || volumeB == null)
-		{
-			Debug.LogWarning("Please assign both Volume A and Volume B in the inspector.");
-			return;
-		}
-
-		volumeA.enabled = true;
-		volumeB.enabled = false;
+		// Ensure volumes are active and stamina is full at start
+		ResetStaminaAndVolumes();
 	}
 
 	private void Update()
 	{
-		// Handle stamina drain and recharge
+		if (volumeA == null || volumeB == null)
+			FindVolumesIfMissing();
+
 		if (isHolding)
 		{
 			currentStamina -= Time.deltaTime;
@@ -70,12 +79,8 @@ public class HoldGlobalVolumeStamina : MonoBehaviour
 		}
 		else
 		{
-			if (currentStamina < maxHoldTime)
-			{
-				currentStamina += Time.deltaTime * rechargeRate;
-				if (currentStamina > maxHoldTime)
-					currentStamina = maxHoldTime;
-			}
+			currentStamina += Time.deltaTime * rechargeRate;
+			currentStamina = Mathf.Min(currentStamina, maxHoldTime);
 		}
 	}
 
@@ -92,23 +97,61 @@ public class HoldGlobalVolumeStamina : MonoBehaviour
 
 	private void StartHolding()
 	{
+		if (volumeA == null || volumeB == null) return;
+
 		isHolding = true;
-		volumeA.enabled = false;
-		volumeB.enabled = true;
+		SafeSetVolumeState(volumeA, false);
+		SafeSetVolumeState(volumeB, true);
 	}
 
 	private void StopHolding()
 	{
+		if (volumeA == null || volumeB == null) return;
+
 		isHolding = false;
-		volumeA.enabled = true;
-		volumeB.enabled = false;
+		SafeSetVolumeState(volumeA, true);
+		SafeSetVolumeState(volumeB, false);
 	}
 
-	/// <summary>
-	/// Returns current stamina percentage (0–1) for UI bars etc.
-	/// </summary>
+	private void ResetStaminaAndVolumes()
+	{
+		currentStamina = maxHoldTime;
+		isHolding = false;
+		SafeSetVolumeState(volumeA, true);
+		SafeSetVolumeState(volumeB, false);
+	}
+
+	private void FindVolumesIfMissing()
+	{
+		if (volumeA == null)
+			volumeA = GameObject.FindObjectOfType<Volume>(); // finds the first in scene
+
+		if (volumeB == null)
+		{
+			Volume[] allVolumes = GameObject.FindObjectsOfType<Volume>();
+			foreach (var vol in allVolumes)
+			{
+				if (vol != volumeA)
+				{
+					volumeB = vol;
+					break;
+				}
+			}
+		}
+
+		if (volumeA == null || volumeB == null)
+			Debug.LogWarning($"{name}: Could not find both volumes in scene.");
+	}
+
+	private void SafeSetVolumeState(Volume vol, bool state)
+	{
+		if (vol == null) return;
+		if (vol.Equals(null)) return;
+		vol.enabled = state;
+	}
+
 	public float GetStaminaNormalized()
 	{
-		return currentStamina / maxHoldTime;
+		return Mathf.Clamp01(currentStamina / maxHoldTime);
 	}
 }
