@@ -22,7 +22,7 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	private void Awake()
 	{
 		SceneManager.sceneLoaded += OnSceneLoaded;
-		FindVolumesIfMissing();
+		FindVolumes(force: true);
 	}
 
 	private void OnDestroy()
@@ -32,42 +32,29 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 	{
-		// Re-find volumes and reset everything
-		FindVolumesIfMissing();
+		// Always re-find volumes after scene reload
+		FindVolumes(force: true);
 		ResetStaminaAndVolumes();
+		RebindInputActions();
 	}
 
 	private void OnEnable()
 	{
-		if (holdAction?.action != null)
-		{
-			holdAction.action.performed += OnPress;
-			holdAction.action.canceled += OnRelease;
-			holdAction.action.Enable();
-		}
+		RebindInputActions();
 	}
 
 	private void OnDisable()
 	{
-		if (holdAction?.action != null)
-		{
-			holdAction.action.performed -= OnPress;
-			holdAction.action.canceled -= OnRelease;
-			holdAction.action.Disable();
-		}
+		UnbindInputActions();
 	}
 
 	private void Start()
 	{
-		// Ensure volumes are active and stamina is full at start
 		ResetStaminaAndVolumes();
 	}
 
 	private void Update()
 	{
-		if (volumeA == null || volumeB == null)
-			FindVolumesIfMissing();
-
 		if (isHolding)
 		{
 			currentStamina -= Time.deltaTime;
@@ -121,33 +108,46 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		SafeSetVolumeState(volumeB, false);
 	}
 
-	private void FindVolumesIfMissing()
+	private void FindVolumes(bool force = false)
 	{
-		if (volumeA == null)
-			volumeA = GameObject.FindObjectOfType<Volume>(); // finds the first in scene
-
-		if (volumeB == null)
+		// Always search and assign volumes after scene reload
+		if (force || volumeA == null || volumeB == null)
 		{
 			Volume[] allVolumes = GameObject.FindObjectsOfType<Volume>();
-			foreach (var vol in allVolumes)
-			{
-				if (vol != volumeA)
-				{
-					volumeB = vol;
-					break;
-				}
-			}
-		}
+			volumeA = allVolumes.Length > 0 ? allVolumes[0] : null;
+			volumeB = allVolumes.Length > 1 ? allVolumes[1] : null;
 
-		if (volumeA == null || volumeB == null)
-			Debug.LogWarning($"{name}: Could not find both volumes in scene.");
+			if (volumeA == null || volumeB == null)
+				Debug.LogWarning($"{name}: Could not find both volumes in scene.");
+		}
 	}
 
 	private void SafeSetVolumeState(Volume vol, bool state)
 	{
 		if (vol == null) return;
-		if (vol.Equals(null)) return;
 		vol.enabled = state;
+	}
+
+	private void RebindInputActions()
+	{
+		if (holdAction?.action != null)
+		{
+			holdAction.action.performed -= OnPress;
+			holdAction.action.canceled -= OnRelease;
+			holdAction.action.performed += OnPress;
+			holdAction.action.canceled += OnRelease;
+			holdAction.action.Enable();
+		}
+	}
+
+	private void UnbindInputActions()
+	{
+		if (holdAction?.action != null)
+		{
+			holdAction.action.performed -= OnPress;
+			holdAction.action.canceled -= OnRelease;
+			holdAction.action.Disable();
+		}
 	}
 
 	public float GetStaminaNormalized()
