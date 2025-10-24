@@ -5414,10 +5414,10 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 7087286918256264258, guid: 19b10a2f83228d8428a4fd6e2bdbf63c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1467845518}
+      addedObject: {fileID: 1467845519}
     - targetCorrespondingSourceObject: {fileID: 7087286918256264258, guid: 19b10a2f83228d8428a4fd6e2bdbf63c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1467845519}
+      addedObject: {fileID: 1467845524}
   m_SourcePrefab: {fileID: 100100000, guid: 19b10a2f83228d8428a4fd6e2bdbf63c, type: 3}
 --- !u!1001 &828180571
 PrefabInstance:
@@ -10205,22 +10205,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8206469605374509746, guid: 19b10a2f83228d8428a4fd6e2bdbf63c, type: 3}
   m_PrefabInstance: {fileID: 826941077}
   m_PrefabAsset: {fileID: 0}
---- !u!111 &1467845518
-Animation:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1467845511}
-  m_Enabled: 1
-  serializedVersion: 4
-  m_Animation: {fileID: 0}
-  m_Animations: []
-  m_WrapMode: 0
-  m_PlayAutomatically: 1
-  m_AnimatePhysics: 0
-  m_UpdateMode: 0
-  m_CullingType: 0
 --- !u!65 &1467845519
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10242,6 +10226,28 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 5.1200013, y: 5.12, z: 0.20000005}
   m_Center: {x: -0.000015258789, y: 0, z: 0.00012207031}
+--- !u!95 &1467845524
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467845511}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 876a5fe399baa884e9896e7239430d96, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!4 &1471516212 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5466212303936436595, guid: c794c31122b04014fb9c18730866c37e, type: 3}
