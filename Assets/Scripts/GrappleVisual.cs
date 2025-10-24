@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
-using System.Collections.Generic;
 using System.Collections;
+using System.Collections.Generic;
 
 [ExecuteAlways]
-public class LinePrefabRendererFinal : MonoBehaviour
+public class LinePrefabRendererEffects : MonoBehaviour
 {
 	[Header("References")]
 	public LineRenderer lineRenderer;
@@ -14,6 +14,8 @@ public class LinePrefabRendererFinal : MonoBehaviour
 	public bool updateInEditor = true;
 	public bool updateInPlay = true;
 	public float minSegmentLength = 0.001f;
+	[Range(0f, 1f)] public float flickerChance = 0.3f;
+	public float flickerRate = 0.05f;
 
 	private class SegmentPair
 	{
@@ -102,47 +104,23 @@ public class LinePrefabRendererFinal : MonoBehaviour
 		bool found = false;
 
 		MeshFilter mf = prefabRef.GetComponentInChildren<MeshFilter>();
-		if (mf && mf.sharedMesh)
-		{
-			localSize = mf.sharedMesh.bounds.size;
-			found = true;
-		}
+		if (mf && mf.sharedMesh) { localSize = mf.sharedMesh.bounds.size; found = true; }
 		else
 		{
 			SkinnedMeshRenderer smr = prefabRef.GetComponentInChildren<SkinnedMeshRenderer>();
-			if (smr && smr.sharedMesh)
-			{
-				localSize = smr.sharedMesh.bounds.size;
-				found = true;
-			}
+			if (smr && smr.sharedMesh) { localSize = smr.sharedMesh.bounds.size; found = true; }
 			else
 			{
 				SpriteRenderer sr = prefabRef.GetComponentInChildren<SpriteRenderer>();
-				if (sr && sr.sprite)
-				{
-					localSize = sr.sprite.bounds.size;
-					found = true;
-				}
+				if (sr && sr.sprite) { localSize = sr.sprite.bounds.size; found = true; }
 			}
 		}
 
 		if (!found) localSize = new Vector3(0.1f, 0.1f, 1f);
 
-		if (localSize.x >= localSize.y && localSize.x >= localSize.z)
-		{
-			prefabPrimaryAxisLocal = Vector3.right;
-			prefabLength = localSize.x * Mathf.Abs(prefabOriginalLocalScale.x);
-		}
-		else if (localSize.y >= localSize.x && localSize.y >= localSize.z)
-		{
-			prefabPrimaryAxisLocal = Vector3.up;
-			prefabLength = localSize.y * Mathf.Abs(prefabOriginalLocalScale.y);
-		}
-		else
-		{
-			prefabPrimaryAxisLocal = Vector3.forward;
-			prefabLength = localSize.z * Mathf.Abs(prefabOriginalLocalScale.z);
-		}
+		if (localSize.x >= localSize.y && localSize.x >= localSize.z) { prefabPrimaryAxisLocal = Vector3.right; prefabLength = localSize.x * Mathf.Abs(prefabOriginalLocalScale.x); }
+		else if (localSize.y >= localSize.x && localSize.y >= localSize.z) { prefabPrimaryAxisLocal = Vector3.up; prefabLength = localSize.y * Mathf.Abs(prefabOriginalLocalScale.y); }
+		else { prefabPrimaryAxisLocal = Vector3.forward; prefabLength = localSize.z * Mathf.Abs(prefabOriginalLocalScale.z); }
 
 		if (prefabLength <= 0f) prefabLength = 1f;
 	}
@@ -156,21 +134,28 @@ public class LinePrefabRendererFinal : MonoBehaviour
 
 		int needed = Mathf.Max(0, lineRenderer.positionCount - 1);
 
-		// Create more segments if needed
+		// Create or activate segments
 		while (segments.Count < needed)
 		{
 			SegmentPair pair = new SegmentPair();
 
 			if (lineSegmentPrefabA)
+			{
 				pair.A = Instantiate(lineSegmentPrefabA, segmentParent);
+				PlayAnimator(pair.A);
+				if (Application.isPlaying) StartCoroutine(FlickerRoutine(pair.A));
+			}
 
 			if (lineSegmentPrefabB)
+			{
 				pair.B = Instantiate(lineSegmentPrefabB, segmentParent);
+				PlayAnimator(pair.B);
+				if (Application.isPlaying) StartCoroutine(FlickerRoutine(pair.B));
+			}
 
 			segments.Add(pair);
 		}
 
-		// Activate only what’s needed
 		for (int i = 0; i < segments.Count; i++)
 		{
 			bool active = (i < needed);
@@ -178,7 +163,7 @@ public class LinePrefabRendererFinal : MonoBehaviour
 			if (segments[i].B) segments[i].B.SetActive(active);
 		}
 
-		// Update positions, scales, etc.
+		// Update positions, rotation, scale
 		for (int i = 0; i < needed; i++)
 		{
 			Vector3 start = lineRenderer.GetPosition(i);
@@ -197,12 +182,6 @@ public class LinePrefabRendererFinal : MonoBehaviour
 
 			ApplyTransform(segments[i].A, mid, dir, segLength);
 			ApplyTransform(segments[i].B, mid, dir, segLength);
-
-			if (Application.isPlaying)
-			{
-				if (segments[i].A) StartCoroutine(DelayedAnimationStart(segments[i].A, 0.05f));
-				if (segments[i].B) StartCoroutine(DelayedAnimationStart(segments[i].B, 0.05f));
-			}
 		}
 	}
 
@@ -212,35 +191,31 @@ public class LinePrefabRendererFinal : MonoBehaviour
 
 		seg.transform.position = mid;
 
-		// Align prefab along line direction
+		// Align along the line
 		Vector3 prefabAxisWorld = seg.transform.TransformDirection(prefabPrimaryAxisLocal).normalized;
 		Quaternion align = Quaternion.FromToRotation(prefabAxisWorld, dir);
 		seg.transform.rotation = align * seg.transform.rotation;
 
-		// Scale to match segment length
+		// Scale
 		float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
 		Vector3 newScale = prefabOriginalLocalScale;
-
-		if (prefabPrimaryAxisLocal == Vector3.right)
-			newScale.x *= scaleFactor;
-		else if (prefabPrimaryAxisLocal == Vector3.up)
-			newScale.y *= scaleFactor;
-		else
-			newScale.z *= scaleFactor;
+		if (prefabPrimaryAxisLocal == Vector3.right) newScale.x *= scaleFactor;
+		else if (prefabPrimaryAxisLocal == Vector3.up) newScale.y *= scaleFactor;
+		else newScale.z *= scaleFactor;
 
 		seg.transform.localScale = newScale;
 	}
 
-	IEnumerator DelayedAnimationStart(GameObject seg, float delay)
+	void PlayAnimator(GameObject seg)
 	{
-		yield return new WaitForSeconds(delay);
-		if (seg == null) yield break;
+		if (seg == null) return;
 
 		Animator animator = seg.GetComponentInChildren<Animator>();
-		if (animator && animator.runtimeAnimatorController)
+		if (animator != null && animator.runtimeAnimatorController != null)
 		{
-			animator.Update(0f);
-			animator.Play(0, 0, 0f);
+			animator.enabled = true;
+			animator.Rebind();
+			animator.Play(animator.GetCurrentAnimatorStateInfo(0).fullPathHash, 0, 0f);
 		}
 
 		Animation legacy = seg.GetComponentInChildren<Animation>();
@@ -250,11 +225,25 @@ public class LinePrefabRendererFinal : MonoBehaviour
 			legacy.Play();
 		}
 
+		// Play ParticleSystems (sparks)
 		ParticleSystem[] ps = seg.GetComponentsInChildren<ParticleSystem>();
 		foreach (var p in ps)
 		{
 			p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 			p.Play(true);
+		}
+	}
+
+	IEnumerator FlickerRoutine(GameObject seg)
+	{
+		if (seg == null) yield break;
+		SpriteRenderer sr = seg.GetComponentInChildren<SpriteRenderer>();
+
+		while (seg != null)
+		{
+			yield return new WaitForSeconds(flickerRate);
+			if (sr) sr.enabled = Random.value > flickerChance;
+			else seg.SetActive(Random.value > flickerChance);
 		}
 	}
 }
