@@ -24,31 +24,26 @@ public class RandomPrefabShooter : MonoBehaviour
 	public InputActionReference holdAction;
 
 	[Header("Stamina Settings")]
-	[Tooltip("Maximum stamina duration (seconds).")]
-	public float maxStamina = 3f;
+	[Tooltip("Maximum button hold duration (seconds).")]
+	public float maxHoldTime = 3f;
 
-	[Tooltip("Regeneration rate in seconds per second.")]
-	public float regenRate = 1f;
-
-	private float timer;
-	private static float sharedStamina;
+	private float holdTimer = 0f;
+	private float shootTimer = 0f;
 	private static bool isButtonPressed;
+	private static bool inputSubscribed = false;
 
 	private void Awake()
 	{
-		// Subscribe input only once to avoid duplicates
+		// Subscribe input only once
 		if (holdAction != null && !inputSubscribed)
 		{
-			holdAction.action.performed += ctx => isButtonPressed = true;
+			holdAction.action.performed += ctx =>
+			{
+				if (holdTimer < maxHoldTime)
+					isButtonPressed = true;
+			};
 			holdAction.action.canceled += ctx => isButtonPressed = false;
 			inputSubscribed = true;
-		}
-
-		// Initialize stamina once on startup or scene reload
-		if (!staminaInitialized)
-		{
-			sharedStamina = maxStamina;
-			staminaInitialized = true;
 		}
 	}
 
@@ -66,40 +61,42 @@ public class RandomPrefabShooter : MonoBehaviour
 
 	private void OnSceneReload(Scene scene, LoadSceneMode mode)
 	{
-		sharedStamina = maxStamina;
+		holdTimer = 0f;
+		shootTimer = 0f;
+		isButtonPressed = false;
 	}
 
 	private void Update()
 	{
-		// --- Handle shared stamina ---
 		if (isButtonPressed)
 		{
-			sharedStamina -= Time.deltaTime;
-			if (sharedStamina < 0f)
-				sharedStamina = 0f;
+			// Count hold time
+			holdTimer += Time.deltaTime;
+
+			// Auto-release button if max hold time is reached
+			if (holdTimer >= maxHoldTime)
+			{
+				holdTimer = maxHoldTime;
+				isButtonPressed = false;
+			}
 		}
 		else
 		{
-			sharedStamina += regenRate * Time.deltaTime;
-			if (sharedStamina > maxStamina)
-				sharedStamina = maxStamina;
-		}
+			// Reset hold timer when button is not pressed
+			holdTimer = 0f;
 
-		// --- Only shoot when button is NOT pressed and stamina > 0 ---
-		if (!isButtonPressed && sharedStamina > 0f)
-		{
-			timer += Time.deltaTime;
-			if (timer >= shootInterval)
+			// Shooting logic
+			shootTimer += Time.deltaTime;
+			if (shootTimer >= shootInterval)
 			{
 				ShootRandomPrefab();
-				timer = 0f;
+				shootTimer = 0f;
 			}
 		}
 	}
 
 	private void ShootRandomPrefab()
 	{
-		// Keep your existing logic intact
 		GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
 		if (validPrefabs.Length == 0) return;
 
@@ -121,8 +118,4 @@ public class RandomPrefabShooter : MonoBehaviour
 		Gizmos.color = Color.cyan;
 		Gizmos.DrawRay(transform.position, transform.forward * 2f);
 	}
-
-	// --- Static helpers ---
-	private static bool staminaInitialized = false;
-	private static bool inputSubscribed = false;
 }
