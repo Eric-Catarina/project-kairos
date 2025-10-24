@@ -7,14 +7,21 @@ public class LinePrefabRendererFinal : MonoBehaviour
 {
 	[Header("References")]
 	public LineRenderer lineRenderer;
-	public GameObject lineSegmentPrefab;
+	public GameObject lineSegmentPrefabA;
+	public GameObject lineSegmentPrefabB;
 
 	[Header("Settings")]
 	public bool updateInEditor = true;
 	public bool updateInPlay = true;
 	public float minSegmentLength = 0.001f;
 
-	private List<GameObject> segments = new List<GameObject>();
+	private class SegmentPair
+	{
+		public GameObject A;
+		public GameObject B;
+	}
+
+	private List<SegmentPair> segments = new List<SegmentPair>();
 	private Transform segmentParent;
 
 	private float prefabLength = 1f;
@@ -87,13 +94,14 @@ public class LinePrefabRendererFinal : MonoBehaviour
 
 	void CachePrefabInfo()
 	{
-		if (lineSegmentPrefab == null) return;
+		GameObject prefabRef = lineSegmentPrefabA != null ? lineSegmentPrefabA : lineSegmentPrefabB;
+		if (prefabRef == null) return;
 
-		prefabOriginalLocalScale = lineSegmentPrefab.transform.localScale;
+		prefabOriginalLocalScale = prefabRef.transform.localScale;
 		Vector3 localSize = Vector3.zero;
 		bool found = false;
 
-		MeshFilter mf = lineSegmentPrefab.GetComponentInChildren<MeshFilter>();
+		MeshFilter mf = prefabRef.GetComponentInChildren<MeshFilter>();
 		if (mf && mf.sharedMesh)
 		{
 			localSize = mf.sharedMesh.bounds.size;
@@ -101,7 +109,7 @@ public class LinePrefabRendererFinal : MonoBehaviour
 		}
 		else
 		{
-			SkinnedMeshRenderer smr = lineSegmentPrefab.GetComponentInChildren<SkinnedMeshRenderer>();
+			SkinnedMeshRenderer smr = prefabRef.GetComponentInChildren<SkinnedMeshRenderer>();
 			if (smr && smr.sharedMesh)
 			{
 				localSize = smr.sharedMesh.bounds.size;
@@ -109,7 +117,7 @@ public class LinePrefabRendererFinal : MonoBehaviour
 			}
 			else
 			{
-				SpriteRenderer sr = lineSegmentPrefab.GetComponentInChildren<SpriteRenderer>();
+				SpriteRenderer sr = prefabRef.GetComponentInChildren<SpriteRenderer>();
 				if (sr && sr.sprite)
 				{
 					localSize = sr.sprite.bounds.size;
@@ -141,68 +149,91 @@ public class LinePrefabRendererFinal : MonoBehaviour
 
 	void RebuildAll()
 	{
-		if (lineRenderer == null || lineSegmentPrefab == null) return;
+		if (lineRenderer == null || (lineSegmentPrefabA == null && lineSegmentPrefabB == null))
+			return;
+
 		EnsureContainer();
 
 		int needed = Mathf.Max(0, lineRenderer.positionCount - 1);
 
+		// Create more segments if needed
 		while (segments.Count < needed)
 		{
-			GameObject seg = Instantiate(lineSegmentPrefab, segmentParent);
-			seg.name = $"LineSeg_{segments.Count}";
-			segments.Add(seg);
+			SegmentPair pair = new SegmentPair();
+
+			if (lineSegmentPrefabA)
+				pair.A = Instantiate(lineSegmentPrefabA, segmentParent);
+
+			if (lineSegmentPrefabB)
+				pair.B = Instantiate(lineSegmentPrefabB, segmentParent);
+
+			segments.Add(pair);
 		}
 
+		// Activate only what’s needed
 		for (int i = 0; i < segments.Count; i++)
 		{
 			bool active = (i < needed);
-			if (segments[i] && segments[i].activeSelf != active)
-				segments[i].SetActive(active);
+			if (segments[i].A) segments[i].A.SetActive(active);
+			if (segments[i].B) segments[i].B.SetActive(active);
 		}
 
+		// Update positions, scales, etc.
 		for (int i = 0; i < needed; i++)
 		{
 			Vector3 start = lineRenderer.GetPosition(i);
 			Vector3 end = lineRenderer.GetPosition(i + 1);
 			float segLength = Vector3.Distance(start, end);
+
 			if (segLength < minSegmentLength)
 			{
-				segments[i].SetActive(false);
+				if (segments[i].A) segments[i].A.SetActive(false);
+				if (segments[i].B) segments[i].B.SetActive(false);
 				continue;
 			}
 
-			GameObject seg = segments[i];
-			seg.SetActive(true);
-
 			Vector3 mid = (start + end) * 0.5f;
 			Vector3 dir = (end - start).normalized;
-			seg.transform.position = mid;
 
-			Vector3 prefabAxisWorld = seg.transform.TransformDirection(prefabPrimaryAxisLocal).normalized;
-			Quaternion align = Quaternion.FromToRotation(prefabAxisWorld, dir);
-			seg.transform.rotation = align * seg.transform.rotation;
+			ApplyTransform(segments[i].A, mid, dir, segLength);
+			ApplyTransform(segments[i].B, mid, dir, segLength);
 
-			float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
-			Vector3 newScale = prefabOriginalLocalScale;
-
-			if (prefabPrimaryAxisLocal == Vector3.right)
-				newScale.x *= scaleFactor;
-			else if (prefabPrimaryAxisLocal == Vector3.up)
-				newScale.y *= scaleFactor;
-			else
-				newScale.z *= scaleFactor;
-
-			seg.transform.localScale = newScale;
-
-			// Start animations next frame (so Unity has initialized animators)
 			if (Application.isPlaying)
-				StartCoroutine(DelayedAnimationStart(seg, 0.05f));
+			{
+				if (segments[i].A) StartCoroutine(DelayedAnimationStart(segments[i].A, 0.05f));
+				if (segments[i].B) StartCoroutine(DelayedAnimationStart(segments[i].B, 0.05f));
+			}
 		}
+	}
+
+	void ApplyTransform(GameObject seg, Vector3 mid, Vector3 dir, float segLength)
+	{
+		if (seg == null) return;
+
+		seg.transform.position = mid;
+
+		// Align prefab along line direction
+		Vector3 prefabAxisWorld = seg.transform.TransformDirection(prefabPrimaryAxisLocal).normalized;
+		Quaternion align = Quaternion.FromToRotation(prefabAxisWorld, dir);
+		seg.transform.rotation = align * seg.transform.rotation;
+
+		// Scale to match segment length
+		float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
+		Vector3 newScale = prefabOriginalLocalScale;
+
+		if (prefabPrimaryAxisLocal == Vector3.right)
+			newScale.x *= scaleFactor;
+		else if (prefabPrimaryAxisLocal == Vector3.up)
+			newScale.y *= scaleFactor;
+		else
+			newScale.z *= scaleFactor;
+
+		seg.transform.localScale = newScale;
 	}
 
 	IEnumerator DelayedAnimationStart(GameObject seg, float delay)
 	{
-		yield return new WaitForSeconds(delay); // wait 1 frame or 0.05s for reliability
+		yield return new WaitForSeconds(delay);
 		if (seg == null) yield break;
 
 		Animator animator = seg.GetComponentInChildren<Animator>();
