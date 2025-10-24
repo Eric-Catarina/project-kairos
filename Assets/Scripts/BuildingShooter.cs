@@ -27,6 +27,9 @@ public class RandomPrefabShooter : MonoBehaviour
 	[Tooltip("Maximum button hold duration (seconds).")]
 	public float maxHoldTime = 3f;
 
+	[Tooltip("Regeneration rate per second when button is not held.")]
+	public float regenRate = 1f;
+
 	private float holdTimer = 0f;
 	private float shootTimer = 0f;
 	private static bool isButtonPressed;
@@ -39,7 +42,7 @@ public class RandomPrefabShooter : MonoBehaviour
 		{
 			holdAction.action.performed += ctx =>
 			{
-				if (holdTimer < maxHoldTime)
+				if (holdTimer > 0f)
 					isButtonPressed = true;
 			};
 			holdAction.action.canceled += ctx => isButtonPressed = false;
@@ -61,7 +64,7 @@ public class RandomPrefabShooter : MonoBehaviour
 
 	private void OnSceneReload(Scene scene, LoadSceneMode mode)
 	{
-		holdTimer = 0f;
+		holdTimer = maxHoldTime;
 		shootTimer = 0f;
 		isButtonPressed = false;
 	}
@@ -70,20 +73,22 @@ public class RandomPrefabShooter : MonoBehaviour
 	{
 		if (isButtonPressed)
 		{
-			// Count hold time
-			holdTimer += Time.deltaTime;
+			// Decrease hold timer
+			holdTimer -= Time.deltaTime;
 
-			// Auto-release button if max hold time is reached
-			if (holdTimer >= maxHoldTime)
+			// Auto-release when max hold time used up
+			if (holdTimer <= 0f)
 			{
-				holdTimer = maxHoldTime;
+				holdTimer = 0f;
 				isButtonPressed = false;
 			}
 		}
 		else
 		{
-			// Reset hold timer when button is not pressed
-			holdTimer = 0f;
+			// Regenerate hold timer when button not pressed
+			holdTimer += regenRate * Time.deltaTime;
+			if (holdTimer > maxHoldTime)
+				holdTimer = maxHoldTime;
 
 			// Shooting logic
 			shootTimer += Time.deltaTime;
