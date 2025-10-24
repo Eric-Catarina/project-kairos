@@ -64,7 +64,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 622b7cc3590a46f1d909ab8c8a2ab915, type: 2}
+  - {fileID: 2100000, guid: 9e9fc5536253a794e96e86bc7825996f, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -150,7 +150,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 464b67502f752fdb4985a81888730575, type: 2}
+  - {fileID: 2100000, guid: 24b5849b68e364d42b1fd7ed51142c17, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -184,6 +184,8 @@ GameObject:
   - component: {fileID: 3018523384153589429}
   - component: {fileID: 5640915876144019237}
   - component: {fileID: 802001704662547826}
+  - component: {fileID: 6771304928043739076}
+  - component: {fileID: -4410607808560028318}
   m_Layer: 0
   m_Name: JumpPadFX 1
   m_TagString: Untagged
@@ -201,7 +203,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -2.54, y: -1.5119948, z: 3.78}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 3, y: 3, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5367186313717937940}
@@ -270,3 +272,33 @@ MonoBehaviour:
   boolParameterName: 
   activateOnlyOnce: 1
   sfxOnActivate: Boing
+--- !u!114 &6771304928043739076
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2227355015691255600}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d804f75e9cad47459ef5115551e8f13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &-4410607808560028318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2227355015691255600}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b7d27ecbee703505ae7c6fba1850e9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  launchForce: 200
+  launchAngle: 45
+  resetPlayerMomentum: 1
+  launchEffect: {fileID: 0}
+  launchSfx: JumpPadLaunch
+  cooldownDuration: 0.5
