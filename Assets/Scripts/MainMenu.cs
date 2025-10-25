@@ -21,7 +21,7 @@ public class MainMenu : UIPanel
         // Lógica que estava no Start, agora em OnEnable para ser mais robusta
         if (InputStateManager.Instance != null)
         {
-            InputStateManager.Instance.SwitchState(InputState.UI);
+            // InputStateManager.Instance.SwitchState(InputState.UI);
         }
         else
         {
@@ -35,7 +35,7 @@ public class MainMenu : UIPanel
 
     void Start()
     {
-        InputStateManager.Instance?.SwitchState(InputState.UI);
+        // InputStateManager.Instance?.SwitchState(InputState.UI);
         SetupButtonListeners();
 
     }

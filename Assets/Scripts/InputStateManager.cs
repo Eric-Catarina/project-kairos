@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -6,7 +5,7 @@ public enum InputState
 {
     Gameplay,
     UI,
-    PostGame // Novo estado para o final da fase
+    PostGame 
 }
 
 public class InputStateManager : MonoBehaviour
@@ -40,9 +39,8 @@ public class InputStateManager : MonoBehaviour
 
     public void SwitchState(InputState newState)
     {
-        if (_playerControls == null) return;
+        if (_playerControls == null ) 
 
-        // Desabilita todos os mapas de ação primeiro para um estado limpo
         _playerControls.Player.Disable();
         _playerControls.UI.Disable();
         _playerControls.PostGame.Disable();
@@ -62,7 +60,6 @@ public class InputStateManager : MonoBehaviour
                 break;
 
             case InputState.PostGame:
-                // Habilita tanto a UI (para os botões) quanto o PostGame (para a tecla R)
                 _playerControls.UI.Enable();
                 _playerControls.PostGame.Enable();
                 SetCursorState(true);
@@ -78,9 +75,13 @@ public class InputStateManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Sempre começa no estado de Gameplay ao carregar uma nova cena
-        SwitchState(InputState.Gameplay);
+        if (scene.buildIndex == 0) // Main Menu
+        {
+            SwitchState(InputState.UI);
+        }
+        else // Gameplay Scene
+        {
+            SwitchState(InputState.Gameplay);
+        }
     }
-    
-
 }

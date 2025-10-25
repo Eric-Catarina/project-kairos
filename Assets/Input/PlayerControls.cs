@@ -359,7 +359,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""isPartOfComposite"": true
                 },
                 {
-                    ""name"": ""Keyboard"",
+                    ""name"": ""Keyboard__"",
                     ""id"": ""f8135914-1776-4bbc-bc35-3101ede00412"",
                     ""path"": ""2DVector"",
                     ""interactions"": """",

@@ -49,11 +49,6 @@ public class InputManager : MonoBehaviour
         stateManager.Initialize(_playerControls);
     }
 
-    private void Start()
-    {
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
-    }
-
     private void OnEnable()
     {
         _playerControls.Enable();
