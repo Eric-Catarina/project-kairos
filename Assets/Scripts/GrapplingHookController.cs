@@ -1,6 +1,5 @@
 // Local: Assets/Scripts/GrapplingHookController.cs
 
-using DG.Tweening;
 using UnityEngine;
 
 public class GrapplingHookController : MonoBehaviour
@@ -8,6 +7,7 @@ public class GrapplingHookController : MonoBehaviour
     [Header("Estado")]
     [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private bool isGrappling = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
     public bool IsGrappling => isGrappling;
     private bool hasGrappleAvailable = true;
 
@@ -21,9 +21,7 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private float damper = 7f;
     [SerializeField] private float massScale = 4.5f;
     [SerializeField] private float minSpringSize = .1f;
-
     [SerializeField] private float maxSpringSize = .8f;
-
 
     [Header("Configurações do Pêndulo")]
     [SerializeField] private float swingForce = 50f;
@@ -36,13 +34,23 @@ public class GrapplingHookController : MonoBehaviour
 
     private PlayerMovementController playerMovement;
     private SpringJoint joint;
-    private Vector3 grapplePoint, currentGrapplePosition;
+    private Vector3 grapplePoint;
     private Vector2 moveInput;
     private float cooldownTimer;
     private GameObject currentPredictionPoint;
+    public float grappleDistance;
 
     private Vector3 predictedPoint;
     private bool hasPredictedPoint;
+    private float grappleTimer;
+
+    private Rigidbody _grappleAnchorRigidbody;
+    private Vector3 _grapplePointRelativeOffset;
+    
+    private bool grappleInputBuffered = false;
+    private float grappleInputBufferTimer = 0f;
+    [SerializeField]
+    private float grappleInputBufferTime = 1f;
 
     private void Awake()
     {
@@ -52,10 +60,9 @@ public class GrapplingHookController : MonoBehaviour
 
     private void OnEnable()
     {
-        InputManager.Instance.OnGrappleStarted += StartGrapple;
-        InputManager.Instance.OnGrappleCanceled += StopGrapple;
+        InputManager.Instance.OnGrappleStarted += BufferOrStartGrapple;
+        InputManager.Instance.OnGrappleCanceled += OnGrappleCanceled;
         InputManager.Instance.OnMove += SetMoveInput;
-        // Inscreve no evento de aterrissagem
         if (playerMovement != null)
             playerMovement.OnGroundLanded += OnGroundLanded;
     }
@@ -63,25 +70,41 @@ public class GrapplingHookController : MonoBehaviour
     private void OnDisable()
     {
         if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= StartGrapple;
-        InputManager.Instance.OnGrappleCanceled -= StopGrapple;
+        InputManager.Instance.OnGrappleStarted -= BufferOrStartGrapple;
+        InputManager.Instance.OnGrappleCanceled -= OnGrappleCanceled;
         InputManager.Instance.OnMove -= SetMoveInput;
-        // Remove inscrição do evento
         if (playerMovement != null)
             playerMovement.OnGroundLanded -= OnGroundLanded;
     }
 
     private void Update()
     {
-        if (cooldownTimer > 0)
+        if (cooldownTimer > 0) cooldownTimer -= Time.deltaTime;
+
+        if (isGrappling)
         {
-            cooldownTimer -= Time.deltaTime;
+            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
+            if (!infiniteDuration)
+            {
+                if (grappleTimer > 0) grappleTimer -= Time.deltaTime;
+                if (grappleTimer <= 0) StopGrapple();
+            }
         }
 
-        // Se só pode usar uma vez, cooldown não recarrega sozinho
-        if (canDoMultipleGrapple && cooldownTimer <= 0)
+        if (canDoMultipleGrapple && cooldownTimer <= 0) hasGrappleAvailable = true;
+        
+        if (grappleInputBuffered)
         {
-            hasGrappleAvailable = true;
+            grappleInputBufferTimer -= Time.deltaTime;
+            if (hasPredictedPoint && CanStartGrapple())
+            {
+                StartGrappleInternal();
+                grappleInputBuffered = false;
+            }
+            else if (grappleInputBufferTimer <= 0f)
+            {
+                grappleInputBuffered = false;
+            }
         }
 
         UpdatePredictionPoint();
@@ -106,78 +129,96 @@ public class GrapplingHookController : MonoBehaviour
     {
         if (isGrappling)
         {
-            if (currentPredictionPoint != null)
-                currentPredictionPoint.SetActive(false);
+            if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
             hasPredictedPoint = false;
             return;
         }
-
         RaycastHit hit;
-        bool hitFound = Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-        if (!hitFound)
-        {
-            hitFound = Physics.SphereCast(cameraTransform.position, 10f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-        }
+        bool hitFound = TryFindGrappleHit(out hit);
 
         if (hitFound)
         {
             predictedPoint = hit.point;
             hasPredictedPoint = true;
+            grappleDistance = hit.distance;
 
-            if (currentPredictionPoint == null)
-            {
-                currentPredictionPoint = Instantiate(predictionPointPrefab, predictedPoint, Quaternion.identity);
-            }
-            else
-            {
-                currentPredictionPoint.SetActive(true);
-                currentPredictionPoint.transform.position = predictedPoint;
-            }
+            DrawPredictionPoint(predictedPoint);
         }
         else
         {
             hasPredictedPoint = false;
-            if (currentPredictionPoint != null)
-                currentPredictionPoint.SetActive(false);
+            if (currentPredictionPoint != null) currentPredictionPoint.SetActive(false);
+            grappleDistance = 0f;
         }
     }
 
-    private void StartGrapple()
+    private void DrawPredictionPoint(Vector3 position)
     {
-        // Permite usar o grapple se estiver no chão, mesmo que hasGrappleAvailable seja false
+        if (!hasGrappleAvailable) return;
+        if (currentPredictionPoint == null)
+        {
+            currentPredictionPoint = Instantiate(predictionPointPrefab, position, Quaternion.identity);
+        }
+        else
+        {
+            currentPredictionPoint.SetActive(true);
+            currentPredictionPoint.transform.position = position;
+        }
+    }
+    
+    private void BufferOrStartGrapple()
+    {
+        if (hasPredictedPoint && CanStartGrapple())
+        {
+            StartGrappleInternal();
+        }
+        else
+        {
+            if (!hasPredictedPoint)
+            {
+                grappleInputBuffered = true;
+                grappleInputBufferTimer = grappleInputBufferTime;
+            }
+        }
+    }
+    
+    private bool CanStartGrapple()
+    {
         bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
-        if (!canDoMultipleGrapple && !hasGrappleAvailable && !groundedOverride) return;
-        if (cooldownTimer > 0 || isGrappling || !hasPredictedPoint) return;
-
+        return (canDoMultipleGrapple || hasGrappleAvailable || groundedOverride)
+            && cooldownTimer <= 0
+            && !isGrappling
+            && hasPredictedPoint;
+    }
+    
+    private void StartGrappleInternal()
+    {
         isGrappling = true;
-        grapplePoint = predictedPoint;
+        grappleTimer = maximumTimeGrappling;
 
-        joint = gameObject.AddComponent<SpringJoint>();
-        joint.autoConfigureConnectedAnchor = false;
-        joint.connectedAnchor = grapplePoint;
+        RaycastHit hit;
+        if (TryRaycastGrapple(out hit))
+        {
+            grapplePoint = hit.point;
+            _grappleAnchorRigidbody = hit.rigidbody;
+            if (_grappleAnchorRigidbody != null)
+            {
+                _grapplePointRelativeOffset = hit.transform.InverseTransformPoint(grapplePoint);
+            }
+        }
+        else
+        {
+            grapplePoint = predictedPoint;
+            _grappleAnchorRigidbody = null;
+        }
 
-        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+        CreateAndConfigureJoint(grapplePoint);
 
-        joint.maxDistance = distanceFromPoint * maxSpringSize;
-        joint.minDistance = distanceFromPoint * minSpringSize;
-        joint.spring = springForce;
-        joint.damper = damper;
-        joint.massScale = massScale;
-
-        lineRenderer.positionCount = 2;
-
-        // Marca como usado se não pode múltiplos, mas não marca se estiver no chão
+        bool groundedOverride = playerMovement != null && playerMovement.isGrounded;
         if (!canDoMultipleGrapple && !groundedOverride)
             hasGrappleAvailable = false;
     }
 
-    private void CheckForSwingPoints()
-    {
-        RaycastHit sphereCastHit;
-        Physics.SphereCast(cameraTransform.position, 0.5f, cameraTransform.forward,
-                            out sphereCastHit, maxGrappleDistance, grappleLayer);
-
-    }
     private void ApplySwingForce()
     {
         if (!joint) return;
@@ -188,41 +229,92 @@ public class GrapplingHookController : MonoBehaviour
         playerMovement.Rb.AddForce(viewDirection * moveInput.y * swingForce, ForceMode.Force);
         playerMovement.Rb.AddForce(rightDirection * moveInput.x * swingForce, ForceMode.Force);
     }
+    
+    private void OnGrappleCanceled()
+    {
+        StopGrapple();
+        grappleInputBuffered = false;
+        grappleInputBufferTimer = 0f;
+    }
 
     public void StopGrapple()
     {
         if (!isGrappling) return;
 
         isGrappling = false;
-        cooldownTimer = grappleCooldown;
+        
+        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
+        {
+            cooldownTimer = grappleCooldown;
+        }
+        
         lineRenderer.positionCount = 0;
         Destroy(joint);
 
-        playerMovement.EnableDoubleJump();
-
-        // Prediction point volta a aparecer após o grapple
-        if (currentPredictionPoint != null)
-        {
-            currentPredictionPoint.SetActive(true);
-        }
+        _grappleAnchorRigidbody = null;
+        playerMovement.ResetDoubleJump();
+        
+        grappleInputBuffered = false;
+        grappleInputBufferTimer = 0f;
     }
 
     private void DrawRope()
     {
         if (!joint) return;
-        currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
-
-
+        UpdateGrappleAnchor();
         lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, currentGrapplePosition);
+        lineRenderer.SetPosition(1, grapplePoint);
+    }
+    
+    private bool TryRaycastGrapple(out RaycastHit hit)
+    {
+        return Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+    }
+    
+    private bool TryFindGrappleHit(out RaycastHit hit)
+    {
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
+        {
+            return true;
+        }
+        return Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+    }
+    
+    private void CreateAndConfigureJoint(Vector3 connectedPoint)
+    {
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.anchor = Vector3.zero;
+        joint.connectedAnchor = connectedPoint;
+        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
+        joint.maxDistance = distanceFromPoint * maxSpringSize;
+        joint.minDistance = distanceFromPoint * minSpringSize;
+        joint.spring = springForce;
+        joint.damper = damper;
+        joint.massScale = massScale;
+        lineRenderer.positionCount = 2;
+    }
+    
+    private void UpdateGrappleAnchor()
+    {
+        if (_grappleAnchorRigidbody != null)
+        {
+            grapplePoint = _grappleAnchorRigidbody.transform.TransformPoint(_grapplePointRelativeOffset);
+            if (joint) joint.connectedAnchor = grapplePoint;
+        }
     }
 
-    // Novo método para resetar grapple ao tocar o chão
     private void OnGroundLanded()
     {
         if (!canDoMultipleGrapple && !hasGrappleAvailable)
         {
             hasGrappleAvailable = true;
         }
+    }
+    
+    public void ResetGrapple()
+    {
+        hasGrappleAvailable = true;
+        cooldownTimer = 0f;
     }
 }

@@ -4,19 +4,34 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Gerencia todas as entradas do jogador usando o novo Input System.
-/// Implementa um padrão Singleton para fácil acesso e desacopla a lógica do jogo.
-/// </summary>
+[RequireComponent(typeof(InputStateManager))]
 public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
+    public PlayerControls PlayerControls => _playerControls;
+
+    // ... (outros eventos permanecem os mesmos) ...
     public event Action<Vector2> OnMove;
-    public event Action<Vector2> OnLook;
-    public event Action OnJump;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
+    public event Action OnSlowTimeStarted;
+    public event Action OnSlowTimeCanceled;
+    
+    public event Action OnLevelFinished;
+    public event Action OnLevelRestarted;
+    public event Action OnPausePressed;
+
+#if ENABLE_CHEATS
+    public event Action OnToggleInfiniteJumps;
+    public event Action OnToggleInfiniteGrappleCooldown;
+    public event Action OnToggleInfiniteGrappleDuration;
+    public event Action OnToggleInfiniteTimeStop;
+
+    public event Action OnToggleAllCheats;
+#endif
 
     private PlayerControls _playerControls;
 
@@ -31,40 +46,82 @@ public class InputManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         _playerControls = new PlayerControls();
-        Debug.Log("InputManager initialized and PlayerControls created.");
+        
+        InputStateManager stateManager = GetComponent<InputStateManager>();
+        stateManager.Initialize(_playerControls);
+    }
 
-        // AudioManager.instance.PlayMusic("Menu");
+    private void Start()
+    {
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
     }
 
     private void OnEnable()
     {
         _playerControls.Enable();
+        
         _playerControls.Player.Move.performed += HandleMove;
         _playerControls.Player.Move.canceled += HandleMove;
-        _playerControls.Player.Look.performed += HandleLook;
-        _playerControls.Player.Look.canceled += HandleLook;
-        _playerControls.Player.Jump.performed += HandleJump;
+
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
+        
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        Debug.Log("InputManager enabled and controls set up.");
+        
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeCanceled;
+        
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        
+        // Ação de restart agora é ouvida de dois mapas diferentes
+        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
+        _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
+        
+        _playerControls.Player.Pause.performed += HandlePausePressed;
+        _playerControls.UI.Unpause.performed += HandlePausePressed;
+        
+#if ENABLE_CHEATS
+        _playerControls.Debug.Enable();
+        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
+        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
+        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
+#endif
     }
 
     private void OnDisable()
     {
         if (_playerControls == null) return;
-        _playerControls.Disable();
+        
+        // ... (outras desinscrições) ...
         _playerControls.Player.Move.performed -= HandleMove;
         _playerControls.Player.Move.canceled -= HandleMove;
-        _playerControls.Player.Look.performed -= HandleLook;
-        _playerControls.Player.Look.canceled -= HandleLook;
-        _playerControls.Player.Jump.performed -= HandleJump;
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-    }
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeCanceled;
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
+        _playerControls.PostGame.RestartLevel.performed -= HandleRestartLevel;
+        _playerControls.Player.Pause.performed -= HandlePausePressed;
+        _playerControls.UI.Unpause.performed -= HandlePausePressed;
 
+        _playerControls.Disable();
+    }
+    
+    // ... (outros Handlers) ...
     private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleLook(InputAction.CallbackContext context) => OnLook?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJump(InputAction.CallbackContext context) => OnJump?.Invoke();
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeStarted(InputAction.CallbackContext context) => OnSlowTimeStarted?.Invoke();
+    private void HandleSlowTimeCanceled(InputAction.CallbackContext context) => OnSlowTimeCanceled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => OnLevelFinished?.Invoke();
+    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }
