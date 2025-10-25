@@ -7,10 +7,11 @@ public class BackButton : MonoBehaviour, IPointerClickHandler
 {
     public void OnPointerClick(PointerEventData eventData)
     {
-        if(UIManager.Instance != null)
+        if(GameFlowManager.Instance != null)
         {
-            UIManager.Instance.CloseSettingsPanel();
+            GameFlowManager.Instance.HandlePauseRequest();
         }
+
     }
 
 

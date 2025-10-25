@@ -83,7 +83,7 @@ public class GameFlowManager : MonoBehaviour
         }
     }
 
-    private void HandlePauseRequest()
+    public void HandlePauseRequest()
     {
         if (CurrentState == GameState.LevelFinished) return;
 
