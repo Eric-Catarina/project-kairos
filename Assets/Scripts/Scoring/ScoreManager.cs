@@ -1,33 +1,31 @@
 // Local: Assets/Scripts/Scoring/ScoreManager.cs
 
-using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 
 public class ScoreManager : MonoBehaviour
 {
-    // ... (propriedades permanecem as mesmas) ...
     public static ScoreManager Instance { get; private set; }
-    public static event Action<float, Rank> OnLevelCompleted;
 
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
+    [Tooltip("Se marcado, o timer da fase começará com o primeiro input de movimento, pulo ou grapple.")]
+    [SerializeField] private bool startLevelOnFirstMoveInput = false;
     
     [Header("Configurações de UI")]
     [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
-    [SerializeField] private int leaderboardDisplayDelayMs = 750;
+    private int leaderboardDisplayDelayMs = 750;
 
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
+    private PlayerMovementController _playerMovementController;
+    private GrapplingHookController _grapplingHookController;
 
     private float _levelTimer;
     private bool _isTimerRunning = false;
     private bool _levelStarted = false;
 
-
-    // OnEnable, OnDisable, OnSceneLoaded, FindSceneReferences, Update, Timers...
-    // ... (todo o resto do script até EndLevelTimer permanece o mesmo) ...
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -37,35 +35,44 @@ public class ScoreManager : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-        if (InputManager.Instance != null) { InputManager.Instance.OnLevelFinished += HandleLevelFinished; }
+        GameFlowManager.OnLevelCompleted += ProcessLevelCompletion;
+
         if (GameFlowManager.Instance != null)
         {
             GameFlowManager.Instance.OnGamePaused += PauseTimer;
             GameFlowManager.Instance.OnGameResumed += ResumeTimer;
         }
+        
+        SubscribeToFirstInputEvents();
     }
 
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        if (InputManager.Instance != null) { InputManager.Instance.OnLevelFinished -= HandleLevelFinished; }
+        GameFlowManager.OnLevelCompleted -= ProcessLevelCompletion;
+
         if (GameFlowManager.Instance != null)
         {
             GameFlowManager.Instance.OnGamePaused -= PauseTimer;
             GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
         }
+        
+        UnsubscribeFromFirstInputEvents();
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         FindSceneReferences();
         ResetLevelTimer();
+        SubscribeToFirstInputEvents();
     }
     
     private void FindSceneReferences()
     {
         _scoreUIController = FindObjectOfType<ScoreUIController>(true);
         _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
     }
 
     private void Update()
@@ -73,7 +80,7 @@ public class ScoreManager : MonoBehaviour
         if (_isTimerRunning)
         {
             _levelTimer += Time.deltaTime;
-            _scoreUIController?.UpdateTime(_levelTimer);
+            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
         }
     }
     
@@ -83,42 +90,47 @@ public class ScoreManager : MonoBehaviour
         _levelTimer = 0f;
         _levelStarted = true;
         _isTimerRunning = true;
+        UnsubscribeFromFirstInputEvents();
+    }
+    
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank)
+    {
+        if (!_levelStarted)
+        {
+            finalTime = -1f;
+            finalRank = Rank.None;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(_levelTimer);
     }
 
     private void PauseTimer() { _isTimerRunning = false; }
     private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+    
     public void ResetLevelTimer()
     {
         _levelTimer = 0f;
         _isTimerRunning = false;
         _levelStarted = false;
-        _scoreUIController?.UpdateTime(_levelTimer);
+        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
     }
-    private void HandleLevelFinished() { EndLevelTimer(); }
 
-
-    public async void EndLevelTimer()
+    // Retorna o Rank correspondente para um determinado tempo usando o LevelData atual.
+    public Rank GetRankForTime(float time)
     {
-        if (!_isTimerRunning && !_levelStarted) return;
-        _isTimerRunning = false;
-        
-        if (currentLevelData == null) { Debug.LogError("LevelData não está configurado!"); return; }
+        if (currentLevelData == null) return Rank.None;
+        return currentLevelData.GetRankForTime(time);
+    }
 
-        Rank finalRank = currentLevelData.GetRankForTime(_levelTimer);
-        OnLevelCompleted?.Invoke(_levelTimer, finalRank);
-
-        // --- LÓGICA DE UI REMOVIDA DAQUI ---
+    private async void ProcessLevelCompletion(float finalTime)
+    {
         PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
         postGamePanel.gameObject.SetActive(true);
         postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
-        // --- FIM DA LÓGICA REMOVIDA ---
 
-        if (_leaderboardUIController != null)
-        {
-            _leaderboardUIController.PrepareForDisplay(_levelTimer);
-        }
-
-        bool submissionSuccess = await SubmitScoreAsync();
+        bool submissionSuccess = await SubmitScoreAsync(finalTime);
         
         if (submissionSuccess)
         {
@@ -128,9 +140,8 @@ public class ScoreManager : MonoBehaviour
         _leaderboardUIController?.ShowLeaderboard();
     }
 
-    private async Task<bool> SubmitScoreAsync()
+    private async Task<bool> SubmitScoreAsync(float finalTime)
     {
-        // ... (lógica de submissão permanece a mesma) ...
         if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
         {
             Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
@@ -140,7 +151,7 @@ public class ScoreManager : MonoBehaviour
         var scoreEntry = new ScoreEntry(
             PlayerProfile.Instance.CurrentProfile.PlayerId,
             PlayerProfile.Instance.CurrentProfile.PlayerName,
-            _levelTimer,
+            finalTime,
             currentLevelData.GetFullLevelId()
         );
 
@@ -150,5 +161,41 @@ public class ScoreManager : MonoBehaviour
         else { Debug.LogWarning("Falha ao submeter pontuação."); }
         
         return success;
+    }
+    
+    private void HandleFirstInput()
+    {
+        if (startLevelOnFirstMoveInput && !_levelStarted)
+        {
+            StartLevelTimer();
+        }
+    }
+
+    private void HandleFirstMoveInput(Vector2 moveValue)
+    {
+        if (moveValue.sqrMagnitude > 0.1f)
+        {
+            HandleFirstInput();
+        }
+    }
+    
+    private void SubscribeToFirstInputEvents()
+    {
+        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
+        {
+            InputManager.Instance.OnMove += HandleFirstMoveInput;
+            _playerMovementController.OnJumped += HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+        }
+    }
+
+    private void UnsubscribeFromFirstInputEvents()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnMove -= HandleFirstMoveInput;
+            _playerMovementController.OnJumped -= HandleFirstInput;
+           _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+        }
     }
 }

@@ -387,8 +387,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (moveInput.sqrMagnitude > 0.01f)
         {
-            Vector3 forwardDirection = orientation.forward;
-            forwardDirection.y = 0;
+            Vector3 forwardDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
             rb.AddForce(forwardDirection.normalized * jumpForwardBoost, ForceMode.Impulse);
         }
     }

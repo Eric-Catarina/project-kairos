@@ -61,6 +61,8 @@ public class PlayerLookController : MonoBehaviour
     {
         GameSettingsManager.OnMouseSensitivityXChanged += HandleMouseSensitivityXChanged;
         GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
+        GameSettingsManager.OnInvertXChanged += HandleInvertXChanged;
+        GameSettingsManager.OnInvertYChanged += HandleInvertYChanged;
         
         if (playerMovementController != null)
         {
@@ -72,6 +74,8 @@ public class PlayerLookController : MonoBehaviour
     {
         GameSettingsManager.OnMouseSensitivityXChanged -= HandleMouseSensitivityXChanged;
         GameSettingsManager.OnMouseSensitivityYChanged -= HandleMouseSensitivityYChanged;
+        GameSettingsManager.OnInvertXChanged -= HandleInvertXChanged;
+        GameSettingsManager.OnInvertYChanged -= HandleInvertYChanged;
 
         if (playerMovementController != null)
         {
@@ -95,8 +99,6 @@ public class PlayerLookController : MonoBehaviour
         }
 
         _baseFov = freeLookCamera.Lens.FieldOfView;
-        
-        // Garante que o tremor comece desativado
         _cameraNoise.AmplitudeGain = 0;
         _cameraNoise.FrequencyGain = 0;
 
@@ -104,8 +106,8 @@ public class PlayerLookController : MonoBehaviour
         
         if (GameSettingsManager.Instance != null)
         {
-            HandleMouseSensitivityXChanged(GameSettingsManager.Instance.MouseSensitivityX);
-            HandleMouseSensitivityYChanged(GameSettingsManager.Instance.MouseSensitivityY);
+            UpdateXAxisSettings();
+            UpdateYAxisSettings();
         }
     }
 
@@ -118,6 +120,49 @@ public class PlayerLookController : MonoBehaviour
     {
         UpdateFov(currentHorizontalSpeed);
         UpdateCameraShake(currentHorizontalSpeed);
+    }
+    
+    private void HandleInvertXChanged(bool inverted) => UpdateXAxisSettings();
+    private void HandleInvertYChanged(bool inverted) => UpdateYAxisSettings();
+    private void HandleMouseSensitivityXChanged(float normalizedValue) => UpdateXAxisSettings();
+    private void HandleMouseSensitivityYChanged(float normalizedValue) => UpdateYAxisSettings();
+
+    private void UpdateXAxisSettings()
+    {
+        if (cinemachineInputAxisController == null || GameSettingsManager.Instance == null) return;
+
+        float sensitivity = GameSettingsManager.Instance.MouseSensitivityX;
+        bool isInverted = GameSettingsManager.Instance.InvertMouseX;
+        
+        float baseGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, sensitivity);
+        float finalGain = isInverted ? -baseGain : baseGain;
+
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit X" || controller.Name == "X")
+            {
+                controller.Input.Gain = finalGain;
+            }
+        }
+    }
+
+    private void UpdateYAxisSettings()
+    {
+        if (cinemachineInputAxisController == null || GameSettingsManager.Instance == null) return;
+
+        float sensitivity = GameSettingsManager.Instance.MouseSensitivityY;
+        bool isInverted = GameSettingsManager.Instance.InvertMouseY;
+
+        float baseGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, sensitivity);
+        float finalGain = isInverted ? -baseGain : baseGain;
+
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
+            {
+                controller.Input.Gain = -finalGain;
+            }
+        }
     }
 
     private void UpdateFov(float speed)
@@ -142,7 +187,6 @@ public class PlayerLookController : MonoBehaviour
 
         float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
         
-        // CORREÇÃO: Modifica AmplitudeGain e FrequencyGain diretamente no componente CinemachineCamera
         _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
         _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
     }
@@ -152,32 +196,6 @@ public class PlayerLookController : MonoBehaviour
         _tempLens = freeLookCamera.Lens;
         _tempLens.FieldOfView = fov;
         freeLookCamera.Lens = _tempLens;
-    }
-    
-    private void HandleMouseSensitivityXChanged(float normalizedValue)
-    {
-        if (cinemachineInputAxisController == null) return;
-        float newGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, normalizedValue);
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            if (controller.Name == "Look Orbit X" || controller.Name == "X")
-            {
-                controller.Input.Gain = newGain;
-            }
-        }
-    }
-    
-    private void HandleMouseSensitivityYChanged(float normalizedValue)
-    {
-        if (cinemachineInputAxisController == null) return;
-        float newGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, normalizedValue);
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
-            {
-                controller.Input.Gain = -newGain;
-            }
-        }
     }
 
     private void ConnectCinemachineToInputManager()
@@ -206,7 +224,6 @@ public class PlayerLookController : MonoBehaviour
     {
         _fovTween?.Kill();
         
-        // Reseta o Noise ao sair da cena para evitar que ele persista
         if (freeLookCamera != null)
         {
             _cameraNoise.AmplitudeGain = 0;
