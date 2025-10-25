@@ -432,11 +432,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1ebf9413a3e092ac82d2e5e5ec57d7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrapplingHookController
-  canDoMultipleGrapple: 0
+  canDoMultipleGrapple: 1
   isGrappling: 0
   maximumTimeGrappling: 3
   maxGrappleDistance: 50
-  grappleCooldown: 0.1
+  grappleCooldown: 1
   grappleLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -877,7 +877,7 @@ MonoBehaviour:
     LookAtTarget: {fileID: 1615927059740956077}
     CustomLookAtTarget: 1
   Lens:
-    FieldOfView: 70
+    FieldOfView: 80
     OrthographicSize: 5
     NearClipPlane: 0.3
     FarClipPlane: 10000
