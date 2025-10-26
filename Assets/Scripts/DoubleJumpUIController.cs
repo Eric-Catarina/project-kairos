@@ -35,6 +35,7 @@ public class DoubleJumpUIController : MonoBehaviour
         }
 
         _playerMovementController.OnDoubleJumpGained += HandleDoubleJumpGained;
+        _playerMovementController.OnGroundLanded += HandleDoubleJumpGained;
         _playerMovementController.OnDoubleJumpUsed += HandleDoubleJumpUsed;
 
         SetInitialState();
@@ -43,8 +44,10 @@ public class DoubleJumpUIController : MonoBehaviour
     private void OnDisable()
     {
         if (_playerMovementController == null) return;
-        
+
         _playerMovementController.OnDoubleJumpGained -= HandleDoubleJumpGained;
+        _playerMovementController.OnGroundLanded -= HandleDoubleJumpGained;
+
         _playerMovementController.OnDoubleJumpUsed -= HandleDoubleJumpUsed;
     }
     
@@ -58,6 +61,7 @@ public class DoubleJumpUIController : MonoBehaviour
 
     private void HandleDoubleJumpGained()
     {
+        if(doubleJumpIcon.fillAmount >= 1f) return;
         AnimateIcon(1f);
     }
 
