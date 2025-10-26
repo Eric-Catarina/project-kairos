@@ -8,6 +8,8 @@ public class GrapplingHookController : MonoBehaviour
     #region Events
     public event Action OnGrappleStarted;
     public event Action OnGrappleStopped;
+    public event Action OnValidGrappleTargetAcquired;
+    public event Action OnValidGrappleTargetLost;
     #endregion
 
     #region Dependencies
@@ -55,6 +57,8 @@ public class GrapplingHookController : MonoBehaviour
     private bool _hasGrappleAvailable = true;
     private bool _hasValidGrappleTarget;
     private bool _isInputBuffered;
+    // Garante que começa falso para disparar o primeiro evento corretamente se já começar mirando
+    private bool _wasPredictionTargetValidLastFrame = false; 
 
     private float _cooldownTimer;
     private float _grappleTimer;
@@ -92,13 +96,21 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
         InputManager.Instance.OnMove -= SetMoveInput;
         if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
+
+        // Reseta o estado visual se o componente for desabilitado
+        if (_wasPredictionTargetValidLastFrame)
+        {
+             OnValidGrappleTargetLost?.Invoke();
+             _wasPredictionTargetValidLastFrame = false;
+        }
+        if (_currentPredictionPoint != null) _currentPredictionPoint.SetActive(false);
     }
 
     private void Update()
     {
         HandleTimers();
         HandleInputBuffer();
-        UpdateGrapplePrediction();
+        UpdateGrappleStateAndVisuals();
     }
 
     private void LateUpdate()
@@ -172,6 +184,9 @@ public class GrapplingHookController : MonoBehaviour
         {
             _hasGrappleAvailable = false;
         }
+        
+        // ATUALIZAÇÃO FORÇADA: Garante que o evento 'Lost' dispare neste exato frame
+        UpdateGrappleStateAndVisuals();
     }
 
     private void StopGrapple()
@@ -191,6 +206,9 @@ public class GrapplingHookController : MonoBehaviour
         _grappledRigidbody = null;
         
         playerMovement.ResetDoubleJump();
+        
+        // ATUALIZAÇÃO FORÇADA: Garante que a UI saiba que entramos em cooldown imediatamente
+        UpdateGrappleStateAndVisuals();
     }
 
     private void ApplySwingForce()
@@ -205,9 +223,10 @@ public class GrapplingHookController : MonoBehaviour
     }
     #endregion
     
-    #region Prediction & Visuals
-    private void UpdateGrapplePrediction()
+    #region Prediction, Visuals & State Broadcasting
+    private void UpdateGrappleStateAndVisuals()
     {
+        // 1. Atualiza se temos um alvo físico válido na mira
         if (_isGrappling)
         {
             _hasValidGrappleTarget = false;
@@ -216,23 +235,21 @@ public class GrapplingHookController : MonoBehaviour
         {
             _hasValidGrappleTarget = FindValidGrappleTarget(out _predictionHit);
         }
-        UpdatePredictionVisual();
+
+        // 2. Verifica se podemos usar o gancho agora (considerando cooldown, munição, etc)
+        // Esta é a ÚNICA fonte da verdade para "podemos grapplar agora?"
+        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
+
+        // 3. Atualiza o visual do mundo (ponto de predição) usando a fonte da verdade
+        UpdatePredictionPoint(isPredictionReady);
+
+        // 4. Atualiza o estado e dispara eventos para a UI (Retícula) usando a MESMA fonte da verdade
+        BroadcastPredictionState(isPredictionReady);
     }
 
-    private bool FindValidGrappleTarget(out RaycastHit hit)
+    private void UpdatePredictionPoint(bool show)
     {
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
-        {
-            return true;
-        }
-        return Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
-    }
-
-    private void UpdatePredictionVisual()
-    {
-        bool canShowPrediction = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-
-        if (canShowPrediction)
+        if (show)
         {
             if (_currentPredictionPoint == null)
             {
@@ -249,13 +266,33 @@ public class GrapplingHookController : MonoBehaviour
             _currentPredictionPoint.SetActive(false);
         }
     }
+
+    private void BroadcastPredictionState(bool isReady)
+    {
+        if (isReady && !_wasPredictionTargetValidLastFrame)
+        {
+            OnValidGrappleTargetAcquired?.Invoke();
+        }
+        else if (!isReady && _wasPredictionTargetValidLastFrame)
+        {
+            OnValidGrappleTargetLost?.Invoke();
+        }
+        _wasPredictionTargetValidLastFrame = isReady;
+    }
+
+    private bool FindValidGrappleTarget(out RaycastHit hit)
+    {
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer))
+        {
+            return true;
+        }
+        return Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleLayer);
+    }
     
     private void DrawRope()
     {
         if (!_joint) return;
-        
         UpdateGrappleAnchorPosition();
-        
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, _grapplePoint);
@@ -295,7 +332,6 @@ public class GrapplingHookController : MonoBehaviour
     private void HandleInputBuffer()
     {
         if (!_isInputBuffered) return;
-        
         _grappleInputBufferTimer -= Time.deltaTime;
         
         if (CanStartGrapple())
