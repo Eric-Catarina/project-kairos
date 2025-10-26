@@ -1,4 +1,4 @@
-// Local: Assets/Scripts/PlayerMovementController.cs
+// Assets/Scripts/PlayerMovementController.cs
 
 using TMPro;
 using System;
@@ -11,6 +11,8 @@ public class PlayerMovementController : MonoBehaviour
     public event Action<float> OnHorizontalVelocityChanged;
     public event Action OnJumped;
     public event Action OnLeftGround;
+    public event Action OnDoubleJumpGained;
+    public event Action OnDoubleJumpUsed;
 
     [Header("Estado Atual")]
     public bool isGrounded;
@@ -177,7 +179,11 @@ public class PlayerMovementController : MonoBehaviour
 
             isJumping = false;
             timeSinceLanded = 0f;
-            canDoubleJump = false;
+            if (canDoubleJump)
+            {
+                canDoubleJump = false;
+                OnDoubleJumpUsed?.Invoke();
+            }
             OnGroundLanded?.Invoke();
 
             if (jumpBufferCounter > 0f)
@@ -298,7 +304,11 @@ public class PlayerMovementController : MonoBehaviour
             Jump(jumpForce);
             if (allowDoubleJumpFromGround)
             {
-                canDoubleJump = true;
+                if (!canDoubleJump)
+                {
+                    canDoubleJump = true;
+                    OnDoubleJumpGained?.Invoke();
+                }
             }
         }
         else if (canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive))
@@ -307,6 +317,7 @@ public class PlayerMovementController : MonoBehaviour
             if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
             {
                 canDoubleJump = false;
+                OnDoubleJumpUsed?.Invoke();
             }
         }
     }
@@ -347,7 +358,10 @@ public class PlayerMovementController : MonoBehaviour
     public void ResetDoubleJump()
     {
         if (!canDoubleJump && !isGrounded)
-        canDoubleJump = true;
+        {
+            canDoubleJump = true;
+            OnDoubleJumpGained?.Invoke();
+        }
     }
     
     public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
@@ -359,7 +373,11 @@ public class PlayerMovementController : MonoBehaviour
         
         rb.AddForce(direction * force, ForceMode.Impulse);
         
-        canDoubleJump = true;
+        if (!canDoubleJump)
+        {
+            canDoubleJump = true;
+            OnDoubleJumpGained?.Invoke();
+        }
         isJumping = true;
         OnLeftGround?.Invoke();
     }
