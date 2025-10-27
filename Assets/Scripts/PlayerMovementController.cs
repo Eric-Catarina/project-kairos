@@ -81,7 +81,7 @@ public class PlayerMovementController : MonoBehaviour
     #region Ground Check
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
-    [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private LayerMask groundCheckLayer;
     private Rigidbody _currentPlatformRb;
     private Vector3 _lastPlatformPosition;
     #endregion
@@ -149,7 +149,7 @@ public class PlayerMovementController : MonoBehaviour
         Vector3 rayOrigin = new Vector3(transform.position.x, rayOriginY, transform.position.z);
         float rayDistance = playerHeight + 0.2f;
 
-        isGrounded = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hitInfo, rayDistance, groundLayer);
+        isGrounded = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hitInfo, rayDistance, groundCheckLayer);
 
         UpdatePlatform(hitInfo);
 
