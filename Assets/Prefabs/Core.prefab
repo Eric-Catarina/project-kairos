@@ -5264,9 +5264,9 @@ MonoBehaviour:
   jumpBufferDuration: 0.1
   bunnyHopWindow: 0
   playerHeight: 2
-  groundLayer:
+  groundCheckLayer:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 192
 --- !u!114 &7596768071946879737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5285,10 +5285,10 @@ MonoBehaviour:
   lineRenderer: {fileID: 8457320095464866033}
   predictionPointPrefab: {fileID: 2661843310905415723, guid: 2bee631aaa2f55027842afeaae93a372, type: 3}
   maxGrappleDistance: 50
-  grappleCooldown: 1
-  grappleLayer:
+  grappleCooldown: 0.5
+  grappleableLayer:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 128
   canDoMultipleGrapple: 1
   maximumTimeGrappling: 3
   springForce: 14
