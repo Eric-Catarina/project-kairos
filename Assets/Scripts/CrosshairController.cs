@@ -3,89 +3,81 @@
 using UnityEngine;
 using DG.Tweening;
 
-[RequireComponent(typeof(RectTransform))]
+[RequireComponent(typeof(RectTransform), typeof(CanvasGroup), typeof(UIFollowWorldObject))]
 public class CrosshairController : MonoBehaviour
 {
     [Header("Configurações da Animação")]
-    [Tooltip("O multiplicador de escala quando um alvo de gancho é válido.")]
     [SerializeField] private float targetScaleMultiplier = 1.2f;
-    [Tooltip("A duração da animação de escala.")]
     [SerializeField] private float scaleDuration = 0.15f;
-    [Tooltip("A força do efeito 'punch' na escala.")]
     [SerializeField] private float punchStrength = 0.15f;
-    [Tooltip("A duração do efeito 'punch'.")]
     [SerializeField] private float punchDuration = 0.2f;
-    [Tooltip("Vibração do punch.")]
-    [SerializeField] private int punchVibrato = 10;
-    [Tooltip("Elasticidade do punch.")]
-    [SerializeField] private float punchElasticity = 1f;
 
     private GrapplingHookController _grapplingHookController;
+    private UIFollowWorldObject _uiFollow;
     private RectTransform _crosshairRect;
     private Vector3 _originalScale;
 
     private void Awake()
     {
+        // Pega as referências automaticamente
         _crosshairRect = GetComponent<RectTransform>();
+        _uiFollow = GetComponent<UIFollowWorldObject>();
         _originalScale = _crosshairRect.localScale;
+        
+        // Encontra o hook controller na cena
         _grapplingHookController = FindObjectOfType<GrapplingHookController>();
     }
 
     private void OnEnable()
     {
-        if (_grapplingHookController == null)
-        {
-            // Tenta encontrar novamente caso tenha sido instanciado depois
-            _grapplingHookController = FindObjectOfType<GrapplingHookController>();
-        }
-
         if (_grapplingHookController != null)
         {
-            _grapplingHookController.OnValidGrappleTargetAcquired += HandleTargetAcquired;
-            _grapplingHookController.OnValidGrappleTargetLost += HandleTargetLost;
+            // Se inscreve no novo evento
+            _grapplingHookController.OnPredictionTargetChanged += HandlePredictionTargetChanged;
         }
         
-        // Reseta para o estado inicial ao ativar
-        _crosshairRect.localScale = _originalScale;
+        // Garante que a retícula comece invisível
+        HandlePredictionTargetChanged(null); 
     }
 
     private void OnDisable()
     {
         if (_grapplingHookController != null)
         {
-            _grapplingHookController.OnValidGrappleTargetAcquired -= HandleTargetAcquired;
-            _grapplingHookController.OnValidGrappleTargetLost -= HandleTargetLost;
+            _grapplingHookController.OnPredictionTargetChanged -= HandlePredictionTargetChanged;
         }
         _crosshairRect.DOKill();
     }
 
-    private void HandleTargetAcquired()
+    private void HandlePredictionTargetChanged(Transform newTarget)
     {
-        AnimateCrosshair(_originalScale * targetScaleMultiplier, true);
+        // A lógica inteira está aqui:
+        // 1. Passa o novo alvo (que pode ser null) para o script que segue.
+        _uiFollow.SetTarget(newTarget);
+        
+        // 2. Anima a escala com base na existência de um alvo.
+        AnimateCrosshair(newTarget != null);
     }
 
-    private void HandleTargetLost()
+    private void AnimateCrosshair(bool isTargetAcquired)
     {
-        AnimateCrosshair(_originalScale, false);
-    }
+        _crosshairRect.DOKill(true);
+        Vector3 targetScale = isTargetAcquired ? _originalScale * targetScaleMultiplier : _originalScale;
 
-    private void AnimateCrosshair(Vector3 targetScale, bool playPunch)
-    {
-        // 'true' completa a animação atual imediatamente, garantindo que a escala 
-        // esteja em um estado conhecido antes de começar a próxima.
-        _crosshairRect.DOKill(true); 
-
-        if (playPunch)
+        var tween = _crosshairRect.DOScale(targetScale, scaleDuration);
+        
+        if (isTargetAcquired)
         {
-            // Sequência para Punch: primeiro escala para o alvo, e simultaneamente aplica o punch.
-            // Como Punch é aditivo, ele funcionará bem sobre a escala base que está mudando.
-            _crosshairRect.DOScale(targetScale, scaleDuration).SetEase(Ease.OutBack);
-            _crosshairRect.DOPunchScale(Vector3.one * punchStrength, punchDuration, punchVibrato, punchElasticity);
+            tween.SetEase(Ease.OutBack);
+            tween.OnComplete(() =>
+            {
+                if(this != null) // Garante que o objeto não foi destruído
+                    _crosshairRect.DOPunchScale(Vector3.one * punchStrength, punchDuration, 10, 1);
+            });
         }
         else
         {
-            // Apenas retorna suavemente ao tamanho original
-            _crosshairRect.DOScale(targetScale, scaleDuration).SetEase(Ease.OutQuad);
+            tween.SetEase(Ease.OutQuad);
         }
     }
 }
