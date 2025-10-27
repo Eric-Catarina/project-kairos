@@ -214,7 +214,7 @@ public class GrapplingHookController : MonoBehaviour
     private bool FindValidGrappleTarget(out RaycastHit hit)
     {
         if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer)) { return true; }
-        return Physics.SphereCast(cameraTransform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
+        return Physics.SphereCast(playerMovement.Rb.transform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
     }
     private void DrawRope()
     {
