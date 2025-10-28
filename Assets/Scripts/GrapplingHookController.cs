@@ -8,8 +8,7 @@ public class GrapplingHookController : MonoBehaviour
     #region Events
     public event Action OnGrappleStarted;
     public event Action OnGrappleStopped;
-    public event Action OnValidGrappleTargetAcquired;
-    public event Action OnValidGrappleTargetLost;
+    public event Action<Transform> OnPredictionTargetChanged; // NOVO EVENTO
     #endregion
 
     #region Dependencies
@@ -69,7 +68,7 @@ public class GrapplingHookController : MonoBehaviour
     private Rigidbody _grappledRigidbody;
     
     private SpringJoint _joint;
-    private GameObject _currentPredictionPoint;
+    private GameObject _predictionPointInstance;
     private RaycastHit _predictionHit;
     #endregion
 
@@ -78,6 +77,12 @@ public class GrapplingHookController : MonoBehaviour
     {
         if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
         _hasGrappleAvailable = true;
+        
+        if (predictionPointPrefab != null)
+        {
+            _predictionPointInstance = Instantiate(predictionPointPrefab);
+            _predictionPointInstance.SetActive(false);
+        }
     }
 
     private void OnEnable()
@@ -98,10 +103,10 @@ public class GrapplingHookController : MonoBehaviour
 
         if (_wasPredictionTargetValidLastFrame)
         {
-             OnValidGrappleTargetLost?.Invoke();
+             OnPredictionTargetChanged?.Invoke(null);
              _wasPredictionTargetValidLastFrame = false;
         }
-        if (_currentPredictionPoint != null) _currentPredictionPoint.SetActive(false);
+        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
     }
 
     private void Update()
@@ -111,54 +116,65 @@ public class GrapplingHookController : MonoBehaviour
         UpdateGrappleStateAndVisuals();
     }
 
-    private void LateUpdate()
-    {
-        DrawRope();
-    }
-
-    private void FixedUpdate()
-    {
-        ApplySwingForce();
-    }
+    private void LateUpdate() { DrawRope(); }
+    private void FixedUpdate() { ApplySwingForce(); }
     #endregion
 
+    #region Prediction & State Broadcasting
+    private void UpdateGrappleStateAndVisuals()
+    {
+        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
+        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
+        
+        UpdatePredictionPointVisual(isPredictionReady);
+        BroadcastPredictionStateChange(isPredictionReady);
+    }
+
+    private void UpdatePredictionPointVisual(bool show)
+    {
+        if (_predictionPointInstance == null) return;
+
+        if (show && !_predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(true);
+        }
+        else if (!show && _predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(false);
+        }
+        
+        if (show)
+        {
+            _predictionPointInstance.transform.position = _predictionHit.point;
+        }
+    }
+
+    private void BroadcastPredictionStateChange(bool isReady)
+    {
+        if (isReady && !_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
+        }
+        else if (!isReady && _wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+        }
+        _wasPredictionTargetValidLastFrame = isReady;
+    }
+    #endregion
+    
+    // --- O RESTO DO SCRIPT (SEM ALTERAÇÕES) ---
     #region Input & Event Handlers
     private void SetMoveInput(Vector2 input) => _moveInput = input;
-
     private void OnGrappleInputStarted()
     {
-        if (CanStartGrapple())
-        {
-            ExecuteGrapple();
-        }
-        else if (!_isGrappling && _cooldownTimer <= 0)
-        {
-            _isInputBuffered = true;
-            _grappleInputBufferTimer = grappleInputBufferTime;
-        }
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
     }
-
-    private void OnGrappleInputCanceled()
-    {
-        StopGrapple();
-        ClearInputBuffer();
-    }
-
-    private void ResetGrappleAvailability()
-    {
-        if (!canDoMultipleGrapple && !_hasGrappleAvailable)
-        {
-            _hasGrappleAvailable = true;
-        }
-    }
-
-    public void ResetGrapple()
-    {
-        _hasGrappleAvailable = true;
-        _cooldownTimer = 0f;
-    }
+    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
+    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
     #endregion
-
     #region Core Grapple Logic
     private void ExecuteGrapple()
     {
@@ -166,119 +182,40 @@ public class GrapplingHookController : MonoBehaviour
         _isGrappling = true;
         _grappleTimer = maximumTimeGrappling;
         ClearInputBuffer();
-
         grappleDistance = _predictionHit.distance;
         _grapplePoint = _predictionHit.point;
         _grappledRigidbody = _predictionHit.rigidbody;
-
-        if (_grappledRigidbody != null)
-        {
-            _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(_grapplePoint);
-        }
-
+        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(_grapplePoint); }
         CreateAndConfigureJoint(_grapplePoint);
-
-        if (!canDoMultipleGrapple && !playerMovement.isGrounded)
-        {
-            _hasGrappleAvailable = false;
-        }
-        
+        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
         UpdateGrappleStateAndVisuals();
     }
-
     private void StopGrapple()
     {
         if (!_isGrappling) return;
-
         OnGrappleStopped?.Invoke();
         _isGrappling = false;
-        
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
-        {
-            _cooldownTimer = grappleCooldown;
-        }
-        
+        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
         lineRenderer.positionCount = 0;
         Destroy(_joint);
         _grappledRigidbody = null;
-        
         playerMovement.ResetDoubleJump();
-        
         UpdateGrappleStateAndVisuals();
     }
-
     private void ApplySwingForce()
     {
         if (!_joint) return;
-
         Vector3 forward = cameraTransform.forward;
         Vector3 right = cameraTransform.right;
-
         playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
         playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
     }
     #endregion
-    
-    #region Prediction, Visuals & State Broadcasting
-    private void UpdateGrappleStateAndVisuals()
-    {
-        if (_isGrappling)
-        {
-            _hasValidGrappleTarget = false;
-        }
-        else
-        {
-            _hasValidGrappleTarget = FindValidGrappleTarget(out _predictionHit);
-        }
-
-        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-
-        UpdatePredictionPoint(isPredictionReady);
-        BroadcastPredictionState(isPredictionReady);
-    }
-
-    private void UpdatePredictionPoint(bool show)
-    {
-        if (show)
-        {
-            if (_currentPredictionPoint == null)
-            {
-                _currentPredictionPoint = Instantiate(predictionPointPrefab, _predictionHit.point, Quaternion.identity);
-            }
-            else
-            {
-                _currentPredictionPoint.SetActive(true);
-                _currentPredictionPoint.transform.position = _predictionHit.point;
-            }
-        }
-        else if (_currentPredictionPoint != null)
-        {
-            _currentPredictionPoint.SetActive(false);
-        }
-    }
-
-    private void BroadcastPredictionState(bool isReady)
-    {
-        if (isReady && !_wasPredictionTargetValidLastFrame)
-        {
-            OnValidGrappleTargetAcquired?.Invoke();
-        }
-        else if (!isReady && _wasPredictionTargetValidLastFrame)
-        {
-            OnValidGrappleTargetLost?.Invoke();
-        }
-        _wasPredictionTargetValidLastFrame = isReady;
-    }
-
     private bool FindValidGrappleTarget(out RaycastHit hit)
     {
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer))
-        {
-            return true;
-        }
-        return Physics.SphereCast(cameraTransform.position, 1f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer)) { return true; }
+        return Physics.SphereCast(playerMovement.Rb.transform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
     }
-    
     private void DrawRope()
     {
         if (!_joint) return;
@@ -287,71 +224,36 @@ public class GrapplingHookController : MonoBehaviour
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, _grapplePoint);
     }
-
     private void UpdateGrappleAnchorPosition()
     {
-        if (_grappledRigidbody != null)
-        {
-            _grapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset);
-            if (_joint) _joint.connectedAnchor = _grapplePoint;
-        }
+        if (_grappledRigidbody != null) { _grapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset); if (_joint) _joint.connectedAnchor = _grapplePoint; }
     }
-    #endregion
-    
     #region State & Timers
     private void HandleTimers()
     {
         if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
-
         if (_isGrappling)
         {
             bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
-            if (!infiniteDuration)
-            {
-                _grappleTimer -= Time.deltaTime;
-                if (_grappleTimer <= 0) StopGrapple();
-            }
+            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
         }
-
-        if (canDoMultipleGrapple && _cooldownTimer <= 0)
-        {
-            _hasGrappleAvailable = true;
-        }
+        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
     }
-
     private void HandleInputBuffer()
     {
         if (!_isInputBuffered) return;
         _grappleInputBufferTimer -= Time.deltaTime;
-        
-        if (CanStartGrapple())
-        {
-            ExecuteGrapple();
-        }
-        else if (_grappleInputBufferTimer <= 0f)
-        {
-            ClearInputBuffer();
-        }
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
     }
-
-    private void ClearInputBuffer()
-    {
-        _isInputBuffered = false;
-        _grappleInputBufferTimer = 0f;
-    }
-    
-    private bool CanStartGrapple()
-    {
-        return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-    }
-
+    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
+    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
     private bool CanCurrentlyAttemptGrapple()
     {
         bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
         return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
     }
     #endregion
-    
     #region Utility
     private void CreateAndConfigureJoint(Vector3 connectedPoint)
     {
@@ -359,11 +261,9 @@ public class GrapplingHookController : MonoBehaviour
         _joint.autoConfigureConnectedAnchor = false;
         _joint.anchor = Vector3.zero;
         _joint.connectedAnchor = connectedPoint;
-
         float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
         _joint.maxDistance = distanceFromPoint * maxSpringSize;
         _joint.minDistance = distanceFromPoint * minSpringSize;
-
         _joint.spring = springForce;
         _joint.damper = damper;
         _joint.massScale = massScale;
