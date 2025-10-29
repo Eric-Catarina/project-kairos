@@ -54,8 +54,9 @@ public class JumpPad : MonoBehaviour
         Vector3 forwardDirection = transform.forward;
         Quaternion rotation = Quaternion.AngleAxis(-launchAngle, transform.right);
         Vector3 launchDirection = rotation * forwardDirection;
-        
+
         player.ApplyExternalForce(launchDirection, launchForce, resetPlayerMomentum);
+        player.ResetDoubleJump();
         
         TriggerEffects();
     }

@@ -24,7 +24,7 @@ public class GameFlowManager : MonoBehaviour
     private Coroutine _countdownCoroutine;
     private bool _isSettingsPanelOpen = false;
 
-    private bool IsInMainMenu => SceneManager.GetActiveScene().buildIndex == 0;
+    private bool IsInGameplayScene => SceneManager.GetActiveScene().buildIndex != 0;
 
     private void Awake()
     {
@@ -55,14 +55,14 @@ public class GameFlowManager : MonoBehaviour
         FindSceneReferences();
         _isSettingsPanelOpen = false;
         
-        if (IsInMainMenu)
+        if (IsInGameplayScene)
         {
-            CurrentState = GameState.MainMenu;
+            CurrentState = GameState.Playing;
             Time.timeScale = 1f;
         }
         else
         {
-            CurrentState = GameState.Playing;
+            CurrentState = GameState.MainMenu;
             Time.timeScale = 1f;
         }
     }
@@ -83,6 +83,33 @@ public class GameFlowManager : MonoBehaviour
         }
     }
 
+    public void HandlePauseRequest()
+    {
+        if (CurrentState == GameState.LevelFinished) return;
+
+        if (IsInGameplayScene)
+        {
+            TogglePauseState();
+        }
+        else // Main Menu
+        {
+            if (_isSettingsPanelOpen)
+                _uiManager.ClosePanel(UIPanelType.Settings);
+            else
+                _uiManager.ShowPanel(UIPanelType.Settings);
+        }
+    }
+
+    public void TogglePauseState()
+    {
+        if (_isCountingDown) return;
+
+        if (CurrentState == GameState.Playing)
+            PauseGame();
+        else if (CurrentState == GameState.Paused)
+            ResumeGame();
+    }
+
     public void CompleteLevel()
     {
         if (CurrentState != GameState.Playing) return;
@@ -94,36 +121,6 @@ public class GameFlowManager : MonoBehaviour
         ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank);
         
         OnLevelCompleted?.Invoke(finalTime);
-    }
-
-    private void HandlePauseRequest()
-    {
-        if (_uiManager == null || CurrentState == GameState.LevelFinished) return;
-
-        if (IsInMainMenu)
-        {
-            if (_isSettingsPanelOpen) _uiManager.ClosePanel(UIPanelType.Settings);
-            else _uiManager.ShowPanel(UIPanelType.Settings);
-        }
-        else 
-        {
-            if (_isCountingDown)
-            {
-                StopResumeCountdown();
-                PauseGame();
-                return;
-            }
-
-            if (CurrentState == GameState.Paused)
-            {
-                _uiManager.ClosePanel(UIPanelType.Settings);
-                ResumeGame();
-            }
-            else if (CurrentState == GameState.Playing)
-            {
-                PauseGame();
-            }
-        }
     }
 
     private void PauseGame()
@@ -139,8 +136,9 @@ public class GameFlowManager : MonoBehaviour
 
     public void ResumeGame()
     {
-        if (CurrentState != GameState.Paused || _isCountingDown) return;
+        if (CurrentState != GameState.Paused) return;
         
+        _uiManager?.ClosePanel(UIPanelType.Settings);
         _countdownCoroutine = StartCoroutine(ResumeCountdown());
     }
 
@@ -154,12 +152,13 @@ public class GameFlowManager : MonoBehaviour
     private IEnumerator ResumeCountdown()
     {
         _isCountingDown = true;
-        InputStateManager.Instance.SwitchState(InputState.UI);
+        
         if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
         {
             FinishResume();
             yield break;
         }
+
         _countdownUI.panel.SetActive(true);
         _countdownUI.text.text = "3";
         yield return new WaitForSecondsRealtime(1f);
@@ -167,15 +166,17 @@ public class GameFlowManager : MonoBehaviour
         yield return new WaitForSecondsRealtime(1f);
         _countdownUI.text.text = "1";
         yield return new WaitForSecondsRealtime(1f);
-        _countdownUI.panel.SetActive(false);
+        
         FinishResume();
     }
 
     private void FinishResume()
     {
-        CurrentState = GameState.Playing;
+        if(_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
         _isCountingDown = false;
         _countdownCoroutine = null;
+        
+        CurrentState = GameState.Playing;
         Time.timeScale = 1f;
         InputStateManager.Instance.SwitchState(InputState.Gameplay);
         OnGameResumed?.Invoke();

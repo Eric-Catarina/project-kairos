@@ -273,7 +273,7 @@
                     "isPartOfComposite": true
                 },
                 {
-                    "name": "Keyboard",
+                    "name": "Keyboard__",
                     "id": "f8135914-1776-4bbc-bc35-3101ede00412",
                     "path": "2DVector",
                     "interactions": "",
@@ -622,6 +622,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "SlowTimeEffect",
+                    "type": "Button",
+                    "id": "32a73797-c6b3-493e-963b-84690f36d8f4",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -749,7 +758,7 @@
                 {
                     "name": "",
                     "id": "de32b2d8-89fa-443b-8e73-8abd87a05f24",
-                    "path": "<Keyboard>/f2",
+                    "path": "<Keyboard>/f5",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -787,6 +796,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Dash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "bf58d15a-b96f-4573-b03b-9cf072e52367",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "SlowTimeEffect",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
