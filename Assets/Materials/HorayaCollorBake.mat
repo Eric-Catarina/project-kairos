@@ -13,13 +13,18 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _EMISSIVE_SIMPLE
+  - _IS_ANGELRING_OFF
+  - _IS_CLIPPING_OFF
+  - _IS_OUTLINE_CLIPPING_NO
   - _OUTLINE_NML
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
+  stringTagMap:
+    IgnoreProjection: False
+    RenderType: Opaque
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -30,7 +35,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _2nd_ShadeMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 4158aad5586e0cb4cb0f6cac5e55a254, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _AngelRing_Sampler:
@@ -82,7 +87,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Emissive_Tex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 73ae51626643e6843a2dfbad8881bc95, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _HeightMap:
@@ -230,7 +235,7 @@ Material:
     - _CoatMask: 0
     - _ColorShift_Speed: 0
     - _ComposerMaskMode: 0
-    - _CullMode: 2
+    - _CullMode: 0
     - _CullModeForward: 2
     - _Cutoff: 0.5
     - _DepthOffsetEnable: 0
@@ -281,7 +286,7 @@ Material:
     - _HeightPoMAmplitude: 2
     - _HeightTessAmplitude: 2
     - _HeightTessCenter: 0.5
-    - _HighColor_Power: 0
+    - _HighColor_Power: 0.4
     - _HighlightOverridden: 0
     - _HighlightVisible: 1
     - _InvTilingScale: 1
@@ -294,7 +299,7 @@ Material:
     - _IsBaseMapAlphaAsClippingMask: 0
     - _Is_BLD: 0
     - _Is_BakedNormal: 0
-    - _Is_BlendAddToHiColor: 0
+    - _Is_BlendAddToHiColor: 1
     - _Is_BlendAddToMatCap: 1
     - _Is_BlendBaseColor: 0
     - _Is_ColorShift: 0
@@ -316,8 +321,8 @@ Material:
     - _Is_Ortho: 0
     - _Is_OutlineTex: 0
     - _Is_PingPong_Base: 0
-    - _Is_SpecularToHighColor: 0
-    - _Is_UseTweakHighColorOnShadow: 0
+    - _Is_SpecularToHighColor: 1
+    - _Is_UseTweakHighColorOnShadow: 1
     - _Is_UseTweakMatCapOnShadow: 0
     - _Is_ViewCoord_Scroll: 0
     - _Is_ViewShift: 0
@@ -369,7 +374,7 @@ Material:
     - _SpecularAAThreshold: 0.2
     - _SpecularOcclusionMode: 1
     - _SrcBlend: 1
-    - _StencilComp: 8
+    - _StencilComp: 0
     - _StencilMode: 0
     - _StencilNo: 1
     - _StencilOpFail: 0
@@ -402,7 +407,7 @@ Material:
     - _TransparentSortPriority: 0
     - _TransparentWritingMotionVec: 0
     - _TransparentZWrite: 0
-    - _TweakHighColorOnShadow: 0
+    - _TweakHighColorOnShadow: 1
     - _TweakMatCapOnShadow: 0
     - _Tweak_HighColorMaskLevel: 0
     - _Tweak_LightDirection_MaskLevel: 0
@@ -418,8 +423,8 @@ Material:
     - _Unlit_Intensity: 0
     - _UseEmissiveIntensity: 0
     - _UseShadowThreshold: 0
-    - _Use_1stAs2nd: 0
-    - _Use_BaseAs1st: 0
+    - _Use_1stAs2nd: 1
+    - _Use_BaseAs1st: 1
     - _ZOverDrawMode: 0
     - _ZTestDepthEqualForOpaque: 4
     - _ZTestGBuffer: 4
@@ -434,7 +439,7 @@ Material:
     - _utsVersionY: 11
     - _utsVersionZ: 0
     m_Colors:
-    - _1st_ShadeColor: {r: 1, g: 1, b: 1, a: 1}
+    - _1st_ShadeColor: {r: 0.37746674, g: 0.3730865, b: 0.6037736, a: 1}
     - _2nd_ShadeColor: {r: 1, g: 1, b: 1, a: 1}
     - _AngelRingMaskColor: {r: 0, g: 1, b: 0, a: 1}
     - _AngelRing_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -449,9 +454,9 @@ Material:
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
     - _EmissiveColorLDR: {r: 0, g: 0, b: 0, a: 1}
-    - _Emissive_Color: {r: 0, g: 0, b: 0, a: 1}
+    - _Emissive_Color: {r: 5.187182, g: 0.81968206, b: 5.9921575, a: 1}
     - _FirstShadeMaskColor: {r: 0, g: 1, b: 1, a: 1}
-    - _HighColor: {r: 0, g: 0, b: 0, a: 1}
+    - _HighColor: {r: 0.9771992, g: 0.654902, b: 1, a: 1}
     - _HighlightMaskColor: {r: 1, g: 1, b: 0, a: 1}
     - _InvPrimScale: {r: 1, g: 1, b: 0, a: 0}
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
