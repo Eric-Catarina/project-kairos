@@ -11,9 +11,9 @@ public class PlayerAudioHandler : MonoBehaviour
 
     [Header("Sons - Movimento")]
     [SerializeField] private string[] footstepSfxOptions;
-    [SerializeField] private string jumpSfx = "Jump";
-    [SerializeField] private string doubleJumpSfx = "DoubleJump";
-    [SerializeField] private string landSfx = "Land";
+    [SerializeField] private string[] jumpSfxOptions;
+    [SerializeField] private string[] doubleJumpSfxOptions;
+    [SerializeField] private string[] landSfxOptions;
     [SerializeField] private string footstepSfx = "Footstep";
     [SerializeField] private string wallHitSfx = "WallHit";
     [SerializeField] private string ringSfx = "Ring";
@@ -136,19 +136,31 @@ public class PlayerAudioHandler : MonoBehaviour
     {
         if (movement.isGrounded)
         {
-            // Pulo normal
-            AudioManager.instance.PlaySFX(jumpSfx);
-            doubleJumpAvailable = true; // libera double jump para o próximo pulo
-            doubleJumpSoundPlayed = false; // reseta som
+            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, jumpSfxOptions.Length);
+                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
+            }
+
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
         }
         else
         {
             // Double jump: toca som apenas se ainda estiver disponível
             if (doubleJumpAvailable && !doubleJumpSoundPlayed)
             {
-                AudioManager.instance.PlaySFX(doubleJumpSfx);
-                doubleJumpSoundPlayed = true;
-                doubleJumpAvailable = false; // impede som repetido
+                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+                {
+                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
+                    {
+                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
+                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
+                    }
+
+                    doubleJumpSoundPlayed = true;
+                    doubleJumpAvailable = false;
+                }
             }
         }
     }
@@ -240,24 +252,40 @@ public class PlayerAudioHandler : MonoBehaviour
 
     }
 
+
     private void HandleWindAudio()
     {
         if (windSource == null) return;
+
+        // Se o jogo está pausado, zera o volume
         if (Time.timeScale == 0f)
         {
             windSource.volume = 0f;
             return;
         }
+
+        // Calcula volume base pelo movimento do player
         float speed = rb.linearVelocity.magnitude;
         float targetVolume = 0f;
 
         if (speed > windMinSpeed)
-        {
             targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+
+        // Aplica SFX e Master volume, e considera muting
+        if (AudioManager.instance != null)
+        {
+            float sfxVolume = AudioManager.instance.sfxSource.volume;
+            float masterVolume = AudioManager.instance.masterSource.volume;
+            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+
+            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
         }
 
+        // Suaviza a transição do volume
         windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
     }
+
+
 
     private void PlayLand()
     {
@@ -267,7 +295,11 @@ public class PlayerAudioHandler : MonoBehaviour
             return;
         }
 
-        AudioManager.instance.PlaySFX(landSfx);
+        if (landSfxOptions != null && landSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, landSfxOptions.Length);
+            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
