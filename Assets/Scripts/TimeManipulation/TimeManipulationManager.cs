@@ -1,4 +1,4 @@
-// Local: Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
+// Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
 
 using System;
 using System.Collections.Generic;
@@ -45,16 +45,17 @@ public class TimeManipulationManager : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnSlowTimeStarted += HandleSlowTimeStarted;
-            InputManager.Instance.OnSlowTimeCanceled += HandleSlowTimeCanceled;
+            // MUDANÇA: Se inscreve no novo evento de toggle.
+            InputManager.Instance.OnSlowTimeToggled += HandleSlowTimeToggle;
         }
     }
 
     private void OnDisable()
     {
         if (InputManager.Instance == null) return;
-        InputManager.Instance.OnSlowTimeStarted -= HandleSlowTimeStarted;
-        InputManager.Instance.OnSlowTimeCanceled -= HandleSlowTimeCanceled;
+        
+        // MUDANÇA: Se desinscreve do evento de toggle.
+        InputManager.Instance.OnSlowTimeToggled -= HandleSlowTimeToggle;
 
         if (_isTimeSlowed) DeactivateSlowTime();
     }
@@ -77,7 +78,7 @@ public class TimeManipulationManager : MonoBehaviour
                 if (_currentCharge <= 0)
                 {
                     _currentCharge = 0;
-                    DeactivateSlowTime();
+                    DeactivateSlowTime(); // Desativa automaticamente quando a carga acaba
                 }
             }
             chargeChanged = true;
@@ -98,19 +99,18 @@ public class TimeManipulationManager : MonoBehaviour
         }
     }
 
-    private void HandleSlowTimeStarted()
+    // NOVO MÉTODO: Lida com a lógica de toggle.
+    private void HandleSlowTimeToggle()
     {
-        if (_currentCharge > 0.1f && !_isTimeSlowed)
-        {
-            ActivateSlowTime();
-        }
-    }
-
-    private void HandleSlowTimeCanceled()
-    {
+        // Se já está ativo, desativa.
         if (_isTimeSlowed)
         {
             DeactivateSlowTime();
+        }
+        // Se não está ativo, mas tem carga suficiente, ativa.
+        else if (_currentCharge > 0.1f) 
+        {
+            ActivateSlowTime();
         }
     }
 

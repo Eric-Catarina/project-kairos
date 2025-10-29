@@ -191,7 +191,7 @@ public class ScoreManager : MonoBehaviour
 
     private void UnsubscribeFromFirstInputEvents()
     {
-        if (InputManager.Instance != null)
+        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
         {
             InputManager.Instance.OnMove -= HandleFirstMoveInput;
             _playerMovementController.OnJumped -= HandleFirstInput;

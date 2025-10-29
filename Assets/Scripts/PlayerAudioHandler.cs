@@ -85,8 +85,8 @@ public class PlayerAudioHandler : MonoBehaviour
             InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
             InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
             InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeStarted += PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeCanceled += PlayTimeSkillOff;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
 
             BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
 
@@ -107,8 +107,8 @@ public class PlayerAudioHandler : MonoBehaviour
             InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
             InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
             InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeStarted -= PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeCanceled -= PlayTimeSkillOff;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
             BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
         }
 
