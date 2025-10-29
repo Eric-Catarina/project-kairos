@@ -44,8 +44,8 @@ public class UIJuice : MonoBehaviour
     {
         // A ativação do GameObject agora é responsabilidade do UIPanel.
         // Isso garante que o objeto esteja ativo antes desta função ser chamada.
-        if (!gameObject.activeInHierarchy) return;
-
+        // if (!gameObject.activeInHierarchy) return;
+        gameObject.SetActive(true);
         KillExistingSequence();
         CreateForwardSequence();
 

@@ -19,86 +19,91 @@ public class RandomPrefabShooter : MonoBehaviour
 	[Tooltip("Time before each spawned prefab is destroyed (seconds).")]
 	public float prefabLifetime = 5f;
 
-	[Header("Input Settings")]
-	[Tooltip("Input Action Reference for the button (e.g. 'Fire' or 'Jump').")]
-	public InputActionReference holdAction;
+	private bool _isTimeStopped;
 
-	[Header("Stamina Settings")]
-	[Tooltip("Maximum button hold duration (seconds).")]
-	public float maxHoldTime = 3f;
+	//[Header("Input Settings")]
+	//[Tooltip("Input Action Reference for the button (e.g. 'Fire' or 'Jump').")]
+	//public InputActionReference holdAction;
 
-	[Tooltip("Regeneration rate per second when button is not held.")]
-	public float regenRate = 1f;
+	//[Header("Stamina Settings")]
+	//[Tooltip("Maximum button hold duration (seconds).")]
+	//public float maxHoldTime = 3f;
 
-	private float holdTimer = 0f;
+	//[Tooltip("Regeneration rate per second when button is not held.")]
+	//public float regenRate = 1f;
+
+	//private float holdTimer = 0f;
 	private float shootTimer = 0f;
-	private static bool isButtonPressed;
-	private static bool inputSubscribed = false;
+	//private static bool isButtonPressed;
+	//private static bool inputSubscribed = false;
 
-	private void Awake()
-	{
-		// Subscribe input only once
-		if (holdAction != null && !inputSubscribed)
-		{
-			holdAction.action.performed += ctx =>
-			{
-				if (holdTimer > 0f)
-					isButtonPressed = true;
-			};
-			holdAction.action.canceled += ctx => isButtonPressed = false;
-			inputSubscribed = true;
-		}
-	}
+	//private void Awake()
+	//{
+	//	// Subscribe input only once
+	//	if (holdAction != null && !inputSubscribed)
+	//	{
+	//		holdAction.action.performed += ctx =>
+	//		{
+	//			if (holdTimer > 0f)
+	//				isButtonPressed = true;
+	//		};
+	//		holdAction.action.canceled += ctx => isButtonPressed = false;
+	//		inputSubscribed = true;
+	//	}
+	//}
 
-	private void OnEnable()
-	{
-		holdAction?.action.Enable();
-		SceneManager.sceneLoaded += OnSceneReload;
-	}
+	//private void OnEnable()
+	//{
+	//	//SceneManager.sceneLoaded += OnSceneReload;
+	//}
 
-	private void OnDisable()
-	{
-		holdAction?.action.Disable();
-		SceneManager.sceneLoaded -= OnSceneReload;
-	}
+	//private void OnDisable()
+	//{
+	//	//SceneManager.sceneLoaded -= OnSceneReload;
+	//}
 
-	private void OnSceneReload(Scene scene, LoadSceneMode mode)
-	{
-		holdTimer = maxHoldTime;
-		shootTimer = 0f;
-		isButtonPressed = false;
-	}
+	//private void OnSceneReload(Scene scene, LoadSceneMode mode)
+	//{
+	//	holdTimer = maxHoldTime;
+	//	shootTimer = 0f;
+	//	isButtonPressed = false;
+	//}
 
 	private void Update()
 	{
-		if (isButtonPressed)
-		{
-			// Decrease hold timer
-			holdTimer -= Time.deltaTime;
+		//if (isButtonPressed)
+		//{
+		//	// Decrease hold timer
+		//	holdTimer -= Time.deltaTime;
 
-			// Auto-release when max hold time used up
-			if (holdTimer <= 0f)
-			{
-				holdTimer = 0f;
-				isButtonPressed = false;
-			}
-		}
-		else
-		{
-			// Regenerate hold timer when button not pressed
-			holdTimer += regenRate * Time.deltaTime;
-			if (holdTimer > maxHoldTime)
-				holdTimer = maxHoldTime;
+		//	// Auto-release when max hold time used up
+		//	if (holdTimer <= 0f)
+		//	{
+		//		holdTimer = 0f;
+		//		isButtonPressed = false;
+		//	}
+		//}
+		//else
+		//{
+		//	// Regenerate hold timer when button not pressed
+		//	holdTimer += regenRate * Time.deltaTime;
+		//	if (holdTimer > maxHoldTime)
+		//		holdTimer = maxHoldTime;
 
-			// Shooting logic
-			shootTimer += Time.deltaTime;
-			if (shootTimer >= shootInterval)
-			{
-				ShootRandomPrefab();
-				shootTimer = 0f;
-			}
-		}
-	}
+		// Shooting logic
+
+		_isTimeStopped = TimeManipulationManager.Instance.IsTimeSlowed;
+
+		if (!_isTimeStopped)
+		{
+            shootTimer += Time.deltaTime;
+            if (shootTimer >= shootInterval)
+            {
+                ShootRandomPrefab();
+                shootTimer = 0f;
+            }
+        }
+    }
 
 	private void ShootRandomPrefab()
 	{

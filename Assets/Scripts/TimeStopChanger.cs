@@ -10,22 +10,24 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	public Volume volumeA;
 	public Volume volumeB;
 
-	[Header("Input Action Reference (from Input System)")]
-	public InputActionReference holdAction;
+	//[Header("Input Action Reference (from Input System)")]
+	//public InputActionReference holdAction;
 
-	[Header("Stamina Settings")]
-	public float maxHoldTime = 3f;
-	public float rechargeRate = 1f;
+	//[Header("Stamina Settings")]
+	//public float maxHoldTime = 3f;
+	//public float rechargeRate = 1f;
 
-	[Header("Transition Settings")]
+	//[Header("Transition Settings")]
 	public float transitionDuration = 0.2f;
 
-	private float currentStamina;
-	private bool isHolding = false;
+	//private float currentStamina;
+	//private bool isHolding = false;
 	private Coroutine transitionCoroutine;
 
 	private const string VolumeAKey = "HoldGlobalVolumeStaminaSafe_VolumeA";
 	private const string VolumeBKey = "HoldGlobalVolumeStaminaSafe_VolumeB";
+
+	private bool _isTimeSlowed;
 
 	#region Unity Lifecycle
 
@@ -35,84 +37,71 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		RestoreVolumes();
 	}
 
-	private void Start()
-	{
-		RebindInputActions();
-		ResetStaminaAndVolumes();
-	}
+	//private void Start()
+	//{
+	//	RebindInputActions();
+	//	ResetStaminaAndVolumes();
+	//}
 
-	private void OnDestroy()
-	{
-		SceneManager.sceneLoaded -= OnSceneLoaded;
-	}
+	//private void OnDestroy()
+	//{
+	//	SceneManager.sceneLoaded -= OnSceneLoaded;
+	//}
 
 	private void OnEnable()
 	{
-		RebindInputActions();
-	}
+		TimeManipulationManager.Instance.OnTimeStopStarted += StartHolding;
+		TimeManipulationManager.Instance.OnTimeStopStopped += StopHolding;
+    }
 
-	private void OnDisable()
+    private void OnDisable()
 	{
-		StopTransition();
-		UnbindInputActions();
-		SaveVolumes();
-	}
+        TimeManipulationManager.Instance.OnTimeStopStarted -= StartHolding;
+        TimeManipulationManager.Instance.OnTimeStopStopped -= StopHolding;
+    }
 
 	private void Update()
 	{
-		if (isHolding)
-		{
-			currentStamina -= Time.deltaTime;
-			if (currentStamina <= 0f)
-			{
-				currentStamina = 0f;
-				StopHolding();
-			}
-		}
-		else
-		{
-			currentStamina += Time.deltaTime * rechargeRate;
-			currentStamina = Mathf.Min(currentStamina, maxHoldTime);
-		}
+		_isTimeSlowed = TimeManipulationManager.Instance.IsTimeSlowed;
 	}
 
 	#endregion
 
 	#region Input Handling
 
-	private void OnPress(InputAction.CallbackContext ctx)
-	{
-		if (currentStamina > 0f)
-			StartHolding();
-	}
+	//private void OnPress(InputAction.CallbackContext ctx)
+	//{
+	//	if (currentStamina > 0f)
+	//		StartHolding();
+	//}
 
-	private void OnRelease(InputAction.CallbackContext ctx)
-	{
-		StopHolding();
-	}
+	//private void OnRelease(InputAction.CallbackContext ctx)
+	//{
+	//	StopHolding();
+	//}
 
-	private void RebindInputActions()
-	{
-		if (holdAction?.action == null) return;
+	//private void RebindInputActions()
+	//{
+	//	if (holdAction?.action == null) return;
 
-		holdAction.action.performed -= OnPress;
-		holdAction.action.canceled -= OnRelease;
+	//	holdAction.action.performed -= OnPress;
+	//	holdAction.action.canceled -= OnRelease;
 
-		holdAction.action.performed += OnPress;
-		holdAction.action.canceled += OnRelease;
+	//	holdAction.action.performed += OnPress;
+	//	holdAction.action.canceled += OnRelease;
 
-		holdAction.action.Enable();
-	}
+	//	holdAction.action.Enable();
+	//}
 
-	private void UnbindInputActions()
-	{
-		if (holdAction?.action == null) return;
+	//private void UnbindInputActions()
+	//{
+	//	if (holdAction?.action == null) return;
 
-		holdAction.action.performed -= OnPress;
-		holdAction.action.canceled -= OnRelease;
+	//	holdAction.action.performed -= OnPress;
+	//	holdAction.action.canceled -= OnRelease;
 
-		holdAction.action.Disable();
-	}
+	//	holdAction.action.Disable();
+	//}
 
 	#endregion
 
@@ -122,7 +111,7 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	{
 		if (volumeA == null || volumeB == null) return;
 
-		isHolding = true;
+		// isHolding = true;
 		StartTransition(volumeA, volumeB);
 	}
 
@@ -130,31 +119,31 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	{
 		if (volumeA == null || volumeB == null) return;
 
-		isHolding = false;
+		// isHolding = false;
 		StartTransition(volumeB, volumeA);
 	}
 
-	private void ResetStaminaAndVolumes()
-	{
-		currentStamina = maxHoldTime;
-		isHolding = false;
-		SetVolumesInstant(volumeA, 1f, true);
-		SetVolumesInstant(volumeB, 0f, false);
-	}
+	//private void ResetStaminaAndVolumes()
+	//{
+	//	currentStamina = maxHoldTime;
+	//	isHolding = false;
+	//	SetVolumesInstant(volumeA, 1f, true);
+	//	SetVolumesInstant(volumeB, 0f, false);
+	//}
 
-	private void SetVolumesInstant(Volume active, float activeWeight, bool activeEnabled)
-	{
-		if (volumeA != null)
-		{
-			volumeA.weight = (active == volumeA) ? activeWeight : 0f;
-			volumeA.enabled = (active == volumeA) ? activeEnabled : false;
-		}
-		if (volumeB != null)
-		{
-			volumeB.weight = (active == volumeB) ? activeWeight : 0f;
-			volumeB.enabled = (active == volumeB) ? activeEnabled : false;
-		}
-	}
+	//private void SetVolumesInstant(Volume active, float activeWeight, bool activeEnabled)
+	//{
+	//	if (volumeA != null)
+	//	{
+	//		volumeA.weight = (active == volumeA) ? activeWeight : 0f;
+	//		volumeA.enabled = (active == volumeA) ? activeEnabled : false;
+	//	}
+	//	if (volumeB != null)
+	//	{
+	//		volumeB.weight = (active == volumeB) ? activeWeight : 0f;
+	//		volumeB.enabled = (active == volumeB) ? activeEnabled : false;
+	//	}
+	//}
 
 	#endregion
 
@@ -222,8 +211,8 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 	{
 		RestoreVolumes();
-		RebindInputActions();
-		ResetStaminaAndVolumes();
+		//RebindInputActions();
+		//ResetStaminaAndVolumes();
 	}
 
 	private void RestoreVolumes()
@@ -263,10 +252,10 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	#region Utilities
 
-	public float GetStaminaNormalized()
-	{
-		return Mathf.Clamp01(currentStamina / maxHoldTime);
-	}
+	//public float GetStaminaNormalized()
+	//{
+	//	return Mathf.Clamp01(currentStamina / maxHoldTime);
+	//}
 
 	#endregion
 }

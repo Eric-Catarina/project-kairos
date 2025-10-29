@@ -20,6 +20,14 @@ public class TimeManipulationManager : MonoBehaviour
     private float _rechargeRate;
     private bool _isTimeSlowed = false;
 
+    public bool IsTimeSlowed
+    {
+        get { return _isTimeSlowed; }
+    }
+
+    public event Action OnTimeStopStarted;
+    public event Action OnTimeStopStopped;
+
     private readonly List<ITimeSlowable> _slowableObjects = new List<ITimeSlowable>();
     
     [Header("Configurações do Efeito")]
@@ -121,6 +129,7 @@ public class TimeManipulationManager : MonoBehaviour
         {
             slowable?.SlowDown(slowPercentage);
         }
+        OnTimeStopStarted?.Invoke();
     }
 
     private void DeactivateSlowTime()
@@ -130,6 +139,7 @@ public class TimeManipulationManager : MonoBehaviour
         {
             slowable?.RestoreNormalTime();
         }
+        OnTimeStopStopped?.Invoke();
     }
     
     public void Register(ITimeSlowable slowable)
