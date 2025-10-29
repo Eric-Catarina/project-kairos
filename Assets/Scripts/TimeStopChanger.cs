@@ -50,11 +50,15 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	private void OnEnable()
 	{
-		TimeManipulationManager.Instance.OnTimeStopStarted += StartHolding;
-		TimeManipulationManager.Instance.OnTimeStopStopped += StopHolding;
-    }
+		if (TimeManipulationManager.Instance != null)
+		{
+			TimeManipulationManager.Instance.OnTimeStopStarted += StartHolding;
+			TimeManipulationManager.Instance.OnTimeStopStopped += StopHolding;
+		}
+		}
 
-    private void OnDisable()
+
+	private void OnDisable()
 	{
         TimeManipulationManager.Instance.OnTimeStopStarted -= StartHolding;
         TimeManipulationManager.Instance.OnTimeStopStopped -= StopHolding;
@@ -65,49 +69,50 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 		_isTimeSlowed = TimeManipulationManager.Instance.IsTimeSlowed;
 	}
 
-	#endregion
 
-	#region Input Handling
+    #endregion
 
-	//private void OnPress(InputAction.CallbackContext ctx)
-	//{
-	//	if (currentStamina > 0f)
-	//		StartHolding();
-	//}
+    #region Input Handling
 
-	//private void OnRelease(InputAction.CallbackContext ctx)
-	//{
-	//	StopHolding();
-	//}
+    //private void OnPress(InputAction.CallbackContext ctx)
+    //{
+    //	if (currentStamina > 0f)
+    //		StartHolding();
+    //}
 
-	//private void RebindInputActions()
-	//{
-	//	if (holdAction?.action == null) return;
+    //private void OnRelease(InputAction.CallbackContext ctx)
+    //{
+    //	StopHolding();
+    //}
 
-	//	holdAction.action.performed -= OnPress;
-	//	holdAction.action.canceled -= OnRelease;
+    //private void RebindInputActions()
+    //{
+    //	if (holdAction?.action == null) return;
 
-	//	holdAction.action.performed += OnPress;
-	//	holdAction.action.canceled += OnRelease;
+    //	holdAction.action.performed -= OnPress;
+    //	holdAction.action.canceled -= OnRelease;
 
-	//	holdAction.action.Enable();
-	//}
+    //	holdAction.action.performed += OnPress;
+    //	holdAction.action.canceled += OnRelease;
 
-	//private void UnbindInputActions()
-	//{
-	//	if (holdAction?.action == null) return;
+    //	holdAction.action.Enable();
+    //}
 
-	//	holdAction.action.performed -= OnPress;
-	//	holdAction.action.canceled -= OnRelease;
+    //private void UnbindInputActions()
+    //{
+    //	if (holdAction?.action == null) return;
 
-	//	holdAction.action.Disable();
-	//}
+    //	holdAction.action.performed -= OnPress;
+    //	holdAction.action.canceled -= OnRelease;
 
-	#endregion
+    //	holdAction.action.Disable();
+    //}
 
-	#region Stamina & Volume Control
+    #endregion
 
-	private void StartHolding()
+    #region Stamina & Volume Control
+
+    private void StartHolding()
 	{
 		if (volumeA == null || volumeB == null) return;
 
@@ -210,7 +215,7 @@ public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
 
 	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 	{
-		RestoreVolumes();
+		//RestoreVolumes();
 		//RebindInputActions();
 		//ResetStaminaAndVolumes();
 	}
