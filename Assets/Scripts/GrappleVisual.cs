@@ -9,6 +9,8 @@ public class LinePrefabRendererEffects : MonoBehaviour
 	public LineRenderer lineRenderer;
 	public GameObject lineSegmentPrefabA;
 	public GameObject lineSegmentPrefabB;
+	public GameObject startTipPrefab;
+	public GameObject endTipPrefab;
 
 	[Header("Settings")]
 	public bool updateInEditor = true;
@@ -16,29 +18,27 @@ public class LinePrefabRendererEffects : MonoBehaviour
 	public float minSegmentLength = 0.001f;
 	[Range(0f, 1f)] public float flickerChance = 0.3f;
 	public float flickerRate = 0.05f;
+	public bool alignTipsToLine = true;
 
-	private class SegmentPair
-	{
-		public GameObject A;
-		public GameObject B;
-	}
+	private GameObject segmentAInstance;
+	private GameObject segmentBInstance;
+	private GameObject startTipInstance;
+	private GameObject endTipInstance;
 
-	private List<SegmentPair> segments = new List<SegmentPair>();
 	private Transform segmentParent;
-
 	private float prefabLength = 1f;
 	private Vector3 prefabPrimaryAxisLocal = Vector3.forward;
 	private Vector3 prefabOriginalLocalScale = Vector3.one;
 
 	void OnEnable()
 	{
-		CleanupOldSegments();
+		CleanupAll();
 		CachePrefabInfo();
 		EnsureContainer();
 		RebuildAll();
 	}
 
-	void OnDestroy() => CleanupOldSegments();
+	void OnDestroy() => CleanupAll();
 
 	void Start()
 	{
@@ -76,22 +76,17 @@ public class LinePrefabRendererEffects : MonoBehaviour
 		}
 	}
 
-	void CleanupOldSegments()
+	void CleanupAll()
 	{
-		if (segmentParent)
-		{
-#if UNITY_EDITOR
-			if (!Application.isPlaying)
-				DestroyImmediate(segmentParent.gameObject);
-			else
-				Destroy(segmentParent.gameObject);
-#else
-            Destroy(segmentParent.gameObject);
-#endif
-		}
+		SafeDestroy(segmentAInstance);
+		SafeDestroy(segmentBInstance);
+		SafeDestroy(startTipInstance);
+		SafeDestroy(endTipInstance);
 
-		segments.Clear();
-		segmentParent = null;
+		segmentAInstance = null;
+		segmentBInstance = null;
+		startTipInstance = null;
+		endTipInstance = null;
 	}
 
 	void CachePrefabInfo()
@@ -118,70 +113,89 @@ public class LinePrefabRendererEffects : MonoBehaviour
 
 		if (!found) localSize = new Vector3(0.1f, 0.1f, 1f);
 
-		if (localSize.x >= localSize.y && localSize.x >= localSize.z) { prefabPrimaryAxisLocal = Vector3.right; prefabLength = localSize.x * Mathf.Abs(prefabOriginalLocalScale.x); }
-		else if (localSize.y >= localSize.x && localSize.y >= localSize.z) { prefabPrimaryAxisLocal = Vector3.up; prefabLength = localSize.y * Mathf.Abs(prefabOriginalLocalScale.y); }
-		else { prefabPrimaryAxisLocal = Vector3.forward; prefabLength = localSize.z * Mathf.Abs(prefabOriginalLocalScale.z); }
+		if (localSize.x >= localSize.y && localSize.x >= localSize.z)
+		{
+			prefabPrimaryAxisLocal = Vector3.right;
+			prefabLength = localSize.x * Mathf.Abs(prefabOriginalLocalScale.x);
+		}
+		else if (localSize.y >= localSize.x && localSize.y >= localSize.z)
+		{
+			prefabPrimaryAxisLocal = Vector3.up;
+			prefabLength = localSize.y * Mathf.Abs(prefabOriginalLocalScale.y);
+		}
+		else
+		{
+			prefabPrimaryAxisLocal = Vector3.forward;
+			prefabLength = localSize.z * Mathf.Abs(prefabOriginalLocalScale.z);
+		}
 
 		if (prefabLength <= 0f) prefabLength = 1f;
 	}
 
 	void RebuildAll()
 	{
-		if (lineRenderer == null || (lineSegmentPrefabA == null && lineSegmentPrefabB == null))
+		if (lineRenderer == null || lineRenderer.positionCount < 2)
+		{
+			CleanupAll();
 			return;
+		}
 
 		EnsureContainer();
 
-		int needed = Mathf.Max(0, lineRenderer.positionCount - 1);
+		Vector3 startPos = lineRenderer.GetPosition(0);
+		Vector3 endPos = lineRenderer.GetPosition(lineRenderer.positionCount - 1);
+		Vector3 dir = (endPos - startPos).normalized;
 
-		// Create or activate segments
-		while (segments.Count < needed)
+		// Ensure single instance for each prefab
+		EnsureSingleInstance(ref segmentAInstance, lineSegmentPrefabA);
+		EnsureSingleInstance(ref segmentBInstance, lineSegmentPrefabB);
+		EnsureSingleInstance(ref startTipInstance, startTipPrefab);
+		EnsureSingleInstance(ref endTipInstance, endTipPrefab);
+
+		// Place segments at midpoint and scale
+		Vector3 mid = (startPos + endPos) * 0.5f;
+		ApplyTransform(segmentAInstance, mid, dir, Vector3.Distance(startPos, endPos));
+		ApplyTransform(segmentBInstance, mid, dir, Vector3.Distance(startPos, endPos));
+
+		// Place tips
+		if (startTipInstance != null)
 		{
-			SegmentPair pair = new SegmentPair();
-
-			if (lineSegmentPrefabA)
-			{
-				pair.A = Instantiate(lineSegmentPrefabA, segmentParent);
-				PlayAnimator(pair.A);
-				if (Application.isPlaying) StartCoroutine(FlickerRoutine(pair.A));
-			}
-
-			if (lineSegmentPrefabB)
-			{
-				pair.B = Instantiate(lineSegmentPrefabB, segmentParent);
-				PlayAnimator(pair.B);
-				if (Application.isPlaying) StartCoroutine(FlickerRoutine(pair.B));
-			}
-
-			segments.Add(pair);
+			startTipInstance.SetActive(true);
+			startTipInstance.transform.position = startPos;
+			if (alignTipsToLine) startTipInstance.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
 		}
 
-		for (int i = 0; i < segments.Count; i++)
+		if (endTipInstance != null)
 		{
-			bool active = (i < needed);
-			if (segments[i].A) segments[i].A.SetActive(active);
-			if (segments[i].B) segments[i].B.SetActive(active);
+			endTipInstance.SetActive(true);
+			endTipInstance.transform.position = endPos;
+			if (alignTipsToLine) endTipInstance.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
 		}
+	}
 
-		// Update positions, rotation, scale
-		for (int i = 0; i < needed; i++)
+	void EnsureSingleInstance(ref GameObject instance, GameObject prefab)
+	{
+		if (prefab == null) return;
+
+		// Check if instance already exists in the container
+		if (instance == null)
 		{
-			Vector3 start = lineRenderer.GetPosition(i);
-			Vector3 end = lineRenderer.GetPosition(i + 1);
-			float segLength = Vector3.Distance(start, end);
-
-			if (segLength < minSegmentLength)
+			foreach (Transform child in segmentParent)
 			{
-				if (segments[i].A) segments[i].A.SetActive(false);
-				if (segments[i].B) segments[i].B.SetActive(false);
-				continue;
+				if (child.name.StartsWith(prefab.name))
+				{
+					instance = child.gameObject;
+					break;
+				}
 			}
 
-			Vector3 mid = (start + end) * 0.5f;
-			Vector3 dir = (end - start).normalized;
-
-			ApplyTransform(segments[i].A, mid, dir, segLength);
-			ApplyTransform(segments[i].B, mid, dir, segLength);
+			// Instantiate if still null
+			if (instance == null)
+			{
+				instance = Instantiate(prefab, segmentParent);
+				PlayAnimator(instance);
+				if (Application.isPlaying) StartCoroutine(FlickerRoutine(instance));
+			}
 		}
 	}
 
@@ -190,13 +204,10 @@ public class LinePrefabRendererEffects : MonoBehaviour
 		if (seg == null) return;
 
 		seg.transform.position = mid;
-
-		// Align along the line
 		Vector3 prefabAxisWorld = seg.transform.TransformDirection(prefabPrimaryAxisLocal).normalized;
 		Quaternion align = Quaternion.FromToRotation(prefabAxisWorld, dir);
 		seg.transform.rotation = align * seg.transform.rotation;
 
-		// Scale
 		float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
 		Vector3 newScale = prefabOriginalLocalScale;
 		if (prefabPrimaryAxisLocal == Vector3.right) newScale.x *= scaleFactor;
@@ -225,13 +236,23 @@ public class LinePrefabRendererEffects : MonoBehaviour
 			legacy.Play();
 		}
 
-		// Play ParticleSystems (sparks)
 		ParticleSystem[] ps = seg.GetComponentsInChildren<ParticleSystem>();
 		foreach (var p in ps)
 		{
 			p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 			p.Play(true);
 		}
+	}
+
+	void SafeDestroy(GameObject go)
+	{
+		if (go == null) return;
+#if UNITY_EDITOR
+		if (!Application.isPlaying) DestroyImmediate(go);
+		else Destroy(go);
+#else
+        Destroy(go);
+#endif
 	}
 
 	IEnumerator FlickerRoutine(GameObject seg)
