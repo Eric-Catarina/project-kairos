@@ -26,6 +26,7 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _EMISSION
+  - _RECEIVE_SHADOWS_OFF
   m_InvalidKeywords: []
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
@@ -119,8 +120,8 @@ Material:
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _QueueOffset: 0
-    - _ReceiveShadows: 1
-    - _Smoothness: 0.5
+    - _ReceiveShadows: 0
+    - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -132,7 +133,7 @@ Material:
     m_Colors:
     - _BaseColor: {r: 0, g: 1, b: 0.9301295, a: 1}
     - _Color: {r: 0, g: 1, b: 0.9301296, a: 1}
-    - _EmissionColor: {r: 0, g: 2.9960785, b: 2.195677, a: 1}
+    - _EmissionColor: {r: 0.19607846, g: 1.2773763, b: 1.4980392, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
