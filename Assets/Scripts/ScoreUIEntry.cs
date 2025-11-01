@@ -2,14 +2,14 @@
 
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI; // Para a cor
+using UnityEngine.UI;
 
 public class ScoreUIEntry : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI rankText;
     [SerializeField] private TextMeshProUGUI nameText;
     [SerializeField] private TextMeshProUGUI timeText;
-    [SerializeField] private Image background; // Opcional: para destacar a pontuação do jogador
+    [SerializeField] private Image background;
     [SerializeField] private Color highlightColor = Color.yellow;
     private Color _defaultColor;
 
@@ -33,7 +33,7 @@ public class ScoreUIEntry : MonoBehaviour
         }
         
         nameText.text = data.playerName;
-        timeText.text = $"{data.scoreTime:F2}s";
+        timeText.text = $"{data.scoreTime:F3}s";
 
         if (background != null)
         {

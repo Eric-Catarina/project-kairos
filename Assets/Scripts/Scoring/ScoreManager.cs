@@ -228,7 +228,12 @@ public class ScoreManager : MonoBehaviour
         {
             InputManager.Instance.OnMove -= HandleFirstMoveInput;
             _playerMovementController.OnJumped -= HandleFirstInput;
-           _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
         }
+    }
+    public LevelData GetCurrentLevelData()
+    {
+        return currentLevelData;
+        
     }
 }

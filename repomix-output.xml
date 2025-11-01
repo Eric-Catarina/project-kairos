@@ -113,6 +113,8 @@ Assets/
     PlayFabAuthManager.cs
     PlayFabLeaderboardService.cs
     PostGamePanel.cs
+    SaveDataModels.cs
+    SaveManager.cs
     SceneManagerLogic.cs
     ScoreEntry.cs
     ScoreUIEntry.cs
@@ -1558,86 +1560,6 @@ public class FlyingDroneEnemy : MonoBehaviour, ITimeSlowable
 }
 </file>
 
-<file path="Assets/Scripts/GameSettingsManager.cs">
-// Local: Assets/Scripts/GameSettingsManager.cs
-
-using System;
-using UnityEngine;
-
-public class GameSettingsManager : MonoBehaviour
-{
-    public static GameSettingsManager Instance { get; private set; }
-
-    public static event Action<float> OnMouseSensitivityXChanged;
-    public static event Action<float> OnMouseSensitivityYChanged;
-    public static event Action<bool> OnInvertXChanged;
-    public static event Action<bool> OnInvertYChanged;
-
-    public float MouseSensitivityX
-    {
-        get => PlayerPrefs.GetFloat("MouseSensitivityX", 0.5f);
-        private set => PlayerPrefs.SetFloat("MouseSensitivityX", value);
-    }
-    
-    public float MouseSensitivityY
-    {
-        get => PlayerPrefs.GetFloat("MouseSensitivityY", 0.5f);
-        private set => PlayerPrefs.SetFloat("MouseSensitivityY", value);
-    }
-
-    public bool InvertMouseX
-    {
-        get => PlayerPrefs.GetInt("InvertMouseX", 0) == 1;
-        private set => PlayerPrefs.SetInt("InvertMouseX", value ? 1 : 0);
-    }
-
-    public bool InvertMouseY
-    {
-        get => PlayerPrefs.GetInt("InvertMouseY", 0) == 1;
-        private set => PlayerPrefs.SetInt("InvertMouseY", value ? 1 : 0);
-    }
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    public void SetMouseSensitivityX(float normalizedValue)
-    {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        MouseSensitivityX = clampedValue;
-        OnMouseSensitivityXChanged?.Invoke(clampedValue);
-    }
-    
-    public void SetMouseSensitivityY(float normalizedValue)
-    {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        MouseSensitivityY = clampedValue;
-        OnMouseSensitivityYChanged?.Invoke(clampedValue);
-    }
-
-    public void SetInvertX(bool isInverted)
-    {
-        InvertMouseX = isInverted;
-        OnInvertXChanged?.Invoke(isInverted);
-        PlayerPrefs.Save();
-    }
-
-    public void SetInvertY(bool isInverted)
-    {
-        InvertMouseY = isInverted;
-        OnInvertYChanged?.Invoke(isInverted);
-        PlayerPrefs.Save();
-    }
-}
-</file>
-
 <file path="Assets/Scripts/GameSystem.cs">
 using UnityEngine;
 
@@ -1775,160 +1697,6 @@ public class InvertMouseToggle : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/LaserBarrier.cs">
-// Local: Assets/Scripts/Scenario/LaserBarrier.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(Collider))]
-public class LaserBarrier : MonoBehaviour, ITimeSlowable
-{
-    [Header("Componentes")]
-    [Tooltip("O Mesh Renderer do visual do laser. O script desabilitará isso em vez do GameObject.")]
-    [SerializeField] private Renderer laserRenderer;
-    [SerializeField] private SpriteRenderer laserSpriteRenderer;
-
-    private Collider _collider;
-
-    [Header("Comportamento do Ciclo")]
-    [Tooltip("Tempo em segundos que o laser fica ativo.")]
-    [SerializeField] private float activeDuration = 5f;
-    [Tooltip("Tempo em segundos que o laser fica inativo.")]
-    [SerializeField] private float inactiveDuration = 3f;
-    [Tooltip("Deslocamento inicial do ciclo em segundos. Útil para dessincronizar múltiplos lasers.")]
-    [SerializeField] private float cycleOffset = 0f;
-    private float _timer;
-    private bool _isCurrentlyActive;
-
-    [Header("Interação com o Jogador")]
-    [Tooltip("A força com que o jogador é repelido ao tocar no laser ativo.")]
-    [SerializeField] private float repulsionForce = 50f;
-    [Tooltip("A força vertical extra aplicada para jogar o jogador para cima.")]
-    [SerializeField] private float upwardForceMultiplier = 0.3f;
-    [Tooltip("Se marcado, a velocidade do jogador será zerada antes de aplicar a repulsão.")]
-    [SerializeField] private bool resetPlayerMomentum = true;
-
-    [Header("Efeitos")]
-    [SerializeField] private string repulsionSfx = "LaserRepulsion";
-    [SerializeField] private string deactivateSfx = "LaserDeactivate";
-    [SerializeField] private string reactivateSfx = "LaserReactivate";
-
-    private bool _isTimeSlowed = false;
-    private const string PlayerTag = "Player";
-
-    private void Awake()
-    {
-        _collider = GetComponent<Collider>();
-        _collider.isTrigger = true;
-
-        if (laserRenderer == null)
-        {
-            laserRenderer = GetComponentInChildren<Renderer>();
-        }
-
-        if (laserRenderer == null)
-        {
-            Debug.LogError("Nenhum Renderer foi encontrado para a LaserBarrier. O visual não funcionará.", this);
-            enabled = false;
-        }
-    }
-
-    private void Start()
-    {
-        TimeManipulationManager.Instance?.Register(this);
-        _timer = cycleOffset;
-        UpdateLaserState();
-    }
-
-    private void OnDisable()
-    {
-        TimeManipulationManager.Instance?.Unregister(this);
-    }
-
-    private void Update()
-    {
-        if (_isTimeSlowed) return;
-
-        _timer += Time.deltaTime;
-        
-        float currentCycleDuration = _isCurrentlyActive ? activeDuration : inactiveDuration;
-        
-        if (_timer >= currentCycleDuration)
-        {
-            _timer = 0f;
-            _isCurrentlyActive = !_isCurrentlyActive;
-            UpdateLaserState();
-        }
-    }
-
-    private void UpdateLaserState()
-    {
-        SetLaserActive(_isCurrentlyActive);
-
-        if (_isCurrentlyActive)
-        {
-            AudioManager.instance?.PlaySFX(reactivateSfx);
-        }
-        else
-        {
-            AudioManager.instance?.PlaySFX(deactivateSfx);
-        }
-    }
-    
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!_isCurrentlyActive || _isTimeSlowed) return;
-
-        if (other.CompareTag(PlayerTag))
-        {
-            RepelPlayer(other.gameObject);
-        }
-    }
-
-    private void RepelPlayer(GameObject playerObject)
-    {
-        var playerMovement = playerObject.GetComponent<PlayerMovementController>();
-        if (playerMovement == null) return;
-
-        Vector3 repulsionDirection = (playerObject.transform.position - transform.position);
-        repulsionDirection.y = 0;
-        repulsionDirection.Normalize();
-
-        Vector3 finalDirection = (repulsionDirection + Vector3.up * upwardForceMultiplier).normalized;
-        
-        playerMovement.ApplyExternalForce(finalDirection, repulsionForce, resetPlayerMomentum);
-        
-        AudioManager.instance?.PlaySFX(repulsionSfx);
-    }
-
-    private void SetLaserActive(bool isActive)
-    {
-        if (laserRenderer != null)
-        {
-            laserRenderer.enabled = isActive;
-            laserSpriteRenderer.enabled = isActive;
-        }
-        _collider.enabled = isActive;
-    }
-
-    #region ITimeSlowable Implementation
-
-    public void SlowDown(float slowPercentage)
-    {
-        _isTimeSlowed = true;
-    }
-
-    public void RestoreNormalTime()
-    {
-        _isTimeSlowed = false;
-    }
-    
-    public void SetSlowDownColor(Color newColor) { } 
-
-    #endregion
-}
-</file>
-
 <file path="Assets/Scripts/LeaderboardManager.cs">
 // Local: Assets/Scripts/Scoring/LeaderboardManager.cs
 
@@ -1974,106 +1742,6 @@ public class LeaderboardManager : MonoBehaviour
     public Task<LeaderboardResult> GetLeaderboardWithPlayerAsync(string levelId, int topCount)
     {
         return _service.GetLeaderboardWithPlayerAsync(levelId, topCount);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/LeaderboardUIController.cs">
-// Local: Assets/Scripts/UI/LeaderboardUIController.cs
-
-using UnityEngine;
-
-public class LeaderboardUIController : MonoBehaviour
-{
-    [Header("Referências")]
-    [SerializeField] private LevelData levelData;
-    [SerializeField] private GameObject scoreEntryPrefab;
-    [SerializeField] private Transform topScoresContentParent;
-    [SerializeField] private GameObject loadingIndicator;
-
-    [Header("UI do Jogador Local")]
-    [SerializeField] private GameObject playerScoreContainer;
-    [SerializeField] private ScoreUIEntry playerScoreUIEntry;
-    
-    private void OnEnable()
-    {
-        GameFlowManager.OnLevelCompleted += HandleLevelCompleted;
-    }
-
-    private void OnDisable()
-    {
-        GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
-    }
-
-    private void HandleLevelCompleted(float finalTime)
-    {
-        PrepareForDisplay(finalTime);
-    }
-    
-    public void PrepareForDisplay(float time)
-    {
-        ClearLeaderboard();
-        gameObject.SetActive(true);
-        if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
-        loadingIndicator.SetActive(true);
-
-        if (playerScoreContainer != null && playerScoreUIEntry != null)
-        {
-            var tempEntry = new ScoreEntry(
-                PlayFabAuthManager.Instance.PlayFabId,
-                PlayerProfile.Instance.CurrentProfile.PlayerName,
-                time,
-                levelData.GetFullLevelId()
-            );
-            playerScoreUIEntry.Populate(0, tempEntry, true); 
-            playerScoreContainer.SetActive(true);
-        }
-    }
-
-    public async void ShowLeaderboard()
-    {
-        if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
-        {
-            Debug.LogError("Dependências não configuradas para o Leaderboard!");
-            loadingIndicator.SetActive(false);
-            return;
-        }
-
-        var leaderboardResult = await LeaderboardManager.Instance.GetLeaderboardWithPlayerAsync(levelData.GetFullLevelId(), 10);
-        loadingIndicator.SetActive(false);
-
-        ClearLeaderboard();
-
-        string localPlayerFabId = PlayFabAuthManager.Instance.PlayFabId;
-
-        if (leaderboardResult?.TopEntries != null)
-        {
-            foreach (var score in leaderboardResult.TopEntries)
-            {
-                GameObject entryGO = Instantiate(scoreEntryPrefab, topScoresContentParent);
-                ScoreUIEntry entryUI = entryGO.GetComponent<ScoreUIEntry>();
-                bool isLocalPlayer = score.playerId == localPlayerFabId;
-                entryUI.Populate(score.Position, score, isLocalPlayer);
-            }
-        }
-        
-        if (leaderboardResult?.PlayerEntry != null && playerScoreContainer != null && playerScoreUIEntry != null)
-        {
-            playerScoreUIEntry.Populate(leaderboardResult.PlayerEntry.Position, leaderboardResult.PlayerEntry, true);
-            playerScoreContainer.SetActive(true);
-        }
-        else if (playerScoreContainer != null)
-        {
-            playerScoreContainer.SetActive(false);
-        }
-    }
-
-    private void ClearLeaderboard()
-    {
-        foreach (Transform child in topScoresContentParent)
-        {
-            Destroy(child.gameObject);
-        }
     }
 }
 </file>
@@ -2226,112 +1894,6 @@ public class LocalLeaderboardService : ILeaderboardService
         {
             await writer.WriteAsync(json);
         }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/MotionBlurSlider.cs">
-// Local: Assets/Scripts/UI/MotionBlurSlider.cs
-
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-using UnityEngine.UI;
-
-[RequireComponent(typeof(Slider))]
-public class MotionBlurSlider : MonoBehaviour
-{
-    [Header("Dependências")]
-    [Tooltip("Arraste aqui o Volume Global que contém o override de Motion Blur.")]
-private Volume globalVolume;
-
-    [Header("Configurações de Clamp")]
-    [SerializeField] private float minClamp = 0f;
-    [SerializeField] private float maxClamp = 0.02f;
-
-    private Slider _slider;
-    private MotionBlur _motionBlur;
-    private const string ClampPrefKey = "Settings_MotionBlurClamp";
-
-    private void Awake()
-    {
-        _slider = GetComponent<Slider>();
-
-        if (globalVolume == null)
-        {
-            // Tenta encontrar automaticamente caso esqueça de arrastar no inspector
-            globalVolume = FindFirstObjectByType<Volume>();
-        }
-
-        InitializeMotionBlurReference();
-    }
-
-    private void Start()
-    {
-        if (_motionBlur == null)
-        {
-            Debug.LogWarning("Motion Blur não encontrado no Volume atribuído. O slider será desativado.", this);
-            _slider.interactable = false;
-            return;
-        }
-
-        LoadSavedValue();
-        _slider.onValueChanged.AddListener(OnSliderValueChanged);
-    }
-
-    private void OnDestroy()
-    {
-        _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
-    }
-
-    private void InitializeMotionBlurReference()
-    {
-        if (globalVolume != null)
-        {
-            // Maneira mais segura e eficiente de pegar o componente do que iterar a lista
-            if (!globalVolume.profile.TryGet(out _motionBlur))
-            {
-                // Opcional: Adiciona o componente se ele não existir no perfil
-                // _motionBlur = globalVolume.profile.Add<MotionBlur>(false);
-            }
-        }
-    }
-
-    private void LoadSavedValue()
-    {
-        // Usa o valor atual do perfil como padrão caso não tenha nada salvo ainda
-        float currentProfileValue = _motionBlur.clamp.value;
-        float defaultNormalizedValue = Mathf.InverseLerp(minClamp, maxClamp, currentProfileValue);
-        
-        float savedNormalizedValue = PlayerPrefs.GetFloat(ClampPrefKey, defaultNormalizedValue);
-
-        // Atualiza o slider sem disparar o evento onValueChanged para evitar salvamento redundante no Start
-        _slider.SetValueWithoutNotify(savedNormalizedValue);
-        
-        // Garante que o efeito visual já comece correto
-        ApplyMotionBlurClamp(savedNormalizedValue);
-    }
-
-    private void OnSliderValueChanged(float normalizedValue)
-    {
-        ApplyMotionBlurClamp(normalizedValue);
-        SaveValue(normalizedValue);
-    }
-
-    private void ApplyMotionBlurClamp(float normalizedValue)
-    {
-        if (_motionBlur != null)
-        {
-            float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
-            // .Override garante que a propriedade seja ativada no volume
-            _motionBlur.clamp.Override(newValue);
-        }
-    }
-
-    private void SaveValue(float value)
-    {
-        PlayerPrefs.SetFloat(ClampPrefKey, value);
-        PlayerPrefs.Save();
     }
 }
 </file>
@@ -2694,166 +2256,6 @@ public class PlayerAnimationController : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PlayerDebugPanel.cs">
-// Local: Assets/Scripts/UI/PlayerDebugPanel.cs
-
-using System.Linq;
-using TMPro;
-using UnityEngine;
-
-[RequireComponent(typeof(RectTransform))]
-public class PlayerDebugPanel : MonoBehaviour
-{
-    [Header("Referências da UI")]
-    [SerializeField] private TMP_Dropdown playerDropdown;
-
-    private bool _isPopulating = false;
-
-    private void OnEnable()
-    {
-        PlayerProfile.OnProfileChanged += HandleProfileChanged;
-        if (playerDropdown != null)
-        {
-            playerDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
-        }
-        PopulateDropdown();
-    }
-
-    private void OnDisable()
-    {
-        PlayerProfile.OnProfileChanged -= HandleProfileChanged;
-        if (playerDropdown != null)
-        {
-            playerDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
-        }
-    }
-    
-    private void HandleProfileChanged()
-    {
-        PopulateDropdown();
-    }
-
-    private void PopulateDropdown()
-    {
-        if (playerDropdown == null || PlayerProfile.Instance == null) return;
-        
-        _isPopulating = true;
-        
-        playerDropdown.ClearOptions();
-        
-        var options = PlayerProfile.Instance.AllProfiles
-            .Select(p => new TMP_Dropdown.OptionData(p.PlayerName))
-            .ToList();
-            
-        playerDropdown.AddOptions(options);
-
-        int currentIndex = PlayerProfile.Instance.AllProfiles
-            .FindIndex(p => p.PlayerId == PlayerProfile.Instance.CurrentProfile.PlayerId);
-            
-        if (currentIndex != -1)
-        {
-            playerDropdown.value = currentIndex;
-        }
-        
-        playerDropdown.RefreshShownValue();
-        _isPopulating = false;
-    }
-
-    private void OnDropdownValueChanged(int index)
-    {
-        if (_isPopulating || PlayerProfile.Instance == null) return;
-
-        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].PlayerId;
-        
-        if (PlayerProfile.Instance.CurrentProfile.PlayerId != selectedPlayerId)
-        {
-            PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
-            PlayFabAuthManager.Instance.Login();
-        }
-    }
-
-    public void CreateNewPlayer()
-    {
-        if (PlayerProfile.Instance == null) return;
-        
-        PlayerProfile.Instance.CreateNewPlayer(true); 
-        PlayFabAuthManager.Instance.Login();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerDropdownController.cs">
-// Local: Assets/Scripts/UI/PlayerDropdownController.cs
-
-using System.Collections.Generic;
-using System.Linq;
-using TMPro;
-using UnityEngine;
-
-[RequireComponent(typeof(TMP_Dropdown))]
-public class PlayerDropdownController : MonoBehaviour
-{
-    private TMP_Dropdown _playerDropdown;
-    private bool _isPopulating = false;
-
-    private void Awake()
-    {
-        _playerDropdown = GetComponent<TMP_Dropdown>();
-    }
-
-    private void OnEnable()
-    {
-        PlayerProfile.OnProfileChanged += HandleProfileChanged;
-        _playerDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
-        PopulateDropdown();
-    }
-
-    private void OnDisable()
-    {
-        PlayerProfile.OnProfileChanged -= HandleProfileChanged;
-        _playerDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
-    }
-    
-    private void HandleProfileChanged()
-    {
-        PopulateDropdown();
-    }
-
-    private void PopulateDropdown()
-    {
-        if (PlayerProfile.Instance == null) return;
-        
-        _isPopulating = true;
-        _playerDropdown.ClearOptions();
-        
-        var options = PlayerProfile.Instance.AllProfiles
-            .Select(p => new TMP_Dropdown.OptionData(p.PlayerName))
-            .ToList();
-        _playerDropdown.AddOptions(options);
-
-        int currentIndex = PlayerProfile.Instance.AllProfiles
-            .FindIndex(p => p.PlayerId == PlayerProfile.Instance.CurrentProfile.PlayerId);
-            
-        if (currentIndex != -1)
-        {
-            _playerDropdown.value = currentIndex;
-        }
-        
-        _playerDropdown.RefreshShownValue();
-        _isPopulating = false;
-    }
-
-    private void OnDropdownValueChanged(int index)
-    {
-        if (_isPopulating || PlayerProfile.Instance == null) return;
-
-        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].PlayerId;
-        PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
-        PlayFabAuthManager.Instance.Login();
-    }
-}
-</file>
-
 <file path="Assets/Scripts/PlayerLookController.cs">
 // Local: Assets/Scripts/PlayerLookController.cs
 
@@ -3090,185 +2492,6 @@ public class PlayerLookController : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PlayerNameInputController.cs">
-// Local: Assets/Scripts/UI/PlayerNameInputController.cs
-
-using TMPro;
-using UnityEngine;
-
-[RequireComponent(typeof(TMP_InputField))]
-public class PlayerNameInputController : MonoBehaviour
-{
-    private TMP_InputField _nameInputField;
-
-    private void Awake()
-    {
-        _nameInputField = GetComponent<TMP_InputField>();
-    }
-
-    private void OnEnable()
-    {
-        _nameInputField.onEndEdit.AddListener(UpdatePlayerName);
-        PlayerProfile.OnProfileChanged += UpdateFieldText; // Se inscreve no evento
-        UpdateFieldText(); // Atualiza o texto inicial
-    }
-
-    private void OnDisable()
-    {
-        _nameInputField.onEndEdit.RemoveListener(UpdatePlayerName);
-        PlayerProfile.OnProfileChanged -= UpdateFieldText; // Se desinscreve do evento
-    }
-    
-    private void UpdateFieldText()
-    {
-        if (PlayerProfile.Instance?.CurrentProfile != null)
-        {
-            _nameInputField.text = PlayerProfile.Instance.CurrentProfile.PlayerName;
-        }
-    }
-
-    private void UpdatePlayerName(string newName)
-    {
-        if (PlayerProfile.Instance == null) return;
-        
-        if (PlayerProfile.Instance.CurrentProfile != null && PlayerProfile.Instance.CurrentProfile.PlayerName == newName)
-        {
-            return;
-        }
-
-        if (!string.IsNullOrWhiteSpace(newName))
-        {
-            PlayerProfile.Instance.UpdateCurrentPlayerName(newName);
-        }
-        else
-        {
-            UpdateFieldText(); // Reverte para o nome atual se o campo ficar vazio
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerProfile.cs">
-// Local: Assets/Scripts/Scoring/PlayerProfile.cs
-
-using UnityEngine;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-[Serializable]
-public class PlayerProfileData
-{
-    public string PlayerId;
-    public string PlayerName;
-}
-
-[Serializable]
-public class PlayerProfileList
-{
-    public List<PlayerProfileData> Profiles = new List<PlayerProfileData>();
-}
-
-public class PlayerProfile : MonoBehaviour
-{
-    public static PlayerProfile Instance { get; private set; }
-    public static event Action OnProfileChanged;
-
-    public PlayerProfileData CurrentProfile { get; private set; }
-    public List<PlayerProfileData> AllProfiles { get; private set; } = new List<PlayerProfileData>();
-
-    private const string AllProfilesKey = "AllPlayerProfiles";
-    private const string LastProfileIdKey = "LastPlayerProfileId";
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        LoadAllProfiles();
-        LoadLastUsedProfile();
-    }
-
-    private void LoadAllProfiles()
-    {
-        string json = PlayerPrefs.GetString(AllProfilesKey, "{}");
-        PlayerProfileList list = JsonUtility.FromJson<PlayerProfileList>(json);
-        AllProfiles = list.Profiles ?? new List<PlayerProfileData>();
-    }
-
-    private void LoadLastUsedProfile()
-    {
-        string lastUsedId = PlayerPrefs.GetString(LastProfileIdKey, null);
-        CurrentProfile = AllProfiles.FirstOrDefault(p => p.PlayerId == lastUsedId);
-
-        if (CurrentProfile == null)
-        {
-            CreateNewPlayer(true);
-        }
-    }
-
-    public void CreateNewPlayer(bool setActive = false)
-    {
-        var newProfile = new PlayerProfileData
-        {
-            PlayerId = Guid.NewGuid().ToString(),
-            PlayerName = $"Player{UnityEngine.Random.Range(1000, 9999)}"
-        };
-        
-        AllProfiles.Add(newProfile); // Apenas ADICIONA à lista
-        
-        if (setActive)
-        {
-            SwitchPlayer(newProfile.PlayerId); // Troca para o novo perfil sem salvar (SwitchPlayer faz isso)
-        }
-        else
-        {
-            SaveChanges();
-            OnProfileChanged?.Invoke();
-        }
-    }
-
-    public void SwitchPlayer(string playerId)
-    {
-        var profileToSwitch = AllProfiles.FirstOrDefault(p => p.PlayerId == playerId);
-        if (profileToSwitch != null && (CurrentProfile == null || CurrentProfile.PlayerId != playerId))
-        {
-            CurrentProfile = profileToSwitch;
-            PlayerPrefs.SetString(LastProfileIdKey, CurrentProfile.PlayerId);
-            SaveChanges(); // Salva a lista completa e o novo ID ativo
-            OnProfileChanged?.Invoke();
-        }
-    }
-
-    public void UpdateCurrentPlayerName(string newName)
-    {
-        if (CurrentProfile == null || string.IsNullOrWhiteSpace(newName)) return;
-
-        CurrentProfile.PlayerName = newName;
-        SaveChanges();
-
-        if (PlayFabAuthManager.Instance != null && PlayFabAuthManager.Instance.IsLoggedIn())
-        {
-            PlayFabAuthManager.Instance.UpdateDisplayName(newName);
-        }
-        OnProfileChanged?.Invoke();
-    }
-
-    private void SaveChanges()
-    {
-        PlayerProfileList list = new PlayerProfileList { Profiles = AllProfiles };
-        string json = JsonUtility.ToJson(list);
-        PlayerPrefs.SetString(AllProfilesKey, json);
-        PlayerPrefs.Save();
-    }
-}
-</file>
-
 <file path="Assets/Scripts/PlayerVisualController.cs">
 // Local: Assets/Scripts/PlayerVisualController.cs
 
@@ -3315,109 +2538,6 @@ public class PlayerVisualController : MonoBehaviour
     private void OnDestroy()
     {
         KillAllTweens();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayFabAuthManager.cs">
-// Local: Assets/Scripts/Core/PlayFabAuthManager.cs
-
-using PlayFab;
-using PlayFab.ClientModels;
-using UnityEngine;
-using UnityEngine.SceneManagement;
-
-public class PlayFabAuthManager : MonoBehaviour
-{
-    public static PlayFabAuthManager Instance { get; private set; }
-    
-    public string PlayFabId { get; private set; }
-    private string _loggedInCustomId; // Armazena o ID do jogador que está logado no momento
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void Start()
-    {
-        // O login agora é acionado pelo PlayerProfile para garantir a ordem correta
-        if (PlayerProfile.Instance != null)
-        {
-            Login();
-        }
-        else
-        {
-            Debug.LogError("PlayerProfile não encontrado! O login no PlayFab falhará.");
-        }
-    }
-
-    public void Login()
-    {
-        // Se já estamos logados com a conta correta, não faz nada
-        if (IsLoggedIn() && _loggedInCustomId == PlayerProfile.Instance.CurrentProfile.PlayerId)
-        {
-            Debug.Log("<color=green>Já está logado com a conta correta.</color>");
-            return;
-        }
-
-        var request = new LoginWithCustomIDRequest
-        {
-            CustomId = PlayerProfile.Instance.CurrentProfile.PlayerId,
-            CreateAccount = true,
-            InfoRequestParameters = new GetPlayerCombinedInfoRequestParams
-            {
-                GetPlayerProfile = true
-            }
-        };
-        PlayFabClientAPI.LoginWithCustomID(request, OnLoginSuccess, OnLoginFailure);
-    }
-
-    private void OnLoginSuccess(LoginResult result)
-    {
-        PlayFabId = result.PlayFabId;
-        _loggedInCustomId = PlayerProfile.Instance.CurrentProfile.PlayerId;
-        Debug.Log($"<color=green>Login no PlayFab bem-sucedido! PlayFab ID: {PlayFabId}</color>");
-        
-        string currentPlayFabName = result.InfoResultPayload?.PlayerProfile?.DisplayName;
-        string localPlayerName = PlayerProfile.Instance.CurrentProfile.PlayerName;
-
-        if (currentPlayFabName != localPlayerName)
-        {
-            UpdateDisplayName(localPlayerName);
-        }
-    }
-
-    private void OnLoginFailure(PlayFabError error)
-    {
-        Debug.LogError("Falha no login do PlayFab: " + error.GenerateErrorReport());
-    }
-
-    public void UpdateDisplayName(string displayName)
-    {
-        var request = new UpdateUserTitleDisplayNameRequest
-        {
-            DisplayName = displayName
-        };
-        PlayFabClientAPI.UpdateUserTitleDisplayName(request, 
-            (result) => {
-                Debug.Log($"Nome de exibição no PlayFab atualizado para: {result.DisplayName}");
-            },
-            (error) => {
-                Debug.LogError("Falha ao atualizar nome de exibição: " + error.GenerateErrorReport());
-            }
-        );
-    }
-
-    public bool IsLoggedIn()
-    {
-        return PlayFabClientAPI.IsClientLoggedIn();
     }
 }
 </file>
@@ -3482,8 +2602,8 @@ public class PlayFabLeaderboardService : ILeaderboardService
     {
         var tcs = new TaskCompletionSource<bool>();
         if (score.scoreTime < 0) score.scoreTime = 0;
-        int invertedScore = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER) * -1;
-        int finalValue = Mathf.Min(0, invertedScore);
+        int invertedScore = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER) * 1;
+        int finalValue = Mathf.Max(0, invertedScore);
 
         var request = new UpdatePlayerStatisticsRequest
         {
@@ -4370,210 +3490,6 @@ public class WinLogic : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/Scoring/ScoreManager.cs">
-// Local: Assets/Scripts/Scoring/ScoreManager.cs
-
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
-
-public class ScoreManager : MonoBehaviour
-{
-    public static ScoreManager Instance { get; private set; }
-
-    [Header("Configuração do Nível")]
-    [SerializeField] private LevelData currentLevelData;
-    [Tooltip("Se marcado, o timer da fase começará com o primeiro input de movimento, pulo ou grapple.")]
-    [SerializeField] private bool startLevelOnFirstMoveInput = false;
-    
-    [Header("Configurações de UI")]
-    [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
-    private int leaderboardDisplayDelayMs = 750;
-
-    private ScoreUIController _scoreUIController;
-    private LeaderboardUIController _leaderboardUIController;
-    private PlayerMovementController _playerMovementController;
-    private GrapplingHookController _grapplingHookController;
-
-    private float _levelTimer;
-    private bool _isTimerRunning = false;
-    private bool _levelStarted = false;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-    }
-    
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        GameFlowManager.OnLevelCompleted += ProcessLevelCompletion;
-
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused += PauseTimer;
-            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
-        }
-        
-        SubscribeToFirstInputEvents();
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        GameFlowManager.OnLevelCompleted -= ProcessLevelCompletion;
-
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
-            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
-        }
-        
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindSceneReferences();
-        ResetLevelTimer();
-        SubscribeToFirstInputEvents();
-    }
-    
-    private void FindSceneReferences()
-    {
-        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
-        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
-        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
-        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
-    }
-
-    private void Update()
-    {
-        if (_isTimerRunning)
-        {
-            _levelTimer += Time.deltaTime;
-            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-        }
-    }
-    
-    public void StartLevelTimer()
-    {
-        if (_levelStarted) return;
-        _levelTimer = 0f;
-        _levelStarted = true;
-        _isTimerRunning = true;
-        UnsubscribeFromFirstInputEvents();
-    }
-    
-    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank)
-    {
-        if (!_levelStarted)
-        {
-            finalTime = -1f;
-            finalRank = Rank.None;
-            return;
-        }
-        _isTimerRunning = false;
-        finalTime = _levelTimer;
-        finalRank = currentLevelData.GetRankForTime(_levelTimer);
-    }
-
-    private void PauseTimer() { _isTimerRunning = false; }
-    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
-    
-    public void ResetLevelTimer()
-    {
-        _levelTimer = 0f;
-        _isTimerRunning = false;
-        _levelStarted = false;
-        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-    }
-
-    // Retorna o Rank correspondente para um determinado tempo usando o LevelData atual.
-    public Rank GetRankForTime(float time)
-    {
-        if (currentLevelData == null) return Rank.None;
-        return currentLevelData.GetRankForTime(time);
-    }
-
-    private async void ProcessLevelCompletion(float finalTime)
-    {
-        PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
-        postGamePanel.gameObject.SetActive(true);
-        postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
-
-        bool submissionSuccess = await SubmitScoreAsync(finalTime);
-        
-        if (submissionSuccess)
-        {
-            await Task.Delay(leaderboardDisplayDelayMs);
-        }
-        
-        _leaderboardUIController?.ShowLeaderboard();
-    }
-
-    private async Task<bool> SubmitScoreAsync(float finalTime)
-    {
-        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
-        {
-            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
-            return false;
-        }
-
-        var scoreEntry = new ScoreEntry(
-            PlayerProfile.Instance.CurrentProfile.PlayerId,
-            PlayerProfile.Instance.CurrentProfile.PlayerName,
-            finalTime,
-            currentLevelData.GetFullLevelId()
-        );
-
-        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
-
-        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
-        else { Debug.LogWarning("Falha ao submeter pontuação."); }
-        
-        return success;
-    }
-    
-    private void HandleFirstInput()
-    {
-        if (startLevelOnFirstMoveInput && !_levelStarted)
-        {
-            StartLevelTimer();
-        }
-    }
-
-    private void HandleFirstMoveInput(Vector2 moveValue)
-    {
-        if (moveValue.sqrMagnitude > 0.1f)
-        {
-            HandleFirstInput();
-        }
-    }
-    
-    private void SubscribeToFirstInputEvents()
-    {
-        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
-        {
-            InputManager.Instance.OnMove += HandleFirstMoveInput;
-            _playerMovementController.OnJumped += HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
-        }
-    }
-
-    private void UnsubscribeFromFirstInputEvents()
-    {
-        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
-        {
-            InputManager.Instance.OnMove -= HandleFirstMoveInput;
-            _playerMovementController.OnJumped -= HandleFirstInput;
-           _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/BackButton.cs">
 using System.Collections;
 
@@ -4592,6 +3508,87 @@ public class BackButton : MonoBehaviour, IPointerClickHandler
     }
 
 
+}
+</file>
+
+<file path="Assets/Scripts/GameSettingsManager.cs">
+// Local: Assets/Scripts/GameSettingsManager.cs
+
+using System;
+using UnityEngine;
+
+public class GameSettingsManager : MonoBehaviour
+{
+    public static GameSettingsManager Instance { get; private set; }
+
+    public static event Action<float> OnMouseSensitivityXChanged;
+    public static event Action<float> OnMouseSensitivityYChanged;
+    public static event Action<bool> OnInvertXChanged;
+    public static event Action<bool> OnInvertYChanged;
+
+    private GameSettings _settings;
+
+    // Propriedades agora leem diretamente do objeto de configurações
+    public float MouseSensitivityX => _settings.mouseSensitivityX;
+    public float MouseSensitivityY => _settings.mouseSensitivityY;
+    public bool InvertMouseX => _settings.invertMouseX;
+    public bool InvertMouseY => _settings.invertMouseY;
+    public float MotionBlurIntensity => _settings.motionBlurIntensity;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void Start()
+    {
+        // Pega a referência para as configurações do SaveManager
+        _settings = SaveManager.Instance.GetSettings();
+    }
+
+    // Métodos agora modificam o objeto de dados e depois salvam
+    public void SetMouseSensitivityX(float normalizedValue)
+    {
+        float clampedValue = Mathf.Clamp01(normalizedValue);
+        _settings.mouseSensitivityX = clampedValue;
+        SaveManager.Instance.SaveGame();
+        OnMouseSensitivityXChanged?.Invoke(clampedValue);
+    }
+    
+    public void SetMouseSensitivityY(float normalizedValue)
+    {
+        float clampedValue = Mathf.Clamp01(normalizedValue);
+        _settings.mouseSensitivityY = clampedValue;
+        SaveManager.Instance.SaveGame();
+        OnMouseSensitivityYChanged?.Invoke(clampedValue);
+    }
+
+    public void SetInvertX(bool isInverted)
+    {
+        _settings.invertMouseX = isInverted;
+        SaveManager.Instance.SaveGame();
+        OnInvertXChanged?.Invoke(isInverted);
+    }
+
+    public void SetInvertY(bool isInverted)
+    {
+        _settings.invertMouseY = isInverted;
+        SaveManager.Instance.SaveGame();
+        OnInvertYChanged?.Invoke(isInverted);
+    }
+    
+    public void SetMotionBlur(float normalizedValue)
+    {
+        _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
+        SaveManager.Instance.SaveGame();
+        // Um evento poderia ser disparado aqui se algum sistema precisar ouvir
+    }
 }
 </file>
 
@@ -5118,6 +4115,270 @@ public class JumpPad : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/LaserBarrier.cs">
+// Local: Assets/Scripts/Scenario/LaserBarrier.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(Collider))]
+public class LaserBarrier : MonoBehaviour, ITimeSlowable
+{
+    [Header("Componentes")]
+    [Tooltip("O Mesh Renderer do visual do laser. O script desabilitará isso em vez do GameObject.")]
+    [SerializeField] private Renderer laserRenderer;
+    [SerializeField] private SpriteRenderer laserSpriteRenderer;
+
+    private Collider _collider;
+
+    [Header("Comportamento do Ciclo")]
+    [Tooltip("Tempo em segundos que o laser fica ativo.")]
+    [SerializeField] private float activeDuration = 5f;
+    [Tooltip("Tempo em segundos que o laser fica inativo.")]
+    [SerializeField] private float inactiveDuration = 3f;
+    [Tooltip("Deslocamento inicial do ciclo em segundos. Útil para dessincronizar múltiplos lasers.")]
+    [SerializeField] private float cycleOffset = 0f;
+    private float _timer;
+    private bool _isCurrentlyActive;
+
+    [Header("Interação com o Jogador")]
+    [Tooltip("A força com que o jogador é repelido ao tocar no laser ativo.")]
+    [SerializeField] private float repulsionForce = 50f;
+    [Tooltip("A força vertical extra aplicada para jogar o jogador para cima.")]
+    [SerializeField] private float upwardForceMultiplier = 0.3f;
+    [Tooltip("Se marcado, a velocidade do jogador será zerada antes de aplicar a repulsão.")]
+    [SerializeField] private bool resetPlayerMomentum = true;
+
+    [Header("Efeitos")]
+    [SerializeField] private string repulsionSfx = "LaserRepulsion";
+    [SerializeField] private string deactivateSfx = "LaserDeactivate";
+    [SerializeField] private string reactivateSfx = "LaserReactivate";
+
+    private bool _isTimeSlowed = false;
+    private const string PlayerTag = "Player";
+
+    private void Awake()
+    {
+        _collider = GetComponent<Collider>();
+        _collider.isTrigger = true;
+
+        if (laserRenderer == null)
+        {
+            laserRenderer = GetComponentInChildren<Renderer>();
+        }
+
+        if (laserRenderer == null)
+        {
+            Debug.LogError("Nenhum Renderer foi encontrado para a LaserBarrier. O visual não funcionará.", this);
+            enabled = false;
+        }
+    }
+
+    private void Start()
+    {
+        TimeManipulationManager.Instance?.Register(this);
+        _timer = cycleOffset;
+        UpdateLaserState();
+    }
+
+    private void OnDisable()
+    {
+        TimeManipulationManager.Instance?.Unregister(this);
+    }
+
+    private void Update()
+    {
+        if (_isTimeSlowed) return;
+
+        _timer += Time.deltaTime;
+        
+        float currentCycleDuration = _isCurrentlyActive ? activeDuration : inactiveDuration;
+        
+        if (_timer >= currentCycleDuration)
+        {
+            _timer = 0f;
+            _isCurrentlyActive = !_isCurrentlyActive;
+            UpdateLaserState();
+        }
+    }
+
+    private void UpdateLaserState()
+    {
+        SetLaserActive(_isCurrentlyActive);
+
+        if (_isCurrentlyActive)
+        {
+            AudioManager.instance?.PlaySFX(reactivateSfx);
+        }
+        else
+        {
+            AudioManager.instance?.PlaySFX(deactivateSfx);
+        }
+    }
+    
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!_isCurrentlyActive || _isTimeSlowed) return;
+
+        if (other.CompareTag(PlayerTag))
+        {
+            RepelPlayer(other.gameObject);
+        }
+    }
+
+    private void RepelPlayer(GameObject playerObject)
+    {
+        var playerMovement = playerObject.GetComponent<PlayerMovementController>();
+        if (playerMovement == null) return;
+
+        Vector3 repulsionDirection = (playerObject.transform.position - transform.position);
+        repulsionDirection.y = 0;
+        repulsionDirection.Normalize();
+
+        Vector3 finalDirection = (repulsionDirection + Vector3.up * upwardForceMultiplier).normalized;
+        
+        playerMovement.ApplyExternalForce(finalDirection, repulsionForce, resetPlayerMomentum);
+        
+        AudioManager.instance?.PlaySFX(repulsionSfx);
+    }
+
+    private void SetLaserActive(bool isActive)
+    {
+        if (laserRenderer != null)
+        {
+            laserRenderer.enabled = isActive;
+            laserSpriteRenderer.enabled = isActive;
+        }
+        _collider.enabled = isActive;
+    }
+
+    #region ITimeSlowable Implementation
+
+    public void SlowDown(float slowPercentage)
+    {
+        _isTimeSlowed = true;
+    }
+
+    public void RestoreNormalTime()
+    {
+        _isTimeSlowed = false;
+    }
+    
+    public void SetSlowDownColor(Color newColor) { } 
+
+    #endregion
+}
+</file>
+
+<file path="Assets/Scripts/LeaderboardUIController.cs">
+// Local: Assets/Scripts/UI/LeaderboardUIController.cs
+
+using UnityEngine;
+
+public class LeaderboardUIController : MonoBehaviour
+{
+    [Header("Referências")]
+  private LevelData levelData;
+    [SerializeField] private GameObject scoreEntryPrefab;
+    [SerializeField] private Transform topScoresContentParent;
+    [SerializeField] private GameObject loadingIndicator;
+
+    [Header("UI do Jogador Local")]
+    [SerializeField] private GameObject playerScoreContainer;
+    [SerializeField] private ScoreUIEntry playerScoreUIEntry;
+    
+    private void OnEnable()
+    {
+        GameFlowManager.OnLevelCompleted += HandleLevelCompleted;
+    }
+
+    private void OnDisable()
+    {
+        GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
+    }
+    private void Awake()
+    {
+        UpdateLevelData();
+    }
+
+    private void HandleLevelCompleted(float finalTime)
+    {
+        UpdateLevelData();
+        PrepareForDisplay(finalTime);
+    }
+    
+    public void PrepareForDisplay(float time)
+    {
+        ClearLeaderboard();
+        gameObject.SetActive(true);
+        if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
+        loadingIndicator.SetActive(true);
+
+        if (playerScoreContainer != null && playerScoreUIEntry != null)
+        {
+            var tempEntry = new ScoreEntry(
+                PlayFabAuthManager.Instance.PlayFabId,
+                PlayerProfile.Instance.CurrentProfile.profileName,
+                time,
+                levelData.GetFullLevelId()
+            );
+            playerScoreUIEntry.Populate(0, tempEntry, true); 
+            playerScoreContainer.SetActive(true);
+        }
+    }
+
+    public async void ShowLeaderboard()
+    {
+        UpdateLevelData();
+        if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
+        {
+            Debug.LogError("Dependências não configuradas para o Leaderboard!");
+            loadingIndicator.SetActive(false);
+            return;
+        }
+
+        var leaderboardResult = await LeaderboardManager.Instance.GetLeaderboardWithPlayerAsync(levelData.GetFullLevelId(), 10);
+        loadingIndicator.SetActive(false);
+
+        ClearLeaderboard();
+
+        string localPlayerFabId = PlayFabAuthManager.Instance.PlayFabId;
+
+        if (leaderboardResult?.TopEntries != null)
+        {
+            foreach (var score in leaderboardResult.TopEntries)
+            {
+                GameObject entryGO = Instantiate(scoreEntryPrefab, topScoresContentParent);
+                ScoreUIEntry entryUI = entryGO.GetComponent<ScoreUIEntry>();
+                bool isLocalPlayer = score.playerId == localPlayerFabId;
+                entryUI.Populate(score.Position, score, isLocalPlayer);
+            }
+        }
+        
+        if (leaderboardResult?.PlayerEntry != null && playerScoreContainer != null && playerScoreUIEntry != null)
+        {
+            playerScoreUIEntry.Populate(leaderboardResult.PlayerEntry.Position, leaderboardResult.PlayerEntry, true);
+            playerScoreContainer.SetActive(true);
+        }
+        else if (playerScoreContainer != null)
+        {
+            playerScoreContainer.SetActive(false);
+        }
+    }
+
+    private void ClearLeaderboard()
+    {
+        foreach (Transform child in topScoresContentParent)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+    public void UpdateLevelData()
+    {
+        levelData = ScoreManager.Instance.GetCurrentLevelData();
+    }
+}
+</file>
+
 <file path="Assets/Scripts/MainMenu.cs">
 // Local: Assets/Scripts/UI/MainMenu.cs
 
@@ -5201,6 +4462,671 @@ public class MainMenu : UIPanel
         // Implemente aqui a lógica para o botão "Extra"
         Debug.Log("Botão Extra clicado! (Implemente a funcionalidade aqui)");
         // Exemplo: UIManager.Instance.ShowPanel(UIPanelType.Extras);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/MotionBlurSlider.cs">
+// Local: Assets/Scripts/UI/MotionBlurSlider.cs
+// (Removido PlayerPrefs, agora usa GameSettingsManager)
+
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
+
+[RequireComponent(typeof(Slider))]
+public class MotionBlurSlider : MonoBehaviour
+{
+    [Header("Dependências")]
+    private Volume globalVolume;
+
+    [Header("Configurações de Clamp")]
+    [SerializeField] private float minClamp = 0f;
+    [SerializeField] private float maxClamp = 0.02f;
+
+    private Slider _slider;
+    private MotionBlur _motionBlur;
+
+    private void Awake()
+    {
+        _slider = GetComponent<Slider>();
+        globalVolume = FindFirstObjectByType<Volume>();
+        InitializeMotionBlurReference();
+    }
+
+    private void Start()
+    {
+        if (_motionBlur == null)
+        {
+            _slider.interactable = false;
+            return;
+        }
+
+        LoadSavedValue();
+        _slider.onValueChanged.AddListener(OnSliderValueChanged);
+    }
+    
+    private void OnDestroy()
+    {
+        _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
+    }
+
+    private void InitializeMotionBlurReference()
+    {
+        if (globalVolume != null)
+        {
+            // Maneira mais segura e eficiente de pegar o componente do que iterar a lista
+            if (!globalVolume.profile.TryGet(out _motionBlur))
+            {
+                // Opcional: Adiciona o componente se ele não existir no perfil
+                // _motionBlur = globalVolume.profile.Add<MotionBlur>(false);
+            }
+        }
+    }
+    private void LoadSavedValue()
+    {
+        // Pega o valor do nosso novo sistema centralizado
+        float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
+        
+        _slider.SetValueWithoutNotify(savedNormalizedValue);
+        ApplyMotionBlurClamp(savedNormalizedValue);
+    }
+
+    private void OnSliderValueChanged(float normalizedValue)
+    {
+        ApplyMotionBlurClamp(normalizedValue);
+        // Notifica o GameSettingsManager para atualizar e salvar
+        GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
+    }
+
+    private void ApplyMotionBlurClamp(float normalizedValue)
+    {
+        if (_motionBlur != null)
+        {
+            float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
+            _motionBlur.clamp.Override(newValue);
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerDebugPanel.cs">
+// Local: Assets/Scripts/UI/PlayerDebugPanel.cs
+
+using System.Linq;
+using TMPro;
+using UnityEngine;
+
+[RequireComponent(typeof(RectTransform))]
+public class PlayerDebugPanel : MonoBehaviour
+{
+    [Header("Referências da UI")]
+    [SerializeField] private TMP_Dropdown playerDropdown;
+
+    private bool _isPopulating = false;
+
+    private void OnEnable()
+    {
+        PlayerProfile.OnProfileChanged += HandleProfileChanged;
+        if (playerDropdown != null)
+        {
+            playerDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
+        }
+        PopulateDropdown();
+    }
+
+    private void OnDisable()
+    {
+        PlayerProfile.OnProfileChanged -= HandleProfileChanged;
+        if (playerDropdown != null)
+        {
+            playerDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        }
+    }
+    
+    private void HandleProfileChanged()
+    {
+        PopulateDropdown();
+    }
+
+    private void PopulateDropdown()
+    {
+        if (playerDropdown == null || PlayerProfile.Instance == null) return;
+        
+        _isPopulating = true;
+        
+        playerDropdown.ClearOptions();
+        
+        var options = PlayerProfile.Instance.AllProfiles
+            .Select(p => new TMP_Dropdown.OptionData(p.profileName))
+            .ToList();
+            
+        playerDropdown.AddOptions(options);
+
+        int currentIndex = PlayerProfile.Instance.AllProfiles
+            .FindIndex(p => p.profileId == PlayerProfile.Instance.CurrentProfile.profileId);
+            
+        if (currentIndex != -1)
+        {
+            playerDropdown.value = currentIndex;
+        }
+        
+        playerDropdown.RefreshShownValue();
+        _isPopulating = false;
+    }
+
+    private void OnDropdownValueChanged(int index)
+    {
+        if (_isPopulating || PlayerProfile.Instance == null) return;
+
+        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].profileId;
+        
+        if (PlayerProfile.Instance.CurrentProfile.profileId != selectedPlayerId)
+        {
+            PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
+            PlayFabAuthManager.Instance.Login();
+        }
+    }
+
+    public void CreateNewPlayer()
+    {
+        if (PlayerProfile.Instance == null) return;
+        
+        PlayerProfile.Instance.CreateNewPlayer(true); 
+        PlayFabAuthManager.Instance.Login();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerDropdownController.cs">
+// Local: Assets/Scripts/UI/PlayerDropdownController.cs
+
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEngine;
+
+[RequireComponent(typeof(TMP_Dropdown))]
+public class PlayerDropdownController : MonoBehaviour
+{
+    private TMP_Dropdown _playerDropdown;
+    private bool _isPopulating = false;
+
+    private void Awake()
+    {
+        _playerDropdown = GetComponent<TMP_Dropdown>();
+    }
+
+    private void OnEnable()
+    {
+        PlayerProfile.OnProfileChanged += HandleProfileChanged;
+        _playerDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
+        PopulateDropdown();
+    }
+
+    private void OnDisable()
+    {
+        PlayerProfile.OnProfileChanged -= HandleProfileChanged;
+        _playerDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+    }
+    
+    private void HandleProfileChanged()
+    {
+        PopulateDropdown();
+    }
+
+    private void PopulateDropdown()
+    {
+        if (PlayerProfile.Instance == null) return;
+        
+        _isPopulating = true;
+        _playerDropdown.ClearOptions();
+        
+        var options = PlayerProfile.Instance.AllProfiles
+            .Select(p => new TMP_Dropdown.OptionData(p.profileName))
+            .ToList();
+        _playerDropdown.AddOptions(options);
+
+        int currentIndex = PlayerProfile.Instance.AllProfiles
+            .FindIndex(p => p.profileId == PlayerProfile.Instance.CurrentProfile.profileId);
+            
+        if (currentIndex != -1)
+        {
+            _playerDropdown.value = currentIndex;
+        }
+        
+        _playerDropdown.RefreshShownValue();
+        _isPopulating = false;
+    }
+
+    private void OnDropdownValueChanged(int index)
+    {
+        if (_isPopulating || PlayerProfile.Instance == null) return;
+
+        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].profileId;
+        PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
+        PlayFabAuthManager.Instance.Login();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerNameInputController.cs">
+// Local: Assets/Scripts/UI/PlayerNameInputController.cs
+
+using TMPro;
+using UnityEngine;
+
+[RequireComponent(typeof(TMP_InputField))]
+public class PlayerNameInputController : MonoBehaviour
+{
+    private TMP_InputField _nameInputField;
+
+    private void Awake()
+    {
+        _nameInputField = GetComponent<TMP_InputField>();
+    }
+
+    private void OnEnable()
+    {
+        _nameInputField.onEndEdit.AddListener(UpdatePlayerName);
+        PlayerProfile.OnProfileChanged += UpdateFieldText;
+        UpdateFieldText();
+    }
+
+    private void OnDisable()
+    {
+        _nameInputField.onEndEdit.RemoveListener(UpdatePlayerName);
+        PlayerProfile.OnProfileChanged -= UpdateFieldText;
+    }
+    
+    private void UpdateFieldText()
+    {
+        if (PlayerProfile.Instance?.CurrentProfile != null)
+        {
+            _nameInputField.text = PlayerProfile.Instance.CurrentProfile.profileName;
+        }
+    }
+
+    private void UpdatePlayerName(string newName)
+    {
+        if (PlayerProfile.Instance == null) return;
+        
+        if (PlayerProfile.Instance.CurrentProfile != null && PlayerProfile.Instance.CurrentProfile.profileName == newName)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(newName))
+        {
+            PlayerProfile.Instance.UpdateCurrentPlayerName(newName);
+        }
+        else
+        {
+            UpdateFieldText();
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerProfile.cs">
+// Local: Assets/Scripts/Scoring/PlayerProfile.cs
+
+using UnityEngine;
+using System;
+using System.Collections.Generic;
+
+public class PlayerProfile : MonoBehaviour
+{
+    public static PlayerProfile Instance { get; private set; }
+    public static event Action OnProfileChanged;
+
+    // Propriedades agora são atalhos para os dados no SaveManager
+    public UserProfile CurrentProfile => SaveManager.Instance.GetActiveUserProfile();
+    public List<UserProfile> AllProfiles => SaveManager.Instance.Data.profiles;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    public void CreateNewPlayer(bool setActive = false)
+    {
+        SaveManager.Instance.CreateNewProfile(setActive);
+        OnProfileChanged?.Invoke();
+    }
+
+    public void SwitchPlayer(string playerId)
+    {
+        var profileToSwitch = AllProfiles.Find(p => p.profileId == playerId);
+        if (profileToSwitch != null && (CurrentProfile == null || CurrentProfile.profileId != playerId))
+        {
+            SaveManager.Instance.Data.activeProfileId = playerId;
+            SaveManager.Instance.SaveGame();
+            OnProfileChanged?.Invoke();
+        }
+    }
+
+    public void UpdateCurrentPlayerName(string newName)
+    {
+        if (CurrentProfile == null || string.IsNullOrWhiteSpace(newName)) return;
+
+        CurrentProfile.profileName = newName;
+        SaveManager.Instance.SaveGame();
+
+        if (PlayFabAuthManager.Instance != null && PlayFabAuthManager.Instance.IsLoggedIn())
+        {
+            PlayFabAuthManager.Instance.UpdateDisplayName(newName);
+        }
+        OnProfileChanged?.Invoke();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayFabAuthManager.cs">
+// Local: Assets/Scripts/Core/PlayFabAuthManager.cs
+
+using PlayFab;
+using PlayFab.ClientModels;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class PlayFabAuthManager : MonoBehaviour
+{
+    public static PlayFabAuthManager Instance { get; private set; }
+    
+    public string PlayFabId { get; private set; }
+    private string _loggedInCustomId;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void Start()
+    {
+        if (PlayerProfile.Instance != null)
+        {
+            Login();
+        }
+        else
+        {
+            Debug.LogError("PlayerProfile não encontrado! O login no PlayFab falhará.");
+        }
+    }
+
+    public void Login()
+    {
+        if (IsLoggedIn() && _loggedInCustomId == PlayerProfile.Instance.CurrentProfile.profileId)
+        {
+            Debug.Log("<color=green>Já está logado com a conta correta.</color>");
+            return;
+        }
+
+        var request = new LoginWithCustomIDRequest
+        {
+            CustomId = PlayerProfile.Instance.CurrentProfile.profileId,
+            CreateAccount = true,
+            InfoRequestParameters = new GetPlayerCombinedInfoRequestParams
+            {
+                GetPlayerProfile = true
+            }
+        };
+        PlayFabClientAPI.LoginWithCustomID(request, OnLoginSuccess, OnLoginFailure);
+    }
+
+    private void OnLoginSuccess(LoginResult result)
+    {
+        PlayFabId = result.PlayFabId;
+        _loggedInCustomId = PlayerProfile.Instance.CurrentProfile.profileId;
+        Debug.Log($"<color=green>Login no PlayFab bem-sucedido! PlayFab ID: {PlayFabId}</color>");
+        
+        string currentPlayFabName = result.InfoResultPayload?.PlayerProfile?.DisplayName;
+        string localPlayerName = PlayerProfile.Instance.CurrentProfile.profileName;
+
+        if (currentPlayFabName != localPlayerName)
+        {
+            UpdateDisplayName(localPlayerName);
+        }
+    }
+
+    private void OnLoginFailure(PlayFabError error)
+    {
+        Debug.LogError("Falha no login do PlayFab: " + error.GenerateErrorReport());
+    }
+
+    public void UpdateDisplayName(string displayName)
+    {
+        var request = new UpdateUserTitleDisplayNameRequest
+        {
+            DisplayName = displayName
+        };
+        PlayFabClientAPI.UpdateUserTitleDisplayName(request, 
+            (res) => {
+                Debug.Log($"Nome de exibição no PlayFab atualizado para: {res.DisplayName}");
+            },
+            (err) => {
+                Debug.LogError("Falha ao atualizar nome de exibição: " + err.GenerateErrorReport());
+            }
+        );
+    }
+
+    public bool IsLoggedIn()
+    {
+        return PlayFabClientAPI.IsClientLoggedIn();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/SaveDataModels.cs">
+// Local: Assets/Scripts/Saving/SaveDataModels.cs
+
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+// O contêiner principal para todos os dados que serão salvos.
+[Serializable]
+public class GameData
+{
+    public GameSettings settings = new GameSettings();
+    public List<UserProfile> profiles = new List<UserProfile>();
+    public string activeProfileId = ""; // ID do último perfil usado
+}
+
+// Todas as configurações de jogo que não dependem de um perfil de jogador.
+[Serializable]
+public class GameSettings
+{
+    // Audio
+    public float masterVolume = 1f;
+    public float musicVolume = 1f;
+    public float sfxVolume = 1f;
+    public bool isMasterMuted = false;
+    public bool isMusicMuted = false;
+    public bool isSfxMuted = false;
+    
+    // Controles
+    public float mouseSensitivityX = 0.5f;
+    public float mouseSensitivityY = 0.5f;
+    public bool invertMouseX = false;
+    public bool invertMouseY = false;
+
+    // Gráficos
+    public float motionBlurIntensity = 0.5f; // Normalizado de 0 a 1
+}
+
+// Representa um perfil de jogador.
+[Serializable]
+public class UserProfile : ISerializationCallbackReceiver
+{
+    public string profileId;
+    public string profileName;
+
+    // Dicionários não são serializados diretamente pelo JsonUtility.
+    // Usaremos esta lista como um intermediário para salvar e carregar.
+    [NonSerialized]
+    public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
+
+    // Campos que o JsonUtility pode serializar
+    [SerializeField] private List<string> _levelIds = new List<string>();
+    [SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
+
+    // Antes de salvar, move os dados do dicionário para as listas.
+    public void OnBeforeSerialize()
+    {
+        _levelIds.Clear();
+        _records.Clear();
+        foreach (var kvp in levelRecords)
+        {
+            _levelIds.Add(kvp.Key);
+            _records.Add(kvp.Value);
+        }
+    }
+
+    // Depois de carregar, move os dados das listas de volta para o dicionário.
+    public void OnAfterDeserialize()
+    {
+        levelRecords = new Dictionary<string, LevelRecord>();
+        for (int i = 0; i < _levelIds.Count; i++)
+        {
+            levelRecords.Add(_levelIds[i], _records[i]);
+        }
+    }
+}
+
+// Armazena o progresso de um jogador em um nível específico.
+[Serializable]
+public class LevelRecord
+{
+    public float bestTime = float.MaxValue;
+    public Rank bestRank = Rank.None;
+    // Futuramente: public bool hasAchievedNoDamage = false;
+}
+</file>
+
+<file path="Assets/Scripts/SaveManager.cs">
+// Local: Assets/Scripts/Core/SaveManager.cs
+
+using UnityEngine;
+using System.IO;
+using System.Linq; // Adicionado para facilitar a busca de perfis
+
+public class SaveManager : MonoBehaviour
+{
+    public static SaveManager Instance { get; private set; }
+
+    public GameData Data { get; private set; }
+    private string _saveFilePath;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _saveFilePath = Path.Combine(Application.persistentDataPath, "gamedata.json");
+        LoadGame();
+    }
+
+    public void LoadGame()
+    {
+        if (File.Exists(_saveFilePath))
+        {
+            try
+            {
+                string json = File.ReadAllText(_saveFilePath);
+                Data = JsonUtility.FromJson<GameData>(json);
+                Debug.Log("Save file loaded successfully.");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Failed to load save data: {e.Message}. Creating new data.");
+                CreateNewSaveData();
+            }
+        }
+        else
+        {
+            Debug.Log("No save file found. Creating new data.");
+            CreateNewSaveData();
+        }
+
+        // Garante que sempre haja um perfil ativo
+        if (Data.profiles.Count == 0 || !Data.profiles.Any(p => p.profileId == Data.activeProfileId))
+        {
+            CreateNewProfile(true); // Cria um novo perfil e o define como ativo
+        }
+    }
+    
+    public void SaveGame()
+    {
+        try
+        {
+            string json = JsonUtility.ToJson(Data, true); // O 'true' formata o JSON para ser legível
+            File.WriteAllText(_saveFilePath, json);
+            Debug.Log($"Game data saved to {_saveFilePath}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to save data: {e.Message}");
+        }
+    }
+
+    private void CreateNewSaveData()
+    {
+        Data = new GameData();
+    }
+    
+    // --- Funções de Acesso a Dados ---
+    
+    public UserProfile GetActiveUserProfile()
+    {
+        return Data.profiles.FirstOrDefault(p => p.profileId == Data.activeProfileId);
+    }
+    
+    public GameSettings GetSettings()
+    {
+        return Data.settings;
+    }
+
+    public UserProfile CreateNewProfile(bool setActive)
+    {
+        var newProfile = new UserProfile
+        {
+            profileId = System.Guid.NewGuid().ToString(),
+            profileName = $"Player{Random.Range(1000, 9999)}"
+        };
+        Data.profiles.Add(newProfile);
+
+        if (setActive)
+        {
+            Data.activeProfileId = newProfile.profileId;
+        }
+        
+        SaveGame();
+        return newProfile;
+    }
+
+    // Garante que o jogo seja salvo ao fechar
+    private void OnApplicationQuit()
+    {
+        SaveGame();
     }
 }
 </file>
@@ -7517,163 +7443,244 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
 }
 </file>
 
-<file path="Assets/Scripts/TimeManipulation/TimeManipulationManager.cs">
-// Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
+<file path="Assets/Scripts/Scoring/ScoreManager.cs">
+// Local: Assets/Scripts/Scoring/ScoreManager.cs
 
-using System;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
 
-public class TimeManipulationManager : MonoBehaviour
+public class ScoreManager : MonoBehaviour
 {
-    public static TimeManipulationManager Instance { get; private set; }
+    public static ScoreManager Instance { get; private set; }
+
+    [Header("Configuração do Nível")]
+    [SerializeField] private LevelData currentLevelData;
+    [Tooltip("Se marcado, o timer da fase começará com o primeiro input de movimento, pulo ou grapple.")]
+    [SerializeField] private bool startLevelOnFirstMoveInput = false;
     
-    public event Action<float> OnChargeChanged;
+    [Header("Configurações de UI")]
+    [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
+    private int leaderboardDisplayDelayMs = 750;
 
-    [Header("Configurações da Bateria")]
-    [Tooltip("Tempo máximo em segundos que a habilidade pode ser usada com carga total.")]
-    [SerializeField] private float maxChargeDuration = 3f;
-    [Tooltip("Tempo em segundos para recarregar a bateria de 0 a 100%.")]
-    [SerializeField] private float rechargeDuration = 5f;
-    
-    private float _currentCharge;
-    private float _rechargeRate;
-    private bool _isTimeSlowed = false;
+    private ScoreUIController _scoreUIController;
+    private LeaderboardUIController _leaderboardUIController;
+    private PlayerMovementController _playerMovementController;
+    private GrapplingHookController _grapplingHookController;
 
-    public bool IsTimeSlowed
-    {
-        get { return _isTimeSlowed; }
-    }
-
-    public event Action OnTimeStopStarted;
-    public event Action OnTimeStopStopped;
-
-    private readonly List<ITimeSlowable> _slowableObjects = new List<ITimeSlowable>();
-    
-    [Header("Configurações do Efeito")]
-    [Tooltip("A porcentagem de lentidão a ser aplicada.")]
-    [Range(0f, 100f)]
-    [SerializeField] private float slowPercentage = 50f;
-    [SerializeField] private Color slowDownColor = Color.cyan;
+    private float _levelTimer;
+    private bool _isTimerRunning = false;
+    private bool _levelStarted = false;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-
-        _currentCharge = maxChargeDuration;
-        _rechargeRate = maxChargeDuration / rechargeDuration;
     }
     
     private void OnEnable()
     {
-        if (InputManager.Instance != null)
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        GameFlowManager.OnLevelCompleted += ProcessLevelCompletion;
+
+        if (GameFlowManager.Instance != null)
         {
-            // MUDANÇA: Se inscreve no novo evento de toggle.
-            InputManager.Instance.OnSlowTimeToggled += HandleSlowTimeToggle;
+            GameFlowManager.Instance.OnGamePaused += PauseTimer;
+            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
         }
+        
+        SubscribeToFirstInputEvents();
     }
 
     private void OnDisable()
     {
-        if (InputManager.Instance == null) return;
-        
-        // MUDANÇA: Se desinscreve do evento de toggle.
-        InputManager.Instance.OnSlowTimeToggled -= HandleSlowTimeToggle;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        GameFlowManager.OnLevelCompleted -= ProcessLevelCompletion;
 
-        if (_isTimeSlowed) DeactivateSlowTime();
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
+            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
+        }
+        
+        UnsubscribeFromFirstInputEvents();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        ResetLevelTimer();
+        SubscribeToFirstInputEvents();
     }
     
-    private void Start()
+    private void FindSceneReferences()
     {
-        OnChargeChanged?.Invoke(_currentCharge / maxChargeDuration);
+        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
+        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
     }
 
     private void Update()
     {
-        bool chargeChanged = false;
-        
-        if (_isTimeSlowed)
+        if (_isTimerRunning)
         {
-            bool infiniteTimeStop = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteTimeStopActive;
-            if (!infiniteTimeStop)
+            _levelTimer += Time.deltaTime;
+            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+        }
+    }
+    
+    public void StartLevelTimer()
+    {
+        if (_levelStarted) return;
+        _levelTimer = 0f;
+        _levelStarted = true;
+        _isTimerRunning = true;
+        UnsubscribeFromFirstInputEvents();
+    }
+    
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank)
+    {
+        if (!_levelStarted)
+        {
+            finalTime = -1f;
+            finalRank = Rank.None;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(_levelTimer);
+    }
+
+    private void PauseTimer() { _isTimerRunning = false; }
+    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+    
+    public void ResetLevelTimer()
+    {
+        _levelTimer = 0f;
+        _isTimerRunning = false;
+        _levelStarted = false;
+        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+    }
+
+    public Rank GetRankForTime(float time)
+    {
+        if (currentLevelData == null) return Rank.None;
+        return currentLevelData.GetRankForTime(time);
+    }
+
+    private async void ProcessLevelCompletion(float finalTime)
+    {
+        SaveBestTime(finalTime);
+
+        PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
+        postGamePanel.gameObject.SetActive(true);
+        postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
+
+        bool submissionSuccess = await SubmitScoreAsync(finalTime);
+        
+        if (submissionSuccess)
+        {
+            await Task.Delay(leaderboardDisplayDelayMs);
+        }
+        
+        _leaderboardUIController?.ShowLeaderboard();
+    }
+
+    private void SaveBestTime(float finalTime)
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+
+        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            if (finalTime < record.bestTime)
             {
-                _currentCharge -= Time.deltaTime;
-                if (_currentCharge <= 0)
-                {
-                    _currentCharge = 0;
-                    DeactivateSlowTime(); // Desativa automaticamente quando a carga acaba
-                }
+                record.bestTime = finalTime;
+                record.bestRank = GetRankForTime(finalTime);
             }
-            chargeChanged = true;
         }
         else
         {
-            if (_currentCharge < maxChargeDuration)
+            record = new LevelRecord
             {
-                _currentCharge += _rechargeRate * Time.deltaTime;
-                _currentCharge = Mathf.Min(_currentCharge, maxChargeDuration);
-                chargeChanged = true;
-            }
+                bestTime = finalTime,
+                bestRank = GetRankForTime(finalTime)
+            };
+            activeProfile.levelRecords.Add(levelId, record);
         }
+
+        SaveManager.Instance.SaveGame();
+    }
+
+    private async Task<bool> SubmitScoreAsync(float finalTime)
+    {
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
+        {
+            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
+            return false;
+        }
+
+        var scoreEntry = new ScoreEntry(
+            PlayerProfile.Instance.CurrentProfile.profileId,
+            PlayerProfile.Instance.CurrentProfile.profileName,
+            finalTime,
+            currentLevelData.GetFullLevelId()
+        );
+
+        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
+
+        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
+        else { Debug.LogWarning("Falha ao submeter pontuação."); }
         
-        if (chargeChanged)
-        {
-            OnChargeChanged?.Invoke(_currentCharge / maxChargeDuration);
-        }
-    }
-
-    // NOVO MÉTODO: Lida com a lógica de toggle.
-    private void HandleSlowTimeToggle()
-    {
-        // Se já está ativo, desativa.
-        if (_isTimeSlowed)
-        {
-            DeactivateSlowTime();
-        }
-        // Se não está ativo, mas tem carga suficiente, ativa.
-        else if (_currentCharge > 0.1f) 
-        {
-            ActivateSlowTime();
-        }
-    }
-
-    private void ActivateSlowTime()
-    {
-        _isTimeSlowed = true;
-        foreach (var slowable in _slowableObjects)
-        {
-            slowable?.SlowDown(slowPercentage);
-        }
-        OnTimeStopStarted?.Invoke();
-    }
-
-    private void DeactivateSlowTime()
-    {
-        _isTimeSlowed = false;
-        foreach (var slowable in _slowableObjects)
-        {
-            slowable?.RestoreNormalTime();
-        }
-        OnTimeStopStopped?.Invoke();
+        return success;
     }
     
-    public void Register(ITimeSlowable slowable)
+    private void HandleFirstInput()
     {
-        if (!_slowableObjects.Contains(slowable))
+        if (startLevelOnFirstMoveInput && !_levelStarted)
         {
-            _slowableObjects.Add(slowable);
-            slowable.SetSlowDownColor(slowDownColor);
+            StartLevelTimer();
         }
     }
 
-    public void Unregister(ITimeSlowable slowable)
+    private void HandleFirstMoveInput(Vector2 moveValue)
     {
-        _slowableObjects.Remove(slowable);
+        if (moveValue.sqrMagnitude > 0.1f)
+        {
+            HandleFirstInput();
+        }
+    }
+    
+    private void SubscribeToFirstInputEvents()
+    {
+        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
+        {
+            InputManager.Instance.OnMove += HandleFirstMoveInput;
+            _playerMovementController.OnJumped += HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+        }
+    }
+
+    private void UnsubscribeFromFirstInputEvents()
+    {
+        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
+        {
+            InputManager.Instance.OnMove -= HandleFirstMoveInput;
+            _playerMovementController.OnJumped -= HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+        }
+    }
+    public LevelData GetCurrentLevelData()
+    {
+        return currentLevelData;
+        
     }
 }
 </file>
@@ -8511,272 +8518,346 @@ public class PlayerAudioHandler : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/TimeStopChanger.cs">
+<file path="Assets/Scripts/TimeManipulation/TimeManipulationManager.cs">
+// Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
+
+using System;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
-using UnityEngine.SceneManagement;
-using System.Collections;
+using UnityEngine.SceneManagement; // Adicionado para ouvir eventos de cena
 
-public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
+public class TimeManipulationManager : MonoBehaviour
 {
-	[Header("Assign the Global Volumes")]
-	public Volume volumeA;
-	public Volume volumeB;
+    public static TimeManipulationManager Instance { get; private set; }
+    
+    public event Action<float> OnChargeChanged;
 
-	//[Header("Input Action Reference (from Input System)")]
-	//public InputActionReference holdAction;
+    [Header("Configurações da Bateria")]
+    [Tooltip("Tempo máximo em segundos que a habilidade pode ser usada com carga total.")]
+    [SerializeField] private float maxChargeDuration = 3f;
+    [Tooltip("Tempo em segundos para recarregar a bateria de 0 a 100%.")]
+    [SerializeField] private float rechargeDuration = 5f;
+    
+    private float _currentCharge;
+    private float _rechargeRate;
+    private bool _isTimeSlowed = false;
 
-	//[Header("Stamina Settings")]
-	//public float maxHoldTime = 3f;
-	//public float rechargeRate = 1f;
+    public bool IsTimeSlowed => _isTimeSlowed;
 
-	//[Header("Transition Settings")]
-	public float transitionDuration = 0.2f;
+    public event Action OnTimeStopStarted;
+    public event Action OnTimeStopStopped;
 
-	//private float currentStamina;
-	//private bool isHolding = false;
-	private Coroutine transitionCoroutine;
+    private readonly List<ITimeSlowable> _slowableObjects = new List<ITimeSlowable>();
+    
+    [Header("Configurações do Efeito")]
+    [Tooltip("A porcentagem de lentidão a ser aplicada.")]
+    [Range(0f, 100f)]
+    [SerializeField] private float slowPercentage = 50f;
+    [SerializeField] private Color slowDownColor = Color.cyan;
 
-	private const string VolumeAKey = "HoldGlobalVolumeStaminaSafe_VolumeA";
-	private const string VolumeBKey = "HoldGlobalVolumeStaminaSafe_VolumeB";
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
 
-	private bool _isTimeSlowed;
-
-	#region Unity Lifecycle
-
-	private void Awake()
-	{
-		SceneManager.sceneLoaded += OnSceneLoaded;
-		RestoreVolumes();
-	}
-
-	//private void Start()
-	//{
-	//	RebindInputActions();
-	//	ResetStaminaAndVolumes();
-	//}
-
-	//private void OnDestroy()
-	//{
-	//	SceneManager.sceneLoaded -= OnSceneLoaded;
-	//}
-
-	private void OnEnable()
-	{
-		if (TimeManipulationManager.Instance != null)
-		{
-			TimeManipulationManager.Instance.OnTimeStopStarted += StartHolding;
-			TimeManipulationManager.Instance.OnTimeStopStopped += StopHolding;
-		}
-		}
-
-
-	private void OnDisable()
-	{
-        TimeManipulationManager.Instance.OnTimeStopStarted -= StartHolding;
-        TimeManipulationManager.Instance.OnTimeStopStopped -= StopHolding;
+        _currentCharge = maxChargeDuration;
+        _rechargeRate = maxChargeDuration / rechargeDuration;
+    }
+    
+    private void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeToggled += HandleSlowTimeToggle;
+        }
+        // *** NOVO: Se inscreve no evento de carregamento de cena ***
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-	private void Update()
-	{
-		_isTimeSlowed = TimeManipulationManager.Instance.IsTimeSlowed;
-	}
+    private void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnSlowTimeToggled -= HandleSlowTimeToggle;
+        }
 
+        if (_isTimeSlowed) DeactivateSlowTime();
+        
+        // *** NOVO: Se desinscreve do evento para evitar memory leaks ***
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
 
-    #endregion
+    // *** NOVO: Método chamado sempre que uma cena é carregada ***
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Reseta a carga e o estado do time stop
+        ResetCharge();
+    }
+    
+    private void Start()
+    {
+        OnChargeChanged?.Invoke(_currentCharge / maxChargeDuration);
+    }
 
-    #region Input Handling
+    private void Update()
+    {
+        bool chargeChanged = false;
+        
+        if (_isTimeSlowed)
+        {
+            bool infiniteTimeStop = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteTimeStopActive;
+            if (!infiniteTimeStop)
+            {
+                _currentCharge -= Time.deltaTime;
+                if (_currentCharge <= 0)
+                {
+                    _currentCharge = 0;
+                    DeactivateSlowTime();
+                }
+            }
+            chargeChanged = true;
+        }
+        else
+        {
+            if (_currentCharge < maxChargeDuration)
+            {
+                _currentCharge += _rechargeRate * Time.deltaTime;
+                _currentCharge = Mathf.Min(_currentCharge, maxChargeDuration);
+                chargeChanged = true;
+            }
+        }
+        
+        if (chargeChanged)
+        {
+            OnChargeChanged?.Invoke(_currentCharge / maxChargeDuration);
+        }
+    }
+    
+    private void HandleSlowTimeToggle()
+    {
+        if (_isTimeSlowed)
+        {
+            DeactivateSlowTime();
+        }
+        else if (_currentCharge > 0.1f) 
+        {
+            ActivateSlowTime();
+        }
+    }
 
-    //private void OnPress(InputAction.CallbackContext ctx)
-    //{
-    //	if (currentStamina > 0f)
-    //		StartHolding();
-    //}
+    private void ActivateSlowTime()
+    {
+        _isTimeSlowed = true;
+        foreach (var slowable in _slowableObjects)
+        {
+            slowable?.SlowDown(slowPercentage);
+        }
+        OnTimeStopStarted?.Invoke();
+    }
 
-    //private void OnRelease(InputAction.CallbackContext ctx)
-    //{
-    //	StopHolding();
-    //}
+    private void DeactivateSlowTime()
+    {
+        _isTimeSlowed = false;
+        foreach (var slowable in _slowableObjects)
+        {
+            slowable?.RestoreNormalTime();
+        }
+        OnTimeStopStopped?.Invoke();
+    }
 
-    //private void RebindInputActions()
-    //{
-    //	if (holdAction?.action == null) return;
+    // *** NOVO: Método público para resetar a carga ***
+    public void ResetCharge()
+    {
+        // Garante que o efeito visual seja desativado se a cena reiniciar durante o time stop
+        if (_isTimeSlowed)
+        {
+            DeactivateSlowTime();
+        }
 
-    //	holdAction.action.performed -= OnPress;
-    //	holdAction.action.canceled -= OnRelease;
+        // Reseta a carga para o máximo
+        _currentCharge = maxChargeDuration;
 
-    //	holdAction.action.performed += OnPress;
-    //	holdAction.action.canceled += OnRelease;
+        // Notifica a UI para atualizar
+        OnChargeChanged?.Invoke(1f);
+    }
+    
+    public void Register(ITimeSlowable slowable)
+    {
+        if (!_slowableObjects.Contains(slowable))
+        {
+            _slowableObjects.Add(slowable);
+            slowable.SetSlowDownColor(slowDownColor);
+        }
+    }
 
-    //	holdAction.action.Enable();
-    //}
+    public void Unregister(ITimeSlowable slowable)
+    {
+        _slowableObjects.Remove(slowable);
+    }
+}
+</file>
 
-    //private void UnbindInputActions()
-    //{
-    //	if (holdAction?.action == null) return;
+<file path="Assets/Scripts/TimeStopChanger.cs">
+// Assets/Scripts/TimeStopChanger.cs
 
-    //	holdAction.action.performed -= OnPress;
-    //	holdAction.action.canceled -= OnRelease;
+using UnityEngine;
+using UnityEngine.Rendering;
+using System.Collections;
+using System.Linq; // Adicionado para facilitar a busca
 
-    //	holdAction.action.Disable();
-    //}
+public class TimeStopChanger : MonoBehaviour
+{
+    [Header("Global Volumes")]
+    [Tooltip("Volume para o estado normal do jogo. Se não for atribuído, o primeiro Volume encontrado na cena será usado.")]
+    public Volume volumeA; // Volume Normal
+    [Tooltip("Volume para o efeito de time stop. Se não for atribuído, o segundo Volume encontrado na cena será usado.")]
+    public Volume volumeB; // Volume do Time Stop
 
-    #endregion
+    [Header("Transition Settings")]
+    public float transitionDuration = 0.2f;
 
-    #region Stamina & Volume Control
+    private Coroutine _transitionCoroutine;
 
-    private void StartHolding()
-	{
-		if (volumeA == null || volumeB == null) return;
+    private void Awake()
+    {
+        // Encontra e valida os volumes ao iniciar.
+        FindAndValidateVolumes();
+    }
+    
+    private void OnEnable()
+    {
+        if (volumeA == null || volumeB == null)
+        {
+            enabled = false; // Desativa o componente se a configuração estiver incorreta.
+            return;
+        }
 
-		// isHolding = true;
-		StartTransition(volumeA, volumeB);
-	}
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.OnTimeStopStarted += HandleTimeStopStarted;
+            TimeManipulationManager.Instance.OnTimeStopStopped += HandleTimeStopStopped;
+            SetInitialState();
+        }
+        else
+        {
+            Debug.LogError("TimeManipulationManager.Instance não encontrado! O TimeStopChanger será desativado.", this);
+            enabled = false;
+        }
+    }
 
-	private void StopHolding()
-	{
-		if (volumeA == null || volumeB == null) return;
+    private void OnDisable()
+    {
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.OnTimeStopStarted -= HandleTimeStopStarted;
+            TimeManipulationManager.Instance.OnTimeStopStopped -= HandleTimeStopStopped;
+        }
+    }
 
-		// isHolding = false;
-		StartTransition(volumeB, volumeA);
-	}
+    // *** LÓGICA DE BUSCA RESTAURADA E MELHORADA ***
+    private void FindAndValidateVolumes()
+    {
+        // Se ambos os volumes já foram atribuídos no Inspector, não faz nada.
+        if (volumeA != null && volumeB != null)
+        {
+            return;
+        }
 
-	//private void ResetStaminaAndVolumes()
-	//{
-	//	currentStamina = maxHoldTime;
-	//	isHolding = false;
-	//	SetVolumesInstant(volumeA, 1f, true);
-	//	SetVolumesInstant(volumeB, 0f, false);
-	//}
+        // Busca todos os componentes de Volume na cena, incluindo os inativos.
+        var allVolumes = FindObjectsByType<Volume>(sortMode: FindObjectsSortMode.InstanceID);
 
-	//private void SetVolumesInstant(Volume active, float activeWeight, bool activeEnabled)
-	//{
-	//	if (volumeA != null)
-	//	{
-	//		volumeA.weight = (active == volumeA) ? activeWeight : 0f;
-	//		volumeA.enabled = (active == volumeA) ? activeEnabled : false;
-	//	}
-	//	if (volumeB != null)
-	//	{
-	//		volumeB.weight = (active == volumeB) ? activeWeight : 0f;
-	//		volumeB.enabled = (active == volumeB) ? activeEnabled : false;
-	//	}
-	//}
+        // Se não houver pelo menos dois volumes na cena, a busca automática não é possível.
+        if (allVolumes.Length < 2)
+        {
+            // Apenas exibe o erro se os volumes não foram preenchidos manualmente.
+            if (volumeA == null || volumeB == null)
+            {
+                Debug.LogError("TimeStopChanger não conseguiu encontrar pelo menos dois componentes 'Volume' na cena. Por favor, adicione-os à cena ou atribua-os manualmente no Inspector.", this);
+            }
+            return;
+        }
 
-	#endregion
+        // Se o volumeA não foi definido, pega o primeiro da lista.
+        if (volumeA == null)
+        {
+            volumeA = allVolumes[1];
+        }
 
-	#region Volume Transitions
+        // Se o volumeB não foi definido, busca o próximo volume que seja DIFERENTE do volumeA.
+        if (volumeB == null)
+        {
+            // Usa Linq para encontrar o primeiro volume na lista que não seja o mesmo que o volumeA.
+            volumeB = allVolumes.FirstOrDefault(v => v != volumeA);
+        }
 
-	private void StartTransition(Volume from, Volume to)
-	{
-		if (this == null) return; // Object destroyed safeguard
+        // Validação final: Garante que, após a busca, temos dois volumes distintos.
+        if (volumeA == null || volumeB == null || volumeA == volumeB)
+        {
+            Debug.LogError("A busca automática por Volumes falhou ou resultou em volumes duplicados. Verifique a configuração da sua cena ou atribua os volumes manualmente no Inspector.", this);
+        }
+    }
 
-		StopTransition();
-		transitionCoroutine = StartCoroutine(TransitionVolumes(from, to, transitionDuration));
-	}
+    private void SetInitialState()
+    {
+        if (volumeA == null || volumeB == null) return;
+        
+        bool isSlowed = TimeManipulationManager.Instance.IsTimeSlowed;
 
-	private void StopTransition()
-	{
-		if (transitionCoroutine != null)
-		{
-			StopCoroutine(transitionCoroutine);
-			transitionCoroutine = null;
-		}
-	}
+        volumeA.weight = isSlowed ? 0f : 1f;
+        volumeA.enabled = !isSlowed;
+        
+        volumeB.weight = isSlowed ? 1f : 0f;
+        volumeB.enabled = isSlowed;
+    }
 
-	private IEnumerator TransitionVolumes(Volume from, Volume to, float duration)
-	{
-		if (this == null) yield break;
+    private void HandleTimeStopStarted() => StartTransition(volumeA, volumeB);
+    private void HandleTimeStopStopped() => StartTransition(volumeB, volumeA);
+    
+    private void StartTransition(Volume from, Volume to)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        StopTransition();
+        _transitionCoroutine = StartCoroutine(TransitionVolumes(from, to, transitionDuration));
+    }
 
-		if (from != null) from.enabled = true;
-		if (to != null) to.enabled = true;
+    private void StopTransition()
+    {
+        if (_transitionCoroutine != null)
+        {
+            StopCoroutine(_transitionCoroutine);
+            _transitionCoroutine = null;
+        }
+    }
 
-		float time = 0f;
-		float fromStart = from != null ? from.weight : 0f;
-		float toStart = to != null ? to.weight : 0f;
+    private IEnumerator TransitionVolumes(Volume from, Volume to, float duration)
+    {
+        if (from != null) from.enabled = true;
+        if (to != null) to.enabled = true;
 
-		while (time < duration)
-		{
-			if (this == null) yield break;
+        float time = 0f;
+        float fromStart = from != null ? from.weight : 0f;
+        float toStart = to != null ? to.weight : 0f;
 
-			time += Time.deltaTime;
-			float t = Mathf.Clamp01(time / duration);
+        while (time < duration)
+        {
+            time += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(time / duration);
 
-			if (from != null) from.weight = Mathf.Lerp(fromStart, 0f, t);
-			if (to != null) to.weight = Mathf.Lerp(toStart, 1f, t);
+            if (from != null) from.weight = Mathf.Lerp(fromStart, 0f, t);
+            if (to != null) to.weight = Mathf.Lerp(toStart, 1f, t);
 
-			yield return null;
-		}
+            yield return null;
+        }
 
-		if (from != null)
-		{
-			from.weight = 0f;
-			from.enabled = false;
-		}
-		if (to != null)
-		{
-			to.weight = 1f;
-			to.enabled = true;
-		}
+        if (from != null) { from.weight = 0f; from.enabled = false; }
+        if (to != null) { to.weight = 1f; to.enabled = true; }
 
-		transitionCoroutine = null;
-	}
-
-	#endregion
-
-	#region Scene & Volume Persistence
-
-	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-	{
-		//RestoreVolumes();
-		//RebindInputActions();
-		//ResetStaminaAndVolumes();
-	}
-
-	private void RestoreVolumes()
-	{
-		string volumeAName = PlayerPrefs.GetString(VolumeAKey, "");
-		string volumeBName = PlayerPrefs.GetString(VolumeBKey, "");
-
-		Volume[] allVolumes = GameObject.FindObjectsOfType<Volume>(true);
-
-		if (!string.IsNullOrEmpty(volumeAName))
-			volumeA = System.Array.Find(allVolumes, v => v.name == volumeAName);
-
-		if (!string.IsNullOrEmpty(volumeBName))
-			volumeB = System.Array.Find(allVolumes, v => v.name == volumeBName);
-
-		// Fallback to first two if names not found
-		if (volumeA == null && allVolumes.Length > 0)
-			volumeA = allVolumes[0];
-		if (volumeB == null && allVolumes.Length > 1)
-			volumeB = allVolumes[1];
-
-		if (volumeA == null || volumeB == null)
-			Debug.LogWarning($"{name}: Could not find both volumes in scene.");
-	}
-
-	private void SaveVolumes()
-	{
-		if (volumeA != null)
-			PlayerPrefs.SetString(VolumeAKey, volumeA.name);
-		if (volumeB != null)
-			PlayerPrefs.SetString(VolumeBKey, volumeB.name);
-
-		PlayerPrefs.Save();
-	}
-
-	#endregion
-
-	#region Utilities
-
-	//public float GetStaminaNormalized()
-	//{
-	//	return Mathf.Clamp01(currentStamina / maxHoldTime);
-	//}
-
-	#endregion
+        _transitionCoroutine = null;
+    }
 }
 </file>
 

@@ -5,7 +5,7 @@ using UnityEngine;
 public class LeaderboardUIController : MonoBehaviour
 {
     [Header("Referências")]
-    [SerializeField] private LevelData levelData;
+  private LevelData levelData;
     [SerializeField] private GameObject scoreEntryPrefab;
     [SerializeField] private Transform topScoresContentParent;
     [SerializeField] private GameObject loadingIndicator;
@@ -23,9 +23,14 @@ public class LeaderboardUIController : MonoBehaviour
     {
         GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
     }
+    private void Awake()
+    {
+        UpdateLevelData();
+    }
 
     private void HandleLevelCompleted(float finalTime)
     {
+        UpdateLevelData();
         PrepareForDisplay(finalTime);
     }
     
@@ -51,6 +56,7 @@ public class LeaderboardUIController : MonoBehaviour
 
     public async void ShowLeaderboard()
     {
+        UpdateLevelData();
         if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
         {
             Debug.LogError("Dependências não configuradas para o Leaderboard!");
@@ -93,5 +99,9 @@ public class LeaderboardUIController : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
+    }
+    public void UpdateLevelData()
+    {
+        levelData = ScoreManager.Instance.GetCurrentLevelData();
     }
 }
