@@ -5260,10 +5260,12 @@ MonoBehaviour:
   jumpReleaseMultiplier: 0.8
   landingVelocityDampening: 0.423
   gravityMultiplier: 8
-  coyoteTimeDuration: 0.1
+  coyoteTimeDuration: 0.2
   jumpBufferDuration: 0.1
   bunnyHopWindow: 0
   playerHeight: 2
+  groundCheckSphereRadius: 0.4
+  groundCheckDistance: 0.2
   groundCheckLayer:
     serializedVersion: 2
     m_Bits: 192
@@ -5424,7 +5426,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.12442784
+  m_Radius: 0.55
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}

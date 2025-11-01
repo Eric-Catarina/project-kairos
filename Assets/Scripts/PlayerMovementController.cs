@@ -80,7 +80,12 @@ public class PlayerMovementController : MonoBehaviour
 
     #region Ground Check
     [Header("Verificação de Chão")]
-    [SerializeField] private float playerHeight = 2f;
+     [SerializeField] private float playerHeight = 2f;
+    [Tooltip("Raio da esfera usada para verificar o chão. Deve ser um pouco menor que a largura do jogador.")]
+    [SerializeField] private float groundCheckSphereRadius = 0.4f;
+    [Tooltip("Distância extra para a verificação do chão.")]
+    [SerializeField] private float groundCheckDistance = 0.2f;
+
     [SerializeField] private LayerMask groundCheckLayer;
     private Rigidbody _currentPlatformRb;
     private Vector3 _lastPlatformPosition;
@@ -121,7 +126,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        HandleGroundCheck();
+        CheckGroundedStatus();
         HandleMovement();
         ApplyDrag();
         ApplyExtraGravity();
@@ -142,19 +147,36 @@ public class PlayerMovementController : MonoBehaviour
     #endregion
     
     #region Core Logic (FixedUpdate)
-    private void HandleGroundCheck()
+private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
-        float rayOriginY = transform.position.y + (playerHeight * 0.5f);
-        Vector3 rayOrigin = new Vector3(transform.position.x, rayOriginY, transform.position.z);
-        float rayDistance = playerHeight + 0.2f;
 
-        isGrounded = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hitInfo, rayDistance, groundCheckLayer);
+        // A origem do SphereCast é o centro do jogador. A distância precisa compensar a altura.
+        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+        isGrounded = Physics.SphereCast(transform.position, groundCheckSphereRadius, Vector3.down, out RaycastHit hitInfo, castDistance, groundCheckLayer);
 
-        UpdatePlatform(hitInfo);
+        if (isGrounded && hitInfo.rigidbody != null)
+        {
+            if (_currentPlatformRb != hitInfo.rigidbody)
+            {
+                _currentPlatformRb = hitInfo.rigidbody;
+                _lastPlatformPosition = _currentPlatformRb.position;
+            }
+        }
+        else
+        {
+            _currentPlatformRb = null;
+        }
 
-        if (!wasGrounded && isGrounded) HandleLanding();
-        if (wasGrounded && !isGrounded) HandleLeavingGround();
+        if (!wasGrounded && isGrounded)
+        {
+            HandleLanding();
+        }
+
+        if (wasGrounded && !isGrounded && !isJumping)
+        {
+            HandleLeavingGround();
+        }
     }
     
     private void UpdatePlatform(RaycastHit hitInfo)
