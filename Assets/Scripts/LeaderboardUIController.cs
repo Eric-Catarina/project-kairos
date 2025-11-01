@@ -40,7 +40,7 @@ public class LeaderboardUIController : MonoBehaviour
         {
             var tempEntry = new ScoreEntry(
                 PlayFabAuthManager.Instance.PlayFabId,
-                PlayerProfile.Instance.CurrentProfile.PlayerName,
+                PlayerProfile.Instance.CurrentProfile.profileName,
                 time,
                 levelData.GetFullLevelId()
             );
