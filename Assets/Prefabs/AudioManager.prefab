@@ -45,7 +45,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 1
+  m_Volume: 0.43986446
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -482,19 +482,29 @@ MonoBehaviour:
   - name: GrappleAttach
     clip: {fileID: 8300000, guid: a7a07113dadee114bba8edff28f6f5cb, type: 3}
   - name: GrappleRelease
-    clip: {fileID: 8300000, guid: 8cdec73500923d94593020f3d3fd80a5, type: 3}
+    clip: {fileID: 8300000, guid: 44979a05d4a10a34b8f3b6d9a2f2b2ab, type: 3}
+  - name: GrappleRelease2
+    clip: {fileID: 8300000, guid: e3e1dc2cdb5158f4eb7bcc65e054948a, type: 3}
   - name: GrappleShoot
-    clip: {fileID: 8300000, guid: 119145c7ef42bfe459bef856d231c217, type: 3}
+    clip: {fileID: 8300000, guid: 042b9d28fd772514887d9f445e0eb14e, type: 3}
+  - name: GrappleShoot2
+    clip: {fileID: 8300000, guid: a1a56a184ca7edf4daa9de9c3fcab65c, type: 3}
   - name: TimeOff
     clip: {fileID: 8300000, guid: b11b6c0baf4862c4aaee03ead89e423c, type: 3}
   - name: TimeOn
     clip: {fileID: 8300000, guid: 1b8757822b5444a4d8dd213072b53bd9, type: 3}
   - name: WallHit
     clip: {fileID: 8300000, guid: de6eb171c352e5141b22d56da31d735d, type: 3}
-  - name: JumpPad
-    clip: {fileID: 8300000, guid: 4d9769d2d8dde0b4796d6a035eb0abe0, type: 3}
-  - name: Ring
-    clip: {fileID: 8300000, guid: c47a166c574345e408896b212f703334, type: 3}
+  - name: JumpPad1
+    clip: {fileID: 8300000, guid: e201f1ce0e6ac4a4daf47c5c94a8683b, type: 3}
+  - name: JumpPad2
+    clip: {fileID: 8300000, guid: c8ee1a3d9fbee944ea1089fd06bf3f79, type: 3}
+  - name: Ring1
+    clip: {fileID: 8300000, guid: f93aaf971a8f7cb42b8993b18697124f, type: 3}
+  - name: Ring2
+    clip: {fileID: 8300000, guid: 389edf91544bb2c448d68199cda29bdd, type: 3}
+  - name: Ring3
+    clip: {fileID: 8300000, guid: 11e1260305082754fbca41d9bdb31b73, type: 3}
   masterSource: {fileID: 7767049816164541703}
   musicSource: {fileID: 2232251504600985692}
   sfxSource: {fileID: 8454008366039571731}

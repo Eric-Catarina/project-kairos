@@ -250,7 +250,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 15068
+  m_VersionIndex: 15077
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -367,6 +367,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   laserRenderer: {fileID: 1560719070090062694}
+  laserSpriteRenderer: {fileID: 2904035049849252022}
+  activeDuration: 1
+  inactiveDuration: 1
+  cycleOffset: 0
   repulsionForce: 50
   upwardForceMultiplier: 0.3
   resetPlayerMomentum: 1
@@ -449,5 +453,10 @@ PrefabInstance:
 --- !u!4 &1481587149768193634 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3114896942055749354, guid: 04aa60e7ceb4d914aa4827e5784d8115, type: 3}
+  m_PrefabInstance: {fileID: 4590841384018739336}
+  m_PrefabAsset: {fileID: 0}
+--- !u!212 &2904035049849252022 stripped
+SpriteRenderer:
+  m_CorrespondingSourceObject: {fileID: 1727347711626569790, guid: 04aa60e7ceb4d914aa4827e5784d8115, type: 3}
   m_PrefabInstance: {fileID: 4590841384018739336}
   m_PrefabAsset: {fileID: 0}
