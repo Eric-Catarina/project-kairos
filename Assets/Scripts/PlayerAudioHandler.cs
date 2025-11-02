@@ -14,10 +14,10 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private string[] jumpSfxOptions;
     [SerializeField] private string[] doubleJumpSfxOptions;
     [SerializeField] private string[] landSfxOptions;
-    [SerializeField] private string footstepSfx = "Footstep";
+    [SerializeField] private string footstepSfx = "footstep";
     [SerializeField] private string wallHitSfx = "WallHit";
-    [SerializeField] private string ringSfx = "Ring";
-    [SerializeField] private string jumpPadSfx = "JumpPad";
+    [SerializeField] private string[] ringSfxOptions;
+    [SerializeField] private string[] jumpPadSfxOptions;
 
 
     [Header("Sons - Estado do Player")]
@@ -28,9 +28,9 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private string timeSkillOffSfx = "TimeOff";
 
     [Header("Sons - Grappling Hook")]
-    [SerializeField] private string grappleShootSfx = "GrappleShoot";
-    [SerializeField] private string grappleAttachSfx = "GrappleAttach";
-    [SerializeField] private string grappleReleaseSfx = "GrappleRelease";
+    [SerializeField] private string[] grappleShootSfxOptions;
+    [SerializeField] private string[] grappleAttachSfxOptions;
+    [SerializeField] private string[] grappleReleaseSfxOptions;
 
     [Header("Parâmetros")]
     [SerializeField] private float stepInterval = 0.35f;
@@ -213,14 +213,24 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private void HandleGrappleStart()
     {
-        AudioManager.instance.PlaySFX(grappleShootSfx);
+        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleShootSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
+        }
+        //AudioManager.instance.PlaySFX(grappleShootSfx);
         grappleJustStarted = true;
     }
 
     private void HandleGrappleEnd()
     {
+        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
+        }
 
-        AudioManager.instance.PlaySFX(grappleReleaseSfx);
+        //AudioManager.instance.PlaySFX(grappleReleaseSfx);
 
         // Libera double jump só se tinha realmente se agarrado
         if (wasGrappling)
@@ -240,7 +250,12 @@ public class PlayerAudioHandler : MonoBehaviour
         // Som e estado só se realmente conectar
         if (grapple.IsGrappling)
         {
-            AudioManager.instance.PlaySFX(grappleAttachSfx);
+            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
+                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
+            }
+            //AudioManager.instance.PlaySFX(grappleAttachSfx);
 
             // Bloqueia double jump enquanto estiver agarrado
             doubleJumpAvailable = false;
@@ -311,21 +326,16 @@ public class PlayerAudioHandler : MonoBehaviour
         }
     }
 
-    // Funções públicas de áudio
-    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual()
-    {
-        AudioManager.instance.PlaySFX(respawnSfx);
-        if (windSource != null)
-            windSource.volume = 0f;
-    }
-    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
-    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 
 
     private void HandlePowerRingAudio()
     {
-        AudioManager.instance.PlaySFX(ringSfx);
+        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, ringSfxOptions.Length);
+            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
+        }
+        //AudioManager.instance.PlaySFX(ringSfx);
     }
 
     private void AddJumpPadListener(JumpPad pad)
@@ -337,8 +347,30 @@ public class PlayerAudioHandler : MonoBehaviour
 
     public void PlayJumpPadAudio()
     {
-        AudioManager.instance.PlaySFX(jumpPadSfx);
+        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, jumpPadSfxOptions.Length);
+            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
+        }
+        //AudioManager.instance.PlaySFX(jumpPadSfx);
     }
 
+
+
+
+
+
+
+
+    // Funções públicas de áudio
+    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
+    public void PlayRespawnManual()
+    {
+        AudioManager.instance.PlaySFX(respawnSfx);
+        if (windSource != null)
+            windSource.volume = 0f;
+    }
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 

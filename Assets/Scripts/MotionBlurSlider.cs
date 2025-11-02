@@ -1,4 +1,5 @@
 // Local: Assets/Scripts/UI/MotionBlurSlider.cs
+// (Removido PlayerPrefs, agora usa GameSettingsManager)
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -9,8 +10,7 @@ using UnityEngine.UI;
 public class MotionBlurSlider : MonoBehaviour
 {
     [Header("Dependências")]
-    [Tooltip("Arraste aqui o Volume Global que contém o override de Motion Blur.")]
-private Volume globalVolume;
+    private Volume globalVolume;
 
     [Header("Configurações de Clamp")]
     [SerializeField] private float minClamp = 0f;
@@ -18,18 +18,11 @@ private Volume globalVolume;
 
     private Slider _slider;
     private MotionBlur _motionBlur;
-    private const string ClampPrefKey = "Settings_MotionBlurClamp";
 
     private void Awake()
     {
         _slider = GetComponent<Slider>();
-
-        if (globalVolume == null)
-        {
-            // Tenta encontrar automaticamente caso esqueça de arrastar no inspector
-            globalVolume = FindFirstObjectByType<Volume>();
-        }
-
+        globalVolume = FindFirstObjectByType<Volume>();
         InitializeMotionBlurReference();
     }
 
@@ -37,7 +30,6 @@ private Volume globalVolume;
     {
         if (_motionBlur == null)
         {
-            Debug.LogWarning("Motion Blur não encontrado no Volume atribuído. O slider será desativado.", this);
             _slider.interactable = false;
             return;
         }
@@ -45,7 +37,7 @@ private Volume globalVolume;
         LoadSavedValue();
         _slider.onValueChanged.AddListener(OnSliderValueChanged);
     }
-
+    
     private void OnDestroy()
     {
         _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
@@ -63,26 +55,20 @@ private Volume globalVolume;
             }
         }
     }
-
     private void LoadSavedValue()
     {
-        // Usa o valor atual do perfil como padrão caso não tenha nada salvo ainda
-        float currentProfileValue = _motionBlur.clamp.value;
-        float defaultNormalizedValue = Mathf.InverseLerp(minClamp, maxClamp, currentProfileValue);
+        // Pega o valor do nosso novo sistema centralizado
+        float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
         
-        float savedNormalizedValue = PlayerPrefs.GetFloat(ClampPrefKey, defaultNormalizedValue);
-
-        // Atualiza o slider sem disparar o evento onValueChanged para evitar salvamento redundante no Start
         _slider.SetValueWithoutNotify(savedNormalizedValue);
-        
-        // Garante que o efeito visual já comece correto
         ApplyMotionBlurClamp(savedNormalizedValue);
     }
 
     private void OnSliderValueChanged(float normalizedValue)
     {
         ApplyMotionBlurClamp(normalizedValue);
-        SaveValue(normalizedValue);
+        // Notifica o GameSettingsManager para atualizar e salvar
+        GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
     }
 
     private void ApplyMotionBlurClamp(float normalizedValue)
@@ -90,14 +76,7 @@ private Volume globalVolume;
         if (_motionBlur != null)
         {
             float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
-            // .Override garante que a propriedade seja ativada no volume
             _motionBlur.clamp.Override(newValue);
         }
-    }
-
-    private void SaveValue(float value)
-    {
-        PlayerPrefs.SetFloat(ClampPrefKey, value);
-        PlayerPrefs.Save();
     }
 }

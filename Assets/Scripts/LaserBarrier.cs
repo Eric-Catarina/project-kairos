@@ -8,6 +8,19 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
     [Header("Componentes")]
     [Tooltip("O Mesh Renderer do visual do laser. O script desabilitará isso em vez do GameObject.")]
     [SerializeField] private Renderer laserRenderer;
+    [SerializeField] private SpriteRenderer laserSpriteRenderer;
+
+    private Collider _collider;
+
+    [Header("Comportamento do Ciclo")]
+    [Tooltip("Tempo em segundos que o laser fica ativo.")]
+    [SerializeField] private float activeDuration = 5f;
+    [Tooltip("Tempo em segundos que o laser fica inativo.")]
+    [SerializeField] private float inactiveDuration = 3f;
+    [Tooltip("Deslocamento inicial do ciclo em segundos. Útil para dessincronizar múltiplos lasers.")]
+    [SerializeField] private float cycleOffset = 0f;
+    private float _timer;
+    private bool _isCurrentlyActive;
 
     [Header("Interação com o Jogador")]
     [Tooltip("A força com que o jogador é repelido ao tocar no laser ativo.")]
@@ -22,8 +35,7 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
     [SerializeField] private string deactivateSfx = "LaserDeactivate";
     [SerializeField] private string reactivateSfx = "LaserReactivate";
 
-    private Collider _collider;
-    private bool _isDeactivatedByTime = false;
+    private bool _isTimeSlowed = false;
     private const string PlayerTag = "Player";
 
     private void Awake()
@@ -31,7 +43,6 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
         _collider = GetComponent<Collider>();
         _collider.isTrigger = true;
 
-        // Fallback: se o renderer não for atribuído, tenta encontrá-lo em um objeto filho
         if (laserRenderer == null)
         {
             laserRenderer = GetComponentInChildren<Renderer>();
@@ -40,13 +51,15 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
         if (laserRenderer == null)
         {
             Debug.LogError("Nenhum Renderer foi encontrado para a LaserBarrier. O visual não funcionará.", this);
+            enabled = false;
         }
     }
 
     private void Start()
     {
-        SetLaserActive(true);
         TimeManipulationManager.Instance?.Register(this);
+        _timer = cycleOffset;
+        UpdateLaserState();
     }
 
     private void OnDisable()
@@ -54,9 +67,39 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
         TimeManipulationManager.Instance?.Unregister(this);
     }
 
+    private void Update()
+    {
+        if (_isTimeSlowed) return;
+
+        _timer += Time.deltaTime;
+        
+        float currentCycleDuration = _isCurrentlyActive ? activeDuration : inactiveDuration;
+        
+        if (_timer >= currentCycleDuration)
+        {
+            _timer = 0f;
+            _isCurrentlyActive = !_isCurrentlyActive;
+            UpdateLaserState();
+        }
+    }
+
+    private void UpdateLaserState()
+    {
+        SetLaserActive(_isCurrentlyActive);
+
+        if (_isCurrentlyActive)
+        {
+            AudioManager.instance?.PlaySFX(reactivateSfx);
+        }
+        else
+        {
+            AudioManager.instance?.PlaySFX(deactivateSfx);
+        }
+    }
+    
     private void OnTriggerEnter(Collider other)
     {
-        if (_isDeactivatedByTime) return;
+        if (!_isCurrentlyActive || _isTimeSlowed) return;
 
         if (other.CompareTag(PlayerTag))
         {
@@ -82,11 +125,10 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
 
     private void SetLaserActive(bool isActive)
     {
-        // *** MUDANÇA CRÍTICA AQUI ***
-        // Habilita/desabilita os componentes, não o GameObject inteiro.
         if (laserRenderer != null)
         {
             laserRenderer.enabled = isActive;
+            laserSpriteRenderer.enabled = isActive;
         }
         _collider.enabled = isActive;
     }
@@ -95,22 +137,12 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable
 
     public void SlowDown(float slowPercentage)
     {
-        if (!_isDeactivatedByTime)
-        {
-            _isDeactivatedByTime = true;
-            SetLaserActive(false);
-            AudioManager.instance?.PlaySFX(deactivateSfx);
-        }
+        _isTimeSlowed = true;
     }
 
     public void RestoreNormalTime()
     {
-        if (_isDeactivatedByTime)
-        {
-            _isDeactivatedByTime = false;
-            SetLaserActive(true);
-            AudioManager.instance?.PlaySFX(reactivateSfx);
-        }
+        _isTimeSlowed = false;
     }
     
     public void SetSlowDownColor(Color newColor) { } 

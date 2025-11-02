@@ -42,12 +42,12 @@ public class PlayerDropdownController : MonoBehaviour
         _playerDropdown.ClearOptions();
         
         var options = PlayerProfile.Instance.AllProfiles
-            .Select(p => new TMP_Dropdown.OptionData(p.PlayerName))
+            .Select(p => new TMP_Dropdown.OptionData(p.profileName))
             .ToList();
         _playerDropdown.AddOptions(options);
 
         int currentIndex = PlayerProfile.Instance.AllProfiles
-            .FindIndex(p => p.PlayerId == PlayerProfile.Instance.CurrentProfile.PlayerId);
+            .FindIndex(p => p.profileId == PlayerProfile.Instance.CurrentProfile.profileId);
             
         if (currentIndex != -1)
         {
@@ -62,7 +62,7 @@ public class PlayerDropdownController : MonoBehaviour
     {
         if (_isPopulating || PlayerProfile.Instance == null) return;
 
-        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].PlayerId;
+        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].profileId;
         PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
         PlayFabAuthManager.Instance.Login();
     }

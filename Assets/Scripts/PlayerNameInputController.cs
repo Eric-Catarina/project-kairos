@@ -16,21 +16,21 @@ public class PlayerNameInputController : MonoBehaviour
     private void OnEnable()
     {
         _nameInputField.onEndEdit.AddListener(UpdatePlayerName);
-        PlayerProfile.OnProfileChanged += UpdateFieldText; // Se inscreve no evento
-        UpdateFieldText(); // Atualiza o texto inicial
+        PlayerProfile.OnProfileChanged += UpdateFieldText;
+        UpdateFieldText();
     }
 
     private void OnDisable()
     {
         _nameInputField.onEndEdit.RemoveListener(UpdatePlayerName);
-        PlayerProfile.OnProfileChanged -= UpdateFieldText; // Se desinscreve do evento
+        PlayerProfile.OnProfileChanged -= UpdateFieldText;
     }
     
     private void UpdateFieldText()
     {
         if (PlayerProfile.Instance?.CurrentProfile != null)
         {
-            _nameInputField.text = PlayerProfile.Instance.CurrentProfile.PlayerName;
+            _nameInputField.text = PlayerProfile.Instance.CurrentProfile.profileName;
         }
     }
 
@@ -38,7 +38,7 @@ public class PlayerNameInputController : MonoBehaviour
     {
         if (PlayerProfile.Instance == null) return;
         
-        if (PlayerProfile.Instance.CurrentProfile != null && PlayerProfile.Instance.CurrentProfile.PlayerName == newName)
+        if (PlayerProfile.Instance.CurrentProfile != null && PlayerProfile.Instance.CurrentProfile.profileName == newName)
         {
             return;
         }
@@ -49,7 +49,8 @@ public class PlayerNameInputController : MonoBehaviour
         }
         else
         {
-            UpdateFieldText(); // Reverte para o nome atual se o campo ficar vazio
+            UpdateFieldText();
         }
     }
 }
+
