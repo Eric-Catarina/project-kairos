@@ -10,7 +10,7 @@ public class PlayFabAuthManager : MonoBehaviour
     public static PlayFabAuthManager Instance { get; private set; }
     
     public string PlayFabId { get; private set; }
-    private string _loggedInCustomId; // Armazena o ID do jogador que está logado no momento
+    private string _loggedInCustomId;
 
     private void Awake()
     {
@@ -25,7 +25,6 @@ public class PlayFabAuthManager : MonoBehaviour
 
     private void Start()
     {
-        // O login agora é acionado pelo PlayerProfile para garantir a ordem correta
         if (PlayerProfile.Instance != null)
         {
             Login();
@@ -38,8 +37,7 @@ public class PlayFabAuthManager : MonoBehaviour
 
     public void Login()
     {
-        // Se já estamos logados com a conta correta, não faz nada
-        if (IsLoggedIn() && _loggedInCustomId == PlayerProfile.Instance.CurrentProfile.PlayerId)
+        if (IsLoggedIn() && _loggedInCustomId == PlayerProfile.Instance.CurrentProfile.profileId)
         {
             Debug.Log("<color=green>Já está logado com a conta correta.</color>");
             return;
@@ -47,7 +45,7 @@ public class PlayFabAuthManager : MonoBehaviour
 
         var request = new LoginWithCustomIDRequest
         {
-            CustomId = PlayerProfile.Instance.CurrentProfile.PlayerId,
+            CustomId = PlayerProfile.Instance.CurrentProfile.profileId,
             CreateAccount = true,
             InfoRequestParameters = new GetPlayerCombinedInfoRequestParams
             {
@@ -60,11 +58,11 @@ public class PlayFabAuthManager : MonoBehaviour
     private void OnLoginSuccess(LoginResult result)
     {
         PlayFabId = result.PlayFabId;
-        _loggedInCustomId = PlayerProfile.Instance.CurrentProfile.PlayerId;
+        _loggedInCustomId = PlayerProfile.Instance.CurrentProfile.profileId;
         Debug.Log($"<color=green>Login no PlayFab bem-sucedido! PlayFab ID: {PlayFabId}</color>");
         
         string currentPlayFabName = result.InfoResultPayload?.PlayerProfile?.DisplayName;
-        string localPlayerName = PlayerProfile.Instance.CurrentProfile.PlayerName;
+        string localPlayerName = PlayerProfile.Instance.CurrentProfile.profileName;
 
         if (currentPlayFabName != localPlayerName)
         {
@@ -84,11 +82,11 @@ public class PlayFabAuthManager : MonoBehaviour
             DisplayName = displayName
         };
         PlayFabClientAPI.UpdateUserTitleDisplayName(request, 
-            (result) => {
-                Debug.Log($"Nome de exibição no PlayFab atualizado para: {result.DisplayName}");
+            (res) => {
+                Debug.Log($"Nome de exibição no PlayFab atualizado para: {res.DisplayName}");
             },
-            (error) => {
-                Debug.LogError("Falha ao atualizar nome de exibição: " + error.GenerateErrorReport());
+            (err) => {
+                Debug.LogError("Falha ao atualizar nome de exibição: " + err.GenerateErrorReport());
             }
         );
     }

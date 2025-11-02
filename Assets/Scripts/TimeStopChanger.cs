@@ -1,266 +1,157 @@
+// Assets/Scripts/TimeStopChanger.cs
+
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
-using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Linq; // Adicionado para facilitar a busca
 
-public class HoldGlobalVolumeStaminaSafe : MonoBehaviour
+public class TimeStopChanger : MonoBehaviour
 {
-	[Header("Assign the Global Volumes")]
-	public Volume volumeA;
-	public Volume volumeB;
+    [Header("Global Volumes")]
+    [Tooltip("Volume para o estado normal do jogo. Se não for atribuído, o primeiro Volume encontrado na cena será usado.")]
+    public Volume volumeA; // Volume Normal
+    [Tooltip("Volume para o efeito de time stop. Se não for atribuído, o segundo Volume encontrado na cena será usado.")]
+    public Volume volumeB; // Volume do Time Stop
 
-	//[Header("Input Action Reference (from Input System)")]
-	//public InputActionReference holdAction;
+    [Header("Transition Settings")]
+    public float transitionDuration = 0.2f;
 
-	//[Header("Stamina Settings")]
-	//public float maxHoldTime = 3f;
-	//public float rechargeRate = 1f;
+    private Coroutine _transitionCoroutine;
 
-	//[Header("Transition Settings")]
-	public float transitionDuration = 0.2f;
+    private void Awake()
+    {
+        // Encontra e valida os volumes ao iniciar.
+        FindAndValidateVolumes();
+    }
+    
+    private void OnEnable()
+    {
+        if (volumeA == null || volumeB == null)
+        {
+            enabled = false; // Desativa o componente se a configuração estiver incorreta.
+            return;
+        }
 
-	//private float currentStamina;
-	//private bool isHolding = false;
-	private Coroutine transitionCoroutine;
-
-	private const string VolumeAKey = "HoldGlobalVolumeStaminaSafe_VolumeA";
-	private const string VolumeBKey = "HoldGlobalVolumeStaminaSafe_VolumeB";
-
-	private bool _isTimeSlowed;
-
-	#region Unity Lifecycle
-
-	private void Awake()
-	{
-		SceneManager.sceneLoaded += OnSceneLoaded;
-		RestoreVolumes();
-	}
-
-	//private void Start()
-	//{
-	//	RebindInputActions();
-	//	ResetStaminaAndVolumes();
-	//}
-
-	//private void OnDestroy()
-	//{
-	//	SceneManager.sceneLoaded -= OnSceneLoaded;
-	//}
-
-	private void OnEnable()
-	{
-		if (TimeManipulationManager.Instance != null)
-		{
-			TimeManipulationManager.Instance.OnTimeStopStarted += StartHolding;
-			TimeManipulationManager.Instance.OnTimeStopStopped += StopHolding;
-		}
-		}
-
-
-	private void OnDisable()
-	{
-        TimeManipulationManager.Instance.OnTimeStopStarted -= StartHolding;
-        TimeManipulationManager.Instance.OnTimeStopStopped -= StopHolding;
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.OnTimeStopStarted += HandleTimeStopStarted;
+            TimeManipulationManager.Instance.OnTimeStopStopped += HandleTimeStopStopped;
+            SetInitialState();
+        }
+        else
+        {
+            Debug.LogError("TimeManipulationManager.Instance não encontrado! O TimeStopChanger será desativado.", this);
+            enabled = false;
+        }
     }
 
-	private void Update()
-	{
-		_isTimeSlowed = TimeManipulationManager.Instance.IsTimeSlowed;
-	}
+    private void OnDisable()
+    {
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.OnTimeStopStarted -= HandleTimeStopStarted;
+            TimeManipulationManager.Instance.OnTimeStopStopped -= HandleTimeStopStopped;
+        }
+    }
 
+    // *** LÓGICA DE BUSCA RESTAURADA E MELHORADA ***
+    private void FindAndValidateVolumes()
+    {
+        // Se ambos os volumes já foram atribuídos no Inspector, não faz nada.
+        if (volumeA != null && volumeB != null)
+        {
+            return;
+        }
 
-    #endregion
+        // Busca todos os componentes de Volume na cena, incluindo os inativos.
+        var allVolumes = FindObjectsByType<Volume>(sortMode: FindObjectsSortMode.InstanceID);
 
-    #region Input Handling
+        // Se não houver pelo menos dois volumes na cena, a busca automática não é possível.
+        if (allVolumes.Length < 2)
+        {
+            // Apenas exibe o erro se os volumes não foram preenchidos manualmente.
+            if (volumeA == null || volumeB == null)
+            {
+                Debug.LogError("TimeStopChanger não conseguiu encontrar pelo menos dois componentes 'Volume' na cena. Por favor, adicione-os à cena ou atribua-os manualmente no Inspector.", this);
+            }
+            return;
+        }
 
-    //private void OnPress(InputAction.CallbackContext ctx)
-    //{
-    //	if (currentStamina > 0f)
-    //		StartHolding();
-    //}
+        // Se o volumeA não foi definido, pega o primeiro da lista.
+        if (volumeA == null)
+        {
+            volumeA = allVolumes[1];
+        }
 
-    //private void OnRelease(InputAction.CallbackContext ctx)
-    //{
-    //	StopHolding();
-    //}
+        // Se o volumeB não foi definido, busca o próximo volume que seja DIFERENTE do volumeA.
+        if (volumeB == null)
+        {
+            // Usa Linq para encontrar o primeiro volume na lista que não seja o mesmo que o volumeA.
+            volumeB = allVolumes.FirstOrDefault(v => v != volumeA);
+        }
 
-    //private void RebindInputActions()
-    //{
-    //	if (holdAction?.action == null) return;
+        // Validação final: Garante que, após a busca, temos dois volumes distintos.
+        if (volumeA == null || volumeB == null || volumeA == volumeB)
+        {
+            Debug.LogError("A busca automática por Volumes falhou ou resultou em volumes duplicados. Verifique a configuração da sua cena ou atribua os volumes manualmente no Inspector.", this);
+        }
+    }
 
-    //	holdAction.action.performed -= OnPress;
-    //	holdAction.action.canceled -= OnRelease;
+    private void SetInitialState()
+    {
+        if (volumeA == null || volumeB == null) return;
+        
+        bool isSlowed = TimeManipulationManager.Instance.IsTimeSlowed;
 
-    //	holdAction.action.performed += OnPress;
-    //	holdAction.action.canceled += OnRelease;
+        volumeA.weight = isSlowed ? 0f : 1f;
+        volumeA.enabled = !isSlowed;
+        
+        volumeB.weight = isSlowed ? 1f : 0f;
+        volumeB.enabled = isSlowed;
+    }
 
-    //	holdAction.action.Enable();
-    //}
+    private void HandleTimeStopStarted() => StartTransition(volumeA, volumeB);
+    private void HandleTimeStopStopped() => StartTransition(volumeB, volumeA);
+    
+    private void StartTransition(Volume from, Volume to)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        StopTransition();
+        _transitionCoroutine = StartCoroutine(TransitionVolumes(from, to, transitionDuration));
+    }
 
-    //private void UnbindInputActions()
-    //{
-    //	if (holdAction?.action == null) return;
+    private void StopTransition()
+    {
+        if (_transitionCoroutine != null)
+        {
+            StopCoroutine(_transitionCoroutine);
+            _transitionCoroutine = null;
+        }
+    }
 
-    //	holdAction.action.performed -= OnPress;
-    //	holdAction.action.canceled -= OnRelease;
+    private IEnumerator TransitionVolumes(Volume from, Volume to, float duration)
+    {
+        if (from != null) from.enabled = true;
+        if (to != null) to.enabled = true;
 
-    //	holdAction.action.Disable();
-    //}
+        float time = 0f;
+        float fromStart = from != null ? from.weight : 0f;
+        float toStart = to != null ? to.weight : 0f;
 
-    #endregion
+        while (time < duration)
+        {
+            time += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(time / duration);
 
-    #region Stamina & Volume Control
+            if (from != null) from.weight = Mathf.Lerp(fromStart, 0f, t);
+            if (to != null) to.weight = Mathf.Lerp(toStart, 1f, t);
 
-    private void StartHolding()
-	{
-		if (volumeA == null || volumeB == null) return;
+            yield return null;
+        }
 
-		// isHolding = true;
-		StartTransition(volumeA, volumeB);
-	}
+        if (from != null) { from.weight = 0f; from.enabled = false; }
+        if (to != null) { to.weight = 1f; to.enabled = true; }
 
-	private void StopHolding()
-	{
-		if (volumeA == null || volumeB == null) return;
-
-		// isHolding = false;
-		StartTransition(volumeB, volumeA);
-	}
-
-	//private void ResetStaminaAndVolumes()
-	//{
-	//	currentStamina = maxHoldTime;
-	//	isHolding = false;
-	//	SetVolumesInstant(volumeA, 1f, true);
-	//	SetVolumesInstant(volumeB, 0f, false);
-	//}
-
-	//private void SetVolumesInstant(Volume active, float activeWeight, bool activeEnabled)
-	//{
-	//	if (volumeA != null)
-	//	{
-	//		volumeA.weight = (active == volumeA) ? activeWeight : 0f;
-	//		volumeA.enabled = (active == volumeA) ? activeEnabled : false;
-	//	}
-	//	if (volumeB != null)
-	//	{
-	//		volumeB.weight = (active == volumeB) ? activeWeight : 0f;
-	//		volumeB.enabled = (active == volumeB) ? activeEnabled : false;
-	//	}
-	//}
-
-	#endregion
-
-	#region Volume Transitions
-
-	private void StartTransition(Volume from, Volume to)
-	{
-		if (this == null) return; // Object destroyed safeguard
-
-		StopTransition();
-		transitionCoroutine = StartCoroutine(TransitionVolumes(from, to, transitionDuration));
-	}
-
-	private void StopTransition()
-	{
-		if (transitionCoroutine != null)
-		{
-			StopCoroutine(transitionCoroutine);
-			transitionCoroutine = null;
-		}
-	}
-
-	private IEnumerator TransitionVolumes(Volume from, Volume to, float duration)
-	{
-		if (this == null) yield break;
-
-		if (from != null) from.enabled = true;
-		if (to != null) to.enabled = true;
-
-		float time = 0f;
-		float fromStart = from != null ? from.weight : 0f;
-		float toStart = to != null ? to.weight : 0f;
-
-		while (time < duration)
-		{
-			if (this == null) yield break;
-
-			time += Time.deltaTime;
-			float t = Mathf.Clamp01(time / duration);
-
-			if (from != null) from.weight = Mathf.Lerp(fromStart, 0f, t);
-			if (to != null) to.weight = Mathf.Lerp(toStart, 1f, t);
-
-			yield return null;
-		}
-
-		if (from != null)
-		{
-			from.weight = 0f;
-			from.enabled = false;
-		}
-		if (to != null)
-		{
-			to.weight = 1f;
-			to.enabled = true;
-		}
-
-		transitionCoroutine = null;
-	}
-
-	#endregion
-
-	#region Scene & Volume Persistence
-
-	private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-	{
-		//RestoreVolumes();
-		//RebindInputActions();
-		//ResetStaminaAndVolumes();
-	}
-
-	private void RestoreVolumes()
-	{
-		string volumeAName = PlayerPrefs.GetString(VolumeAKey, "");
-		string volumeBName = PlayerPrefs.GetString(VolumeBKey, "");
-
-		Volume[] allVolumes = GameObject.FindObjectsOfType<Volume>(true);
-
-		if (!string.IsNullOrEmpty(volumeAName))
-			volumeA = System.Array.Find(allVolumes, v => v.name == volumeAName);
-
-		if (!string.IsNullOrEmpty(volumeBName))
-			volumeB = System.Array.Find(allVolumes, v => v.name == volumeBName);
-
-		// Fallback to first two if names not found
-		if (volumeA == null && allVolumes.Length > 0)
-			volumeA = allVolumes[0];
-		if (volumeB == null && allVolumes.Length > 1)
-			volumeB = allVolumes[1];
-
-		if (volumeA == null || volumeB == null)
-			Debug.LogWarning($"{name}: Could not find both volumes in scene.");
-	}
-
-	private void SaveVolumes()
-	{
-		if (volumeA != null)
-			PlayerPrefs.SetString(VolumeAKey, volumeA.name);
-		if (volumeB != null)
-			PlayerPrefs.SetString(VolumeBKey, volumeB.name);
-
-		PlayerPrefs.Save();
-	}
-
-	#endregion
-
-	#region Utilities
-
-	//public float GetStaminaNormalized()
-	//{
-	//	return Mathf.Clamp01(currentStamina / maxHoldTime);
-	//}
-
-	#endregion
+        _transitionCoroutine = null;
+    }
 }

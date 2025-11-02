@@ -12,29 +12,14 @@ public class GameSettingsManager : MonoBehaviour
     public static event Action<bool> OnInvertXChanged;
     public static event Action<bool> OnInvertYChanged;
 
-    public float MouseSensitivityX
-    {
-        get => PlayerPrefs.GetFloat("MouseSensitivityX", 0.5f);
-        private set => PlayerPrefs.SetFloat("MouseSensitivityX", value);
-    }
-    
-    public float MouseSensitivityY
-    {
-        get => PlayerPrefs.GetFloat("MouseSensitivityY", 0.5f);
-        private set => PlayerPrefs.SetFloat("MouseSensitivityY", value);
-    }
+    private GameSettings _settings;
 
-    public bool InvertMouseX
-    {
-        get => PlayerPrefs.GetInt("InvertMouseX", 0) == 1;
-        private set => PlayerPrefs.SetInt("InvertMouseX", value ? 1 : 0);
-    }
-
-    public bool InvertMouseY
-    {
-        get => PlayerPrefs.GetInt("InvertMouseY", 0) == 1;
-        private set => PlayerPrefs.SetInt("InvertMouseY", value ? 1 : 0);
-    }
+    // Propriedades agora leem diretamente do objeto de configurações
+    public float MouseSensitivityX => _settings.mouseSensitivityX;
+    public float MouseSensitivityY => _settings.mouseSensitivityY;
+    public bool InvertMouseX => _settings.invertMouseX;
+    public bool InvertMouseY => _settings.invertMouseY;
+    public float MotionBlurIntensity => _settings.motionBlurIntensity;
 
     private void Awake()
     {
@@ -47,31 +32,47 @@ public class GameSettingsManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    private void Start()
+    {
+        // Pega a referência para as configurações do SaveManager
+        _settings = SaveManager.Instance.GetSettings();
+    }
+
+    // Métodos agora modificam o objeto de dados e depois salvam
     public void SetMouseSensitivityX(float normalizedValue)
     {
         float clampedValue = Mathf.Clamp01(normalizedValue);
-        MouseSensitivityX = clampedValue;
+        _settings.mouseSensitivityX = clampedValue;
+        SaveManager.Instance.SaveGame();
         OnMouseSensitivityXChanged?.Invoke(clampedValue);
     }
     
     public void SetMouseSensitivityY(float normalizedValue)
     {
         float clampedValue = Mathf.Clamp01(normalizedValue);
-        MouseSensitivityY = clampedValue;
+        _settings.mouseSensitivityY = clampedValue;
+        SaveManager.Instance.SaveGame();
         OnMouseSensitivityYChanged?.Invoke(clampedValue);
     }
 
     public void SetInvertX(bool isInverted)
     {
-        InvertMouseX = isInverted;
+        _settings.invertMouseX = isInverted;
+        SaveManager.Instance.SaveGame();
         OnInvertXChanged?.Invoke(isInverted);
-        PlayerPrefs.Save();
     }
 
     public void SetInvertY(bool isInverted)
     {
-        InvertMouseY = isInverted;
+        _settings.invertMouseY = isInverted;
+        SaveManager.Instance.SaveGame();
         OnInvertYChanged?.Invoke(isInverted);
-        PlayerPrefs.Save();
+    }
+    
+    public void SetMotionBlur(float normalizedValue)
+    {
+        _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
+        SaveManager.Instance.SaveGame();
+        // Um evento poderia ser disparado aqui se algum sistema precisar ouvir
     }
 }
