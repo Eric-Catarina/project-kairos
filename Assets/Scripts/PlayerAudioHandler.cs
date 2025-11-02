@@ -335,6 +335,9 @@ public class PlayerAudioHandler : MonoBehaviour
             int idx = Random.Range(0, ringSfxOptions.Length);
             AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
         }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
         //AudioManager.instance.PlaySFX(ringSfx);
     }
 
@@ -352,6 +355,9 @@ public class PlayerAudioHandler : MonoBehaviour
             int idx = Random.Range(0, jumpPadSfxOptions.Length);
             AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
         }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
         //AudioManager.instance.PlaySFX(jumpPadSfx);
     }
 

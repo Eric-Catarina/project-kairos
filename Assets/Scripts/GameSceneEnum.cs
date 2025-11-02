@@ -1,0 +1,35 @@
+using System;
+
+[Serializable]
+public enum GameScene
+{
+    ARTBonesClimbGrayBox,
+    ARTBonesClimbGrayBoxCopia,
+    BackGroundTest,
+    Basic,
+    BasicMovement,
+    BonesClimbGrayBox,
+    BonesClimbGrayBoxCopia,
+    BonesStartGrayBox,
+    BonesStartGrayBoxCopia,
+    CarLevel,
+    EricAnimations,
+    EricGraybox,
+    FineTuningMovement,
+    Hellcat,
+    LevelDesignCaio,
+    MainMenu,
+    MainMenuCopia,
+    MenuCaio,
+    MenuCaioAUDIO,
+    MenuCopiaPeu,
+    PrefabsTest,
+    Standard,
+    TimeStop,
+    Tutorial,
+    VFXBonesTest,
+    VFXGabriel,
+    VictorAgarrar,
+    VictorGraybox,
+    ViniciusLevelDesign,
+}
