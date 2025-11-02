@@ -47,11 +47,11 @@ public abstract class UIPanel : MonoBehaviour
         {
             gameObject.SetActive(true);
         }
-        UiJuice.PlayAnimation();
+        UiJuice.PlayTVScanAnimation();
     }
 
     public virtual void Hide()
     {
-        UiJuice.PlayReverseAnimation();
+        UiJuice.PlayReverseTVScanAnimation();
     }
 }
