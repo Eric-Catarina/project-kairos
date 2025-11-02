@@ -7,11 +7,12 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: FogMat
+  m_Name: FogWorld
   m_Shader: {fileID: 4800000, guid: 0406db5a14f94604a8c57ccfbc9f3b46, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _DISTORTION_ON
   - _FADING_ON
   - _SOFTPARTICLES_ON
   - _SURFACE_TYPE_TRANSPARENT
@@ -105,10 +106,10 @@ Material:
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
-    - _DistortionBlend: 0.51
-    - _DistortionEnabled: 0
-    - _DistortionStrength: 1
-    - _DistortionStrengthScaled: 0.1
+    - _DistortionBlend: 0.112
+    - _DistortionEnabled: 1
+    - _DistortionStrength: 1820.3
+    - _DistortionStrengthScaled: 182.03001
     - _DstBlend: 10
     - _DstBlendAlpha: 10
     - _EmissionEnabled: 0
@@ -128,8 +129,8 @@ Material:
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SoftParticlesEnabled: 1
-    - _SoftParticlesFarFadeDistance: 200
-    - _SoftParticlesNearFadeDistance: 100
+    - _SoftParticlesFarFadeDistance: 2015.8
+    - _SoftParticlesNearFadeDistance: 0.06
     - _SpecularHighlights: 1
     - _SrcBlend: 5
     - _SrcBlendAlpha: 1
@@ -137,13 +138,13 @@ Material:
     - _WorkflowMode: 1
     - _ZWrite: 0
     m_Colors:
-    - _BaseColor: {r: 0.37900484, g: 0.21422213, b: 0.5471698, a: 1}
+    - _BaseColor: {r: 0.3790048, g: 0.2142221, b: 0.5471698, a: 1}
     - _BaseColorAddSubDiff: {r: 1, g: 0, b: 0, a: 0}
     - _CameraFadeParams: {r: 0, g: Infinity, b: 0, a: 0}
-    - _Color: {r: 0.3790048, g: 0.2142221, b: 0.5471698, a: 1}
+    - _Color: {r: 0.37900478, g: 0.21422207, b: 0.5471698, a: 1}
     - _ColorAddSubDiff: {r: -1, g: 1, b: 0, a: 0}
     - _EmissionColor: {r: 0.13937345, g: 0.10466359, b: 0.1509434, a: 1}
-    - _SoftParticleFadeParams: {r: 100, g: 0.01, b: 0, a: 0}
+    - _SoftParticleFadeParams: {r: 0.06, g: 0.0004960957, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
