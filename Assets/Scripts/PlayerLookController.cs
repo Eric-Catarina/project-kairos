@@ -109,7 +109,7 @@ public class PlayerLookController : MonoBehaviour
 
     private void Update()
     {
-        if (grapplingHookController != null && grapplingHookController.IsGrappling)
+        if (grapplingHookController != null && grapplingHookController.IsGrappling && !playerMovementController.isGrounded)
         {
             HandleGrappleModelRotation();
         }
@@ -216,10 +216,17 @@ public class PlayerLookController : MonoBehaviour
     {
         if (cameraTransform == null || orientation == null || playerModel == null || playerMovementController == null) return;
 
+
         Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
         if (viewDirection != Vector3.zero)
         {
             orientation.forward = viewDirection;
+        }
+
+        if (playerMovementController.Rb.linearVelocity.sqrMagnitude < 0.1f)
+        {
+            playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+            
         }
 
         Vector3 horizontalVelocity = new Vector3(playerMovementController.Rb.linearVelocity.x, 0f, playerMovementController.Rb.linearVelocity.z);
@@ -234,12 +241,12 @@ public class PlayerLookController : MonoBehaviour
     private void HandleGrappleModelRotation()
     {
         if (playerModel == null || cameraTransform == null || grapplingHookController == null) return;
-
+        if(playerMovementController.isGrounded) return;
         Vector3 directionToGrapple = (grapplingHookController.GrapplePoint - playerModel.position).normalized;
 
         if (directionToGrapple == Vector3.zero) return;
 
-        Quaternion targetRotation = Quaternion.LookRotation(directionToGrapple, cameraTransform.up);
+        Quaternion targetRotation = Quaternion.LookRotation(directionToGrapple, -playerModel.forward);
 
         playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
     }

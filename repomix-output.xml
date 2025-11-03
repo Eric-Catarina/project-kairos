@@ -4203,242 +4203,6 @@ public class PatrolMovement : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PlayerLookController.cs">
-// Local: Assets/Scripts/PlayerLookController.cs
-
-using Unity.Cinemachine;
-using UnityEngine;
-using UnityEngine.InputSystem;
-using DG.Tweening;
-
-public class PlayerLookController : MonoBehaviour
-{
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovementController;
-    [SerializeField] private Transform playerModel;
-    [SerializeField] private Transform orientation;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
-    [SerializeField] private CinemachineCamera freeLookCamera;
-    private CinemachineBasicMultiChannelPerlin _cameraNoise;
-    
-    [Header("Sensibilidade")]
-    [SerializeField] private float minSensitivityGainX = 0.5f;
-    [SerializeField] private float maxSensitivityGainX = 10f;
-    [SerializeField] private float minSensitivityGainY = 0.5f;
-    [SerializeField] private float maxSensitivityGainY = 10f;
-
-    [Header("FOV Dinâmico")]
-    [SerializeField] private float maxFov = 70f;
-    [SerializeField] private float fovMinSpeedThreshold = 15f;
-    [SerializeField] private float fovMaxSpeedThreshold = 40f;
-    [SerializeField] private float fovTransitionDuration = 0.5f;
-
-    [Header("Camera Shake (Noise)")]
-    [Tooltip("A intensidade máxima do tremor em altas velocidades (multiplicador).")]
-    [SerializeField] private float maxShakeAmplitudeGain = 1.5f;
-    [Tooltip("A rapidez máxima do tremor em altas velocidades (multiplicador).")]
-    [SerializeField] private float maxShakeFrequencyGain = 1.5f;
-    [Tooltip("Velocidade (m/s) a partir da qual o tremor começa.")]
-    [SerializeField] private float shakeMinSpeedThreshold = 25f;
-    [Tooltip("Velocidade (m/s) na qual o tremor atinge sua intensidade máxima.")]
-    [SerializeField] private float shakeMaxSpeedThreshold = 60f;
-
-    [Header("Outras Configurações")]
-    [SerializeField] private float playerRotationSpeed = 10f;
-
-    private float _baseFov;
-    private Tweener _fovTween;
-    private LensSettings _tempLens;
-
-    void Awake()
-    {
-        if (freeLookCamera != null)
-        {
-            _cameraNoise = freeLookCamera.GetComponent<CinemachineBasicMultiChannelPerlin>();
-            if (_cameraNoise == null)
-            {
-                Debug.LogError("CinemachineBasicMultiChannelPerlin não encontrado no FreeLook Camera.");
-            }
-        }
-    }
-
-    private void OnEnable()
-    {
-        GameSettingsManager.OnMouseSensitivityXChanged += HandleMouseSensitivityXChanged;
-        GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
-        GameSettingsManager.OnInvertXChanged += HandleInvertXChanged;
-        GameSettingsManager.OnInvertYChanged += HandleInvertYChanged;
-        
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
-        }
-    }
-
-    private void OnDisable()
-    {
-        GameSettingsManager.OnMouseSensitivityXChanged -= HandleMouseSensitivityXChanged;
-        GameSettingsManager.OnMouseSensitivityYChanged -= HandleMouseSensitivityYChanged;
-        GameSettingsManager.OnInvertXChanged -= HandleInvertXChanged;
-        GameSettingsManager.OnInvertYChanged -= HandleInvertYChanged;
-
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
-        }
-    }
-
-    private void Start()
-    {
-        if (InputManager.Instance == null)
-        {
-            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
-            return;
-        }
-
-        if (freeLookCamera == null)
-        {
-            Debug.LogError("CinemachineCamera (FreeLook) não atribuída no PlayerLookController.");
-            enabled = false;
-            return;
-        }
-
-        _baseFov = freeLookCamera.Lens.FieldOfView;
-        _cameraNoise.AmplitudeGain = 0;
-        _cameraNoise.FrequencyGain = 0;
-
-        ConnectCinemachineToInputManager();
-        
-        if (GameSettingsManager.Instance != null)
-        {
-            UpdateXAxisSettings();
-            UpdateYAxisSettings();
-        }
-    }
-
-    private void Update()
-    {
-        HandlePlayerModelRotation();
-    }
-
-    private void HandleVelocityChanged(float currentHorizontalSpeed)
-    {
-        UpdateFov(currentHorizontalSpeed);
-        UpdateCameraShake(currentHorizontalSpeed);
-    }
-    
-    private void HandleInvertXChanged(bool inverted) => UpdateXAxisSettings();
-    private void HandleInvertYChanged(bool inverted) => UpdateYAxisSettings();
-    private void HandleMouseSensitivityXChanged(float normalizedValue) => UpdateXAxisSettings();
-    private void HandleMouseSensitivityYChanged(float normalizedValue) => UpdateYAxisSettings();
-
-    private void UpdateXAxisSettings()
-    {
-        if (cinemachineInputAxisController == null || GameSettingsManager.Instance == null) return;
-
-        float sensitivity = GameSettingsManager.Instance.MouseSensitivityX;
-        bool isInverted = GameSettingsManager.Instance.InvertMouseX;
-        
-        float baseGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, sensitivity);
-        float finalGain = isInverted ? -baseGain : baseGain;
-
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            if (controller.Name == "Look Orbit X" || controller.Name == "X")
-            {
-                controller.Input.Gain = finalGain;
-            }
-        }
-    }
-
-    private void UpdateYAxisSettings()
-    {
-        if (cinemachineInputAxisController == null || GameSettingsManager.Instance == null) return;
-
-        float sensitivity = GameSettingsManager.Instance.MouseSensitivityY;
-        bool isInverted = GameSettingsManager.Instance.InvertMouseY;
-
-        float baseGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, sensitivity);
-        float finalGain = isInverted ? -baseGain : baseGain;
-
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
-            {
-                controller.Input.Gain = -finalGain;
-            }
-        }
-    }
-
-    private void UpdateFov(float speed)
-    {
-        if (freeLookCamera == null) return;
-        
-        float normalizedSpeed = Mathf.InverseLerp(fovMinSpeedThreshold, fovMaxSpeedThreshold, speed);
-        float targetFov = Mathf.Lerp(_baseFov, maxFov, normalizedSpeed);
-
-        _fovTween?.Kill();
-        _fovTween = DOTween.To(
-            () => freeLookCamera.Lens.FieldOfView,
-            x => SetCameraFOV(x),
-            targetFov,
-            fovTransitionDuration
-        ).SetEase(Ease.OutQuad);
-    }
-
-    private void UpdateCameraShake(float speed)
-    {
-        if (freeLookCamera == null) return;
-
-        float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
-        
-        _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
-        _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
-    }
-    
-    private void SetCameraFOV(float fov)
-    {
-        _tempLens = freeLookCamera.Lens;
-        _tempLens.FieldOfView = fov;
-        freeLookCamera.Lens = _tempLens;
-    }
-
-    private void ConnectCinemachineToInputManager()
-    {
-        if (cinemachineInputAxisController == null) return;
-        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
-        foreach (var controller in cinemachineInputAxisController.Controllers)
-        {
-            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
-            controller.Input.InputAction = lookActionReference;
-        }
-    }
-    
-    private void HandlePlayerModelRotation()
-    {
-        if (cameraTransform == null || orientation == null || playerModel == null) return;
-        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-        if (viewDirection != Vector3.zero)
-        {
-            orientation.forward = viewDirection;
-        }
-        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
-    }
-
-    private void OnDestroy()
-    {
-        _fovTween?.Kill();
-        
-        if (freeLookCamera != null)
-        {
-            _cameraNoise.AmplitudeGain = 0;
-            _cameraNoise.FrequencyGain = 0;
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/PlayerVisualController.cs">
 // Local: Assets/Scripts/PlayerVisualController.cs
 
@@ -6990,6 +6754,257 @@ public class PlayerDropdownController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/PlayerLookController.cs">
+// Local: Assets/Scripts/PlayerLookController.cs
+
+using Unity.Cinemachine;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using DG.Tweening;
+
+public class PlayerLookController : MonoBehaviour
+{
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+    [SerializeField] private GrapplingHookController grapplingHookController;
+    [SerializeField] private Transform playerModel;
+    [SerializeField] private Transform orientation;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
+    [SerializeField] private CinemachineCamera freeLookCamera;
+    private CinemachineBasicMultiChannelPerlin _cameraNoise;
+    [Header("Sensibilidade")]
+    [SerializeField] private float minSensitivityGainX = 0.5f;
+    [SerializeField] private float maxSensitivityGainX = 10f;
+    [SerializeField] private float minSensitivityGainY = 0.5f;
+    [SerializeField] private float maxSensitivityGainY = 10f;
+
+    [Header("FOV Dinâmico")]
+    [SerializeField] private float maxFov = 70f;
+    [SerializeField] private float fovMinSpeedThreshold = 15f;
+    [SerializeField] private float fovMaxSpeedThreshold = 40f;
+    [SerializeField] private float fovTransitionDuration = 0.5f;
+
+    [Header("Camera Shake (Noise)")]
+    [SerializeField] private float maxShakeAmplitudeGain = 1.5f;
+    [SerializeField] private float maxShakeFrequencyGain = 1.5f;
+    [SerializeField] private float shakeMinSpeedThreshold = 25f;
+    [SerializeField] private float shakeMaxSpeedThreshold = 60f;
+
+    [Header("Rotação do Modelo")]
+    [SerializeField] private float playerRotationSpeed = 10f;
+
+    private float _baseFov;
+    private Tweener _fovTween;
+    private LensSettings _tempLens;
+
+    void Awake()
+    {
+        if (freeLookCamera != null)
+        {
+            _cameraNoise = freeLookCamera.GetComponent<CinemachineBasicMultiChannelPerlin>();
+            if (_cameraNoise == null)
+            {
+                Debug.LogError("CinemachineBasicMultiChannelPerlin não encontrado no FreeLook Camera.");
+            }
+        }
+    }
+
+    private void OnEnable()
+    {
+        GameSettingsManager.OnMouseSensitivityXChanged += HandleMouseSensitivityXChanged;
+        GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
+        GameSettingsManager.OnInvertXChanged += HandleInvertXChanged;
+        GameSettingsManager.OnInvertYChanged += HandleInvertYChanged;
+
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        GameSettingsManager.OnMouseSensitivityXChanged -= HandleMouseSensitivityXChanged;
+        GameSettingsManager.OnMouseSensitivityYChanged -= HandleMouseSensitivityYChanged;
+        GameSettingsManager.OnInvertXChanged -= HandleInvertXChanged;
+        GameSettingsManager.OnInvertYChanged -= HandleInvertYChanged;
+
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+        }
+    }
+
+    private void Start()
+    {
+        if (InputManager.Instance == null)
+        {
+            Debug.LogError("InputManager não encontrado! A câmera não pode ser conectada.");
+            return;
+        }
+
+        if (freeLookCamera == null)
+        {
+            Debug.LogError("CinemachineCamera (FreeLook) não atribuída no PlayerLookController.");
+            enabled = false;
+            return;
+        }
+
+        _baseFov = freeLookCamera.Lens.FieldOfView;
+        _cameraNoise.AmplitudeGain = 0;
+        _cameraNoise.FrequencyGain = 0;
+
+        ConnectCinemachineToInputManager();
+
+        if (GameSettingsManager.Instance != null)
+        {
+            UpdateXAxisSettings();
+            UpdateYAxisSettings();
+        }
+    }
+
+    private void Update()
+    {
+        if (grapplingHookController != null && grapplingHookController.IsGrappling)
+        {
+            HandleGrappleModelRotation();
+        }
+        else
+        {
+            HandleStandardModelRotation();
+        }
+    }
+
+    private void HandleVelocityChanged(float currentHorizontalSpeed)
+    {
+        UpdateFov(currentHorizontalSpeed);
+        UpdateCameraShake(currentHorizontalSpeed);
+    }
+
+    private void HandleInvertXChanged(bool inverted) => UpdateXAxisSettings();
+    private void HandleInvertYChanged(bool inverted) => UpdateYAxisSettings();
+    private void HandleMouseSensitivityXChanged(float normalizedValue) => UpdateXAxisSettings();
+    private void HandleMouseSensitivityYChanged(float normalizedValue) => UpdateYAxisSettings();
+
+    private void UpdateXAxisSettings()
+    {
+        if (cinemachineInputAxisController == null || GameSettingsManager.Instance == null) return;
+
+        float sensitivity = GameSettingsManager.Instance.MouseSensitivityX;
+        bool isInverted = GameSettingsManager.Instance.InvertMouseX;
+
+        float baseGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, sensitivity);
+        float finalGain = isInverted ? -baseGain : baseGain;
+
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit X" || controller.Name == "X")
+            {
+                controller.Input.Gain = finalGain;
+            }
+        }
+    }
+
+    private void UpdateYAxisSettings()
+    {
+        if (cinemachineInputAxisController == null || GameSettingsManager.Instance == null) return;
+
+        float sensitivity = GameSettingsManager.Instance.MouseSensitivityY;
+        bool isInverted = GameSettingsManager.Instance.InvertMouseY;
+
+        float baseGain = Mathf.Lerp(minSensitivityGainY, maxSensitivityGainY, sensitivity);
+        float finalGain = isInverted ? -baseGain : baseGain;
+
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            if (controller.Name == "Look Orbit Y" || controller.Name == "Y")
+            {
+                controller.Input.Gain = -finalGain;
+            }
+        }
+    }
+
+    private void UpdateFov(float speed)
+    {
+        if (freeLookCamera == null) return;
+
+        float normalizedSpeed = Mathf.InverseLerp(fovMinSpeedThreshold, fovMaxSpeedThreshold, speed);
+        float targetFov = Mathf.Lerp(_baseFov, maxFov, normalizedSpeed);
+
+        _fovTween?.Kill();
+        _fovTween = DOTween.To(
+            () => freeLookCamera.Lens.FieldOfView,
+            x => SetCameraFOV(x),
+            targetFov,
+            fovTransitionDuration
+        ).SetEase(Ease.OutQuad);
+    }
+
+    private void UpdateCameraShake(float speed)
+    {
+        if (freeLookCamera == null) return;
+
+        float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
+
+        _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
+        _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
+    }
+
+    private void SetCameraFOV(float fov)
+    {
+        _tempLens = freeLookCamera.Lens;
+        _tempLens.FieldOfView = fov;
+        freeLookCamera.Lens = _tempLens;
+    }
+
+    private void ConnectCinemachineToInputManager()
+    {
+        if (cinemachineInputAxisController == null) return;
+        InputAction lookAction = InputManager.Instance.PlayerControls.Player.Look;
+        foreach (var controller in cinemachineInputAxisController.Controllers)
+        {
+            InputActionReference lookActionReference = InputActionReference.Create(lookAction);
+            controller.Input.InputAction = lookActionReference;
+        }
+    }
+
+    private void HandleStandardModelRotation()
+    {
+        if (cameraTransform == null || orientation == null || playerModel == null || playerMovementController == null) return;
+
+        Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+        if (viewDirection != Vector3.zero)
+        {
+            orientation.forward = viewDirection;
+        }
+
+        Vector3 horizontalVelocity = new Vector3(playerMovementController.Rb.linearVelocity.x, 0f, playerMovementController.Rb.linearVelocity.z);
+
+        if (horizontalVelocity.sqrMagnitude > 0.1f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(horizontalVelocity.normalized);
+            playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
+        }
+    }
+
+    private void HandleGrappleModelRotation()
+    {
+     }
+
+    private void OnDestroy()
+    {
+        _fovTween?.Kill();
+
+        if (freeLookCamera != null && _cameraNoise != null)
+        {
+            _cameraNoise.AmplitudeGain = 0;
+            _cameraNoise.FrequencyGain = 0;
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/PlayerNameInputController.cs">
 // Local: Assets/Scripts/UI/PlayerNameInputController.cs
 
@@ -7773,281 +7788,6 @@ public abstract class UIPanel : MonoBehaviour
     {
         UiJuice.PlayReverseTVScanAnimation();
     }
-}
-</file>
-
-<file path="Assets/Scripts/GrapplingHookController.cs">
-// Assets/Scripts/GrapplingHookController.cs
-
-using UnityEngine;
-using System;
-
-public class GrapplingHookController : MonoBehaviour
-{
-    #region Events
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleStopped;
-    public event Action<Transform> OnPredictionTargetChanged; // NOVO EVENTO
-    #endregion
-
-    #region Dependencies
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovement;
-    [SerializeField] private Transform grappleTip;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private GameObject predictionPointPrefab;
-    #endregion
-
-    #region Grapple Settings
-    [Header("Configurações do Gancho")]
-    [SerializeField] private float maxGrappleDistance = 50f;
-    [SerializeField] private float grappleCooldown = 1f;
-    [SerializeField] private LayerMask grappleableLayer;
-    [SerializeField] private bool canDoMultipleGrapple = false;
-    [SerializeField] private float maximumTimeGrappling = 3f;
-    #endregion
-
-    #region Joint Settings
-    [Header("Configurações da Junta (Puxão)")]
-    [SerializeField] private float springForce = 8f;
-    [SerializeField] private float damper = 7f;
-    [SerializeField] private float massScale = 4.5f;
-    [SerializeField] private float minSpringSize = .1f;
-    [SerializeField] private float maxSpringSize = .8f;
-    #endregion
-
-    #region Swing Settings
-    [Header("Configurações do Pêndulo")]
-    [SerializeField] private float swingForce = 50f;
-    #endregion
-
-    #region Input Buffer
-    [Header("Buffer de Input")]
-    [SerializeField] private float grappleInputBufferTime = 0.5f;
-    #endregion
-
-    #region State
-    public bool IsGrappling => _isGrappling;
-    public float grappleDistance { get; private set; }
-    
-    private bool _isGrappling = false;
-    private bool _hasGrappleAvailable = true;
-    private bool _hasValidGrappleTarget;
-    private bool _isInputBuffered;
-    private bool _wasPredictionTargetValidLastFrame = false; 
-
-    private float _cooldownTimer;
-    private float _grappleTimer;
-    private float _grappleInputBufferTimer;
-    
-    private Vector2 _moveInput;
-    private Vector3 _grapplePoint;
-    private Vector3 _grappledPointLocalOffset;
-    private Rigidbody _grappledRigidbody;
-    
-    private SpringJoint _joint;
-    private GameObject _predictionPointInstance;
-    private RaycastHit _predictionHit;
-    #endregion
-
-    #region Unity Lifecycle
-    private void Awake()
-    {
-        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
-        _hasGrappleAvailable = true;
-        
-        if (predictionPointPrefab != null)
-        {
-            _predictionPointInstance = Instantiate(predictionPointPrefab);
-            _predictionPointInstance.SetActive(false);
-        }
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
-        InputManager.Instance.OnMove += SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
-
-        if (_wasPredictionTargetValidLastFrame)
-        {
-             OnPredictionTargetChanged?.Invoke(null);
-             _wasPredictionTargetValidLastFrame = false;
-        }
-        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
-    }
-
-    private void Update()
-    {
-        HandleTimers();
-        HandleInputBuffer();
-        UpdateGrappleStateAndVisuals();
-    }
-
-    private void LateUpdate() { DrawRope(); }
-    private void FixedUpdate() { ApplySwingForce(); }
-    #endregion
-
-    #region Prediction & State Broadcasting
-    private void UpdateGrappleStateAndVisuals()
-    {
-        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
-        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-        
-        UpdatePredictionPointVisual(isPredictionReady);
-        BroadcastPredictionStateChange(isPredictionReady);
-    }
-
-    private void UpdatePredictionPointVisual(bool show)
-    {
-        if (_predictionPointInstance == null) return;
-
-        if (show && !_predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(true);
-        }
-        else if (!show && _predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(false);
-        }
-        
-        if (show)
-        {
-            _predictionPointInstance.transform.position = _predictionHit.point;
-        }
-    }
-
-    private void BroadcastPredictionStateChange(bool isReady)
-    {
-        if (isReady && !_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
-        }
-        else if (!isReady && _wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-        }
-        _wasPredictionTargetValidLastFrame = isReady;
-    }
-    #endregion
-    
-    // --- O RESTO DO SCRIPT (SEM ALTERAÇÕES) ---
-    #region Input & Event Handlers
-    private void SetMoveInput(Vector2 input) => _moveInput = input;
-    private void OnGrappleInputStarted()
-    {
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
-    }
-    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
-    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
-    #endregion
-    #region Core Grapple Logic
-    private void ExecuteGrapple()
-    {
-        OnGrappleStarted?.Invoke();
-        _isGrappling = true;
-        _grappleTimer = maximumTimeGrappling;
-        ClearInputBuffer();
-        grappleDistance = _predictionHit.distance;
-        _grapplePoint = _predictionHit.point;
-        _grappledRigidbody = _predictionHit.rigidbody;
-        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(_grapplePoint); }
-        CreateAndConfigureJoint(_grapplePoint);
-        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
-        UpdateGrappleStateAndVisuals();
-    }
-    private void StopGrapple()
-    {
-        if (!_isGrappling) return;
-        OnGrappleStopped?.Invoke();
-        _isGrappling = false;
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
-        lineRenderer.positionCount = 0;
-        Destroy(_joint);
-        _grappledRigidbody = null;
-        playerMovement.ResetDoubleJump();
-        UpdateGrappleStateAndVisuals();
-    }
-    private void ApplySwingForce()
-    {
-        if (!_joint) return;
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
-        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
-    }
-    #endregion
-    private bool FindValidGrappleTarget(out RaycastHit hit)
-    {
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer)) { return true; }
-        return Physics.SphereCast(playerMovement.Rb.transform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
-    }
-    private void DrawRope()
-    {
-        if (!_joint) return;
-        UpdateGrappleAnchorPosition();
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, _grapplePoint);
-    }
-    private void UpdateGrappleAnchorPosition()
-    {
-        if (_grappledRigidbody != null) { _grapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset); if (_joint) _joint.connectedAnchor = _grapplePoint; }
-    }
-    #region State & Timers
-    private void HandleTimers()
-    {
-        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
-        if (_isGrappling)
-        {
-            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
-            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
-        }
-        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
-    }
-    private void HandleInputBuffer()
-    {
-        if (!_isInputBuffered) return;
-        _grappleInputBufferTimer -= Time.deltaTime;
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
-    }
-    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
-    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
-    private bool CanCurrentlyAttemptGrapple()
-    {
-        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
-        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
-    }
-    #endregion
-    #region Utility
-    private void CreateAndConfigureJoint(Vector3 connectedPoint)
-    {
-        _joint = gameObject.AddComponent<SpringJoint>();
-        _joint.autoConfigureConnectedAnchor = false;
-        _joint.anchor = Vector3.zero;
-        _joint.connectedAnchor = connectedPoint;
-        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
-        _joint.maxDistance = distanceFromPoint * maxSpringSize;
-        _joint.minDistance = distanceFromPoint * minSpringSize;
-        _joint.spring = springForce;
-        _joint.damper = damper;
-        _joint.massScale = massScale;
-    }
-    #endregion
 }
 </file>
 
@@ -9265,6 +9005,288 @@ public class TimeManipulationManager : MonoBehaviour
     {
         _slowableObjects.Remove(slowable);
     }
+}
+</file>
+
+<file path="Assets/Scripts/GrapplingHookController.cs">
+// Assets/Scripts/GrapplingHookController.cs
+
+using UnityEngine;
+using System;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    #region Events
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleStopped;
+    public event Action<Transform> OnPredictionTargetChanged; // NOVO EVENTO
+    #endregion
+
+    #region Dependencies
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovement;
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+    #endregion
+
+    #region Grapple Settings
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleableLayer;
+    [SerializeField] private bool canDoMultipleGrapple = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
+    #endregion
+
+    #region Joint Settings
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+    [SerializeField] private float maxSpringSize = .8f;
+    #endregion
+
+    #region Swing Settings
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+    #endregion
+
+    #region Input Buffer
+    [Header("Buffer de Input")]
+    [SerializeField] private float grappleInputBufferTime = 0.5f;
+    #endregion
+
+    #region State
+    public bool IsGrappling => _isGrappling;
+    public float grappleDistance { get; private set; }
+    public Vector3 GrapplePoint { get; private set; }
+
+    private bool _isGrappling = false;
+    private bool _hasGrappleAvailable = true;
+    private bool _hasValidGrappleTarget;
+    private bool _isInputBuffered;
+    private bool _wasPredictionTargetValidLastFrame = false;
+
+    private float _cooldownTimer;
+    private float _grappleTimer;
+    private float _grappleInputBufferTimer;
+
+    private Vector2 _moveInput;
+    private Vector3 _grappledPointLocalOffset;
+    private Rigidbody _grappledRigidbody;
+
+    private SpringJoint _joint;
+    private GameObject _predictionPointInstance;
+    private RaycastHit _predictionHit;
+    #endregion
+
+    #region Unity Lifecycle
+    private void Awake()
+    {
+        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
+        _hasGrappleAvailable = true;
+
+        if (predictionPointPrefab != null)
+        {
+            _predictionPointInstance = Instantiate(predictionPointPrefab);
+            _predictionPointInstance.SetActive(false);
+        }
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
+        InputManager.Instance.OnMove += SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
+
+        if (_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+            _wasPredictionTargetValidLastFrame = false;
+        }
+        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
+    }
+
+    private void Update()
+    {
+        HandleTimers();
+        HandleInputBuffer();
+        UpdateGrappleStateAndVisuals();
+    }
+
+    private void LateUpdate() { DrawRope(); }
+    private void FixedUpdate() { ApplySwingForce(); }
+    #endregion
+
+    #region Prediction & State Broadcasting
+    private void UpdateGrappleStateAndVisuals()
+    {
+        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
+        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
+
+        UpdatePredictionPointVisual(isPredictionReady);
+        BroadcastPredictionStateChange(isPredictionReady);
+    }
+
+    private void UpdatePredictionPointVisual(bool show)
+    {
+        if (_predictionPointInstance == null) return;
+
+        if (show && !_predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(true);
+        }
+        else if (!show && _predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(false);
+        }
+
+        if (show)
+        {
+            _predictionPointInstance.transform.position = _predictionHit.point;
+        }
+    }
+
+    private void BroadcastPredictionStateChange(bool isReady)
+    {
+        if (isReady && !_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
+        }
+        else if (!isReady && _wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+        }
+        _wasPredictionTargetValidLastFrame = isReady;
+    }
+    #endregion
+
+    #region Input & Event Handlers
+    private void SetMoveInput(Vector2 input) => _moveInput = input;
+    private void OnGrappleInputStarted()
+    {
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
+    }
+    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
+    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
+    #endregion
+
+    #region Core Grapple Logic
+    private void ExecuteGrapple()
+    {
+        OnGrappleStarted?.Invoke();
+        _isGrappling = true;
+        _grappleTimer = maximumTimeGrappling;
+        ClearInputBuffer();
+        grappleDistance = _predictionHit.distance;
+        GrapplePoint = _predictionHit.point;
+        _grappledRigidbody = _predictionHit.rigidbody;
+        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(GrapplePoint); }
+        CreateAndConfigureJoint(GrapplePoint);
+        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
+        UpdateGrappleStateAndVisuals();
+    }
+
+    private void StopGrapple()
+    {
+        if (!_isGrappling) return;
+        OnGrappleStopped?.Invoke();
+        _isGrappling = false;
+        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
+        lineRenderer.positionCount = 0;
+        Destroy(_joint);
+        _grappledRigidbody = null;
+        playerMovement.ResetDoubleJump();
+        UpdateGrappleStateAndVisuals();
+    }
+    private void ApplySwingForce()
+    {
+        if (!_joint) return;
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
+    }
+    #endregion
+    private bool FindValidGrappleTarget(out RaycastHit hit)
+    {
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer)) { return true; }
+        return Physics.SphereCast(playerMovement.Rb.transform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
+    }
+    private void DrawRope()
+    {
+        if (!_joint) return;
+        UpdateGrappleAnchorPosition();
+        lineRenderer.positionCount = 2;
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, GrapplePoint);
+    }
+    private void UpdateGrappleAnchorPosition()
+    {
+        if (_grappledRigidbody != null)
+        {
+            GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset);
+            if (_joint) _joint.connectedAnchor = GrapplePoint;
+        }
+    }
+    #region State & Timers
+    private void HandleTimers()
+    {
+        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
+        if (_isGrappling)
+        {
+            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
+            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
+        }
+        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
+    }
+
+    private void HandleInputBuffer()
+    {
+        if (!_isInputBuffered) return;
+        _grappleInputBufferTimer -= Time.deltaTime;
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
+    }
+    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
+    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
+    private bool CanCurrentlyAttemptGrapple()
+    {
+        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
+        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
+    }
+    #endregion
+
+    #region Utility
+    private void CreateAndConfigureJoint(Vector3 connectedPoint)
+    {
+        _joint = gameObject.AddComponent<SpringJoint>();
+        _joint.autoConfigureConnectedAnchor = false;
+        _joint.anchor = Vector3.zero;
+        _joint.connectedAnchor = connectedPoint;
+        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
+        _joint.maxDistance = distanceFromPoint * maxSpringSize;
+        _joint.minDistance = distanceFromPoint * minSpringSize;
+        _joint.spring = springForce;
+        _joint.damper = damper;
+        _joint.massScale = massScale;
+    }
+    #endregion
 }
 </file>
 

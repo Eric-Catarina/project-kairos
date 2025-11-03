@@ -26,15 +26,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 143765921075376354}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0.00071720366, y: 0.018140294, z: 0.000013014098, w: 0.99983525}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3159194051485439380}
-  - {fileID: 1615927059740956077}
   m_Father: {fileID: 5540829288779407124}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -0.082, y: 2.079, z: 0}
 --- !u!33 &6538799439136507623
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -100,7 +99,6 @@ GameObject:
   - component: {fileID: 4609643518488893481}
   - component: {fileID: 8326106058972700484}
   - component: {fileID: 3295484361114290974}
-  - component: {fileID: 7108288391252255758}
   - component: {fileID: 1988963504630470098}
   m_Layer: 0
   m_Name: Main Camera
@@ -117,8 +115,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 233762149061522545}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.1114415, y: 0.01040655, z: 0.0011670556, w: 0.9937158}
-  m_LocalPosition: {x: 0.39584965, y: 0.65420175, z: -3.0625057}
+  m_LocalRotation: {x: -0.11144151, y: 0.010406454, z: 0.0011670449, w: 0.9937158}
+  m_LocalPosition: {x: -0.06415035, y: 0.6542016, z: -3.0625057}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -228,23 +226,6 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
---- !u!114 &7108288391252255758
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 233762149061522545}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
-  m_IsGlobal: 1
-  priority: 0
-  blendDistance: 0
-  weight: 1
-  sharedProfile: {fileID: 11400000, guid: e8cb75dceb3bb5ad1a11c76a6dbf77f9, type: 2}
 --- !u!114 &1988963504630470098
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5159,6 +5140,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 927678618167759292}
+  - {fileID: 1615927059740956077}
   - {fileID: 151514582113188091}
   - {fileID: 6340298699090115215}
   - {fileID: 1547691079890294024}
@@ -5205,6 +5187,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLookController
   playerMovementController: {fileID: 4943271865898170268}
+  grapplingHookController: {fileID: 7596768071946879737}
   playerModel: {fileID: 151514582113188091}
   orientation: {fileID: 927678618167759292}
   cameraTransform: {fileID: 4759079753940297690}
@@ -5260,7 +5243,7 @@ MonoBehaviour:
   landingVelocityDampening: 0.423
   gravityMultiplier: 8
   coyoteTimeDuration: 0.2
-  jumpBufferDuration: 0.1
+  jumpBufferDuration: 0.2
   bunnyHopWindow: 0
   playerHeight: 2
   groundCheckSphereRadius: 0.4
@@ -5286,12 +5269,12 @@ MonoBehaviour:
   lineRenderer: {fileID: 8457320095464866033}
   predictionPointPrefab: {fileID: 2661843310905415723, guid: 2bee631aaa2f55027842afeaae93a372, type: 3}
   maxGrappleDistance: 50
-  grappleCooldown: 1.5
+  grappleCooldown: 1.2
   grappleableLayer:
     serializedVersion: 2
     m_Bits: 192
   canDoMultipleGrapple: 1
-  maximumTimeGrappling: 3
+  maximumTimeGrappling: 9999
   springForce: 14
   damper: 7
   massScale: 10
@@ -5698,8 +5681,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4110254221261267479}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.1114415, y: 0.01040655, z: 0.0011670556, w: 0.9937158}
-  m_LocalPosition: {x: 0.39584965, y: 0.65420175, z: -3.0625057}
+  m_LocalRotation: {x: -0.11144151, y: 0.010406454, z: 0.0011670524, w: 0.9937158}
+  m_LocalPosition: {x: -0.06415035, y: 0.6542016, z: -3.0625057}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10963,13 +10946,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7286203179897614550}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.46, y: 1.3500004, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -9.094946e-13, w: 1}
+  m_LocalPosition: {x: 0, y: 1.3500003, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5239786080761639275}
-  m_Father: {fileID: 151514582113188091}
+  m_Father: {fileID: 5540829288779407124}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7819060085797141586
 GameObject:
@@ -11201,7 +11184,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerMovementController: {fileID: 4943271865898170268}
-  grapplingHookController: {fileID: 0}
+  grapplingHookController: {fileID: 7596768071946879737}
 --- !u!4 &3159194051485439380 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
