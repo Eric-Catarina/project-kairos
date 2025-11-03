@@ -1,6 +1,6 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 public class RandomPrefabShooter : MonoBehaviour
 {
@@ -19,91 +19,73 @@ public class RandomPrefabShooter : MonoBehaviour
 	[Tooltip("Time before each spawned prefab is destroyed (seconds).")]
 	public float prefabLifetime = 5f;
 
+	[Header("Prewarm Settings")]
+	[Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
+	public bool enablePrewarm = true;
+
+	private float shootTimer;
 	private bool _isTimeStopped;
 
-	//[Header("Input Settings")]
-	//[Tooltip("Input Action Reference for the button (e.g. 'Fire' or 'Jump').")]
-	//public InputActionReference holdAction;
-
-	//[Header("Stamina Settings")]
-	//[Tooltip("Maximum button hold duration (seconds).")]
-	//public float maxHoldTime = 3f;
-
-	//[Tooltip("Regeneration rate per second when button is not held.")]
-	//public float regenRate = 1f;
-
-	//private float holdTimer = 0f;
-	private float shootTimer = 0f;
-	//private static bool isButtonPressed;
-	//private static bool inputSubscribed = false;
-
-	//private void Awake()
-	//{
-	//	// Subscribe input only once
-	//	if (holdAction != null && !inputSubscribed)
-	//	{
-	//		holdAction.action.performed += ctx =>
-	//		{
-	//			if (holdTimer > 0f)
-	//				isButtonPressed = true;
-	//		};
-	//		holdAction.action.canceled += ctx => isButtonPressed = false;
-	//		inputSubscribed = true;
-	//	}
-	//}
-
-	//private void OnEnable()
-	//{
-	//	//SceneManager.sceneLoaded += OnSceneReload;
-	//}
-
-	//private void OnDisable()
-	//{
-	//	//SceneManager.sceneLoaded -= OnSceneReload;
-	//}
-
-	//private void OnSceneReload(Scene scene, LoadSceneMode mode)
-	//{
-	//	holdTimer = maxHoldTime;
-	//	shootTimer = 0f;
-	//	isButtonPressed = false;
-	//}
+	private void Start()
+	{
+		if (enablePrewarm)
+			PerformPrewarm();
+	}
 
 	private void Update()
 	{
-		//if (isButtonPressed)
-		//{
-		//	// Decrease hold timer
-		//	holdTimer -= Time.deltaTime;
-
-		//	// Auto-release when max hold time used up
-		//	if (holdTimer <= 0f)
-		//	{
-		//		holdTimer = 0f;
-		//		isButtonPressed = false;
-		//	}
-		//}
-		//else
-		//{
-		//	// Regenerate hold timer when button not pressed
-		//	holdTimer += regenRate * Time.deltaTime;
-		//	if (holdTimer > maxHoldTime)
-		//		holdTimer = maxHoldTime;
-
-		// Shooting logic
-
-		_isTimeStopped = TimeManipulationManager.Instance.IsTimeSlowed;
+		_isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
 
 		if (!_isTimeStopped)
 		{
-            shootTimer += Time.deltaTime;
-            if (shootTimer >= shootInterval)
-            {
-                ShootRandomPrefab();
-                shootTimer = 0f;
-            }
-        }
-    }
+			shootTimer += Time.deltaTime;
+			if (shootTimer >= shootInterval)
+			{
+				ShootRandomPrefab();
+				shootTimer = 0f;
+			}
+		}
+	}
+
+	private void PerformPrewarm()
+	{
+		if (prefabs == null || prefabs.Length == 0)
+			return;
+
+		int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
+		for (int i = 0; i < steps; i++)
+		{
+			float age = i * shootInterval; // seconds since it would have been fired
+			float remainingLife = prefabLifetime - age;
+
+			if (remainingLife > 0f)
+			{
+				GameObject spawned = SpawnPrefabAtTimeOffset(age);
+				Destroy(spawned, remainingLife);
+			}
+		}
+	}
+
+	private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
+	{
+		GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+		if (validPrefabs.Length == 0) return null;
+
+		GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+		GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+
+		Rigidbody rb = spawned.GetComponent<Rigidbody>();
+		if (rb != null)
+		{
+			// Simulate where it would be if fired 'timeOffset' seconds ago
+			Vector3 velocity = transform.forward * shootForce;
+			spawned.transform.position += velocity * timeOffset;
+
+			rb.linearVelocity = velocity;
+		}
+
+		return spawned;
+	}
 
 	private void ShootRandomPrefab()
 	{
