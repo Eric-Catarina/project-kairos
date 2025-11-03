@@ -651,7 +651,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4443216252372976519}
   - component: {fileID: 8247791627934423295}
-  - component: {fileID: 4870505805648232287}
   - component: {fileID: 7710077885581636613}
   m_Layer: 0
   m_Name: TimeManager
@@ -691,21 +690,6 @@ MonoBehaviour:
   rechargeDuration: 3
   slowPercentage: 100
   slowDownColor: {r: 0, g: 1, b: 1, a: 1}
---- !u!114 &4870505805648232287
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8110280352970941500}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e6d8a6fd30e1f4f40abe0076824ce002, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  volumeA: {fileID: 0}
-  volumeB: {fileID: 0}
-  transitionDuration: 0.1
 --- !u!114 &7710077885581636613
 MonoBehaviour:
   m_ObjectHideFlags: 0
