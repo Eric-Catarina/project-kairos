@@ -24,7 +24,7 @@ public class GameFlowManager : MonoBehaviour
     private Coroutine _countdownCoroutine;
     private bool _isSettingsPanelOpen = false;
 
-    private bool IsInGameplayScene => SceneManager.GetActiveScene().buildIndex != 0;
+    private bool IsInGameplayScene => SceneManager.GetActiveScene().name != "MainMenu";
 
     private void Awake()
     {
@@ -91,7 +91,7 @@ public class GameFlowManager : MonoBehaviour
         {
             TogglePauseState();
         }
-        else // Main Menu
+        else 
         {
             if (_isSettingsPanelOpen)
                 _uiManager.ClosePanel(UIPanelType.Settings);
@@ -140,13 +140,6 @@ public class GameFlowManager : MonoBehaviour
         
         _uiManager?.ClosePanel(UIPanelType.Settings);
         _countdownCoroutine = StartCoroutine(ResumeCountdown());
-    }
-
-    private void StopResumeCountdown()
-    {
-        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
-        _isCountingDown = false;
-        if (_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
     }
 
     private IEnumerator ResumeCountdown()

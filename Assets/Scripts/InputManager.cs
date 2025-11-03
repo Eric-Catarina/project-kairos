@@ -29,7 +29,6 @@ public class InputManager : MonoBehaviour
 #endif
 
     private PlayerControls _playerControls;
-    private bool _isGameplayInputActive = true;
 
     private void Awake()
     {
@@ -43,17 +42,7 @@ public class InputManager : MonoBehaviour
 
         _playerControls = new PlayerControls();
         
-        InputStateManager stateManager = GetComponent<InputStateManager>();
-        stateManager.Initialize(_playerControls);
-    }
-
-    private void Start()
-    {
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused += DisableGameplayInput;
-            GameFlowManager.Instance.OnGameResumed += EnableGameplayInput;
-        }
+        GetComponent<InputStateManager>().Initialize(_playerControls);
     }
 
     private void OnEnable()
@@ -85,12 +74,6 @@ public class InputManager : MonoBehaviour
 
     private void OnDisable()
     {
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused -= DisableGameplayInput;
-            GameFlowManager.Instance.OnGameResumed -= EnableGameplayInput;
-        }
-        
         if (_playerControls == null) return;
         
         _playerControls.Player.Move.performed -= HandleMove;
@@ -108,18 +91,14 @@ public class InputManager : MonoBehaviour
 
         _playerControls.Disable();
     }
-
-    private void EnableGameplayInput() => _isGameplayInputActive = true;
-    private void DisableGameplayInput() => _isGameplayInputActive = false;
     
-    private void HandleMove(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; OnMove?.Invoke(context.ReadValue<Vector2>()); }
-    private void HandleJumpPerformed(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; OnJumpPerformed?.Invoke(); }
-    private void HandleJumpCanceled(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; OnJumpCanceled?.Invoke(); }
-    private void HandleGrappleStarted(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; OnGrappleStarted?.Invoke(); }
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; OnGrappleCanceled?.Invoke(); }
-    private void HandleSlowTimeToggled(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; OnSlowTimeToggled?.Invoke(); }
-
-    private void HandleFinishLevel(InputAction.CallbackContext context) { if (!_isGameplayInputActive) return; GameFlowManager.Instance.CompleteLevel(); }
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
     private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
     private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }
