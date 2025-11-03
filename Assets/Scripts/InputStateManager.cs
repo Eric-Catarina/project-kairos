@@ -1,5 +1,8 @@
+// Assets/Scripts/InputStateManager.cs
+
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
 public enum InputState
 {
@@ -22,6 +25,7 @@ public class InputStateManager : MonoBehaviour
             return;
         }
         Instance = this;
+        DontDestroyOnLoad(gameObject);
     }
     private void OnEnable()
     {
@@ -39,7 +43,7 @@ public class InputStateManager : MonoBehaviour
 
     public void SwitchState(InputState newState)
     {
-        if (_playerControls == null ) 
+        if (_playerControls == null) return;
 
         _playerControls.Player.Disable();
         _playerControls.UI.Disable();
@@ -50,6 +54,8 @@ public class InputStateManager : MonoBehaviour
         switch (newState)
         {
             case InputState.Gameplay:
+                // Limpa qualquer input em buffer ANTES de reativar o mapa de ação do jogador.
+                ResetAllPlayerActions();
                 _playerControls.Player.Enable();
                 SetCursorState(false);
                 break;
@@ -72,14 +78,25 @@ public class InputStateManager : MonoBehaviour
         Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
         Cursor.visible = visible;
     }
+    
+    private void ResetAllPlayerActions()
+    {
+        if (_playerControls == null) return;
+        
+        foreach (var action in _playerControls.Player.Get().actions)
+        {
+            action.Reset();
+        }
+        
+    }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (scene.buildIndex == 0) // Main Menu
+        if (scene.name == "MainMenu")
         {
             SwitchState(InputState.UI);
         }
-        else // Gameplay Scene
+        else
         {
             SwitchState(InputState.Gameplay);
         }
