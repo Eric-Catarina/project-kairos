@@ -1,4 +1,4 @@
-// Assets/Scripts/PlayerMovementController.cs
+// Local: Assets/Scripts/PlayerMovementController.cs
 
 using System;
 using TMPro;
@@ -57,7 +57,6 @@ public class PlayerMovementController : MonoBehaviour
     [Header("Configurações de Pulo")]
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private float doubleJumpForce = 14f;
-    [SerializeField] private bool allowDoubleJumpFromGround = false;
     [SerializeField] private float jumpForwardBoost = 5f;
     [SerializeField] private float jumpReleaseMultiplier = 0.5f;
     [SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
@@ -81,6 +80,11 @@ public class PlayerMovementController : MonoBehaviour
     #region Ground Check
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
+    [Tooltip("Raio da esfera usada para verificar o chão. Deve ser um pouco menor que a largura do jogador.")]
+    [SerializeField] private float groundCheckSphereRadius = 0.4f;
+    [Tooltip("Distância extra para a verificação do chão.")]
+    [SerializeField] private float groundCheckDistance = 0.2f;
+
     [SerializeField] private LayerMask groundCheckLayer;
     private Rigidbody _currentPlatformRb;
     private Vector3 _lastPlatformPosition;
@@ -121,7 +125,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        HandleGroundCheck();
+        CheckGroundedStatus();
         HandleMovement();
         ApplyDrag();
         ApplyExtraGravity();
@@ -135,21 +139,19 @@ public class PlayerMovementController : MonoBehaviour
 
     private void UpdateTimers()
     {
-        _coyoteTimeCounter = isGrounded ? coyoteTimeDuration : _coyoteTimeCounter - Time.deltaTime;
+        _coyoteTimeCounter = isGrounded && !isJumping ? coyoteTimeDuration : _coyoteTimeCounter - Time.deltaTime;
         _jumpBufferCounter -= Time.deltaTime;
         _timeSinceLanded += Time.deltaTime;
     }
     #endregion
     
     #region Core Logic (FixedUpdate)
-    private void HandleGroundCheck()
+    private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
-        float rayOriginY = transform.position.y + (playerHeight * 0.5f);
-        Vector3 rayOrigin = new Vector3(transform.position.x, rayOriginY, transform.position.z);
-        float rayDistance = playerHeight + 0.2f;
-
-        isGrounded = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hitInfo, rayDistance, groundCheckLayer);
+        
+        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+        isGrounded = Physics.SphereCast(transform.position, groundCheckSphereRadius, Vector3.down, out RaycastHit hitInfo, castDistance, groundCheckLayer);
 
         UpdatePlatform(hitInfo);
 
@@ -193,11 +195,7 @@ public class PlayerMovementController : MonoBehaviour
         _timeSinceLanded = 0f;
         isJumping = false;
         
-        if (canDoubleJump)
-        {
-            canDoubleJump = false;
-            OnDoubleJumpUsed?.Invoke();
-        }
+        GainDoubleJump();
 
         float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
         if (isJumping && speedInKmh <= 100f)
@@ -206,8 +204,11 @@ public class PlayerMovementController : MonoBehaviour
         }
         
         OnGroundLanded?.Invoke();
-        
-        if (_jumpBufferCounter > 0f) PerformJump(jumpForce);
+
+        if (_jumpBufferCounter > 0f)
+        {
+            PerformJump(jumpForce, false);
+        }
     }
     
     private void HandleLeavingGround()
@@ -308,12 +309,11 @@ public class PlayerMovementController : MonoBehaviour
 
         if (CanPerformJump())
         {
-            PerformJump(jumpForce);
-            if (allowDoubleJumpFromGround) GainDoubleJump();
+            PerformJump(jumpForce, false);
         }
         else if (CanPerformDoubleJump())
         {
-            PerformDoubleJump();
+            PerformJump(doubleJumpForce, true);
         }
     }
     
@@ -325,10 +325,10 @@ public class PlayerMovementController : MonoBehaviour
         }
     }
 
-    private bool CanPerformJump() => _coyoteTimeCounter > 0f;
+    private bool CanPerformJump() => _coyoteTimeCounter > 0f ;
     private bool CanPerformDoubleJump() => canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive);
 
-    private void PerformJump(float force)
+    private void PerformJump(float force, bool isPerformingDoubleJump)
     {
         _coyoteTimeCounter = 0f;
         _jumpBufferCounter = 0f;
@@ -340,16 +340,17 @@ public class PlayerMovementController : MonoBehaviour
 
         if (_moveInput.sqrMagnitude > 0.01f) ApplyJumpForwardBoost();
         
-        OnJumped?.Invoke();
-    }
-    
-    private void PerformDoubleJump()
-    {
-        PerformJump(doubleJumpForce);
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
+        if (isPerformingDoubleJump)
         {
-            canDoubleJump = false;
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
+            {
+                canDoubleJump = false;
+            }
             OnDoubleJumpUsed?.Invoke();
+        }
+        else
+        {
+            OnJumped?.Invoke();
         }
     }
 
@@ -412,7 +413,7 @@ public class PlayerMovementController : MonoBehaviour
 
     private void UpdateDebugUI()
     {
-        if (distanceText != null)
+        if (distanceText != null && grapplingHookController != null)
         {
             distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
         }
@@ -422,6 +423,14 @@ public class PlayerMovementController : MonoBehaviour
             float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
             velocityText.text = "Velocidade: " + speedInKmh.ToString("F2");
         }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.yellow;
+        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+        Vector3 sphereCenter = transform.position + Vector3.down * castDistance;
+        Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
     }
     #endregion
 }

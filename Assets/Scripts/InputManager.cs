@@ -16,10 +16,7 @@ public class InputManager : MonoBehaviour
     public event Action OnJumpCanceled;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
-    
-    // EVENTO ALTERADO: Dispara uma vez por clique.
     public event Action OnSlowTimeToggled;
-    
     public event Action OnLevelRestarted;
     public event Action OnPausePressed;
 
@@ -45,8 +42,7 @@ public class InputManager : MonoBehaviour
 
         _playerControls = new PlayerControls();
         
-        InputStateManager stateManager = GetComponent<InputStateManager>();
-        stateManager.Initialize(_playerControls);
+        GetComponent<InputStateManager>().Initialize(_playerControls);
     }
 
     private void OnEnable()
@@ -55,21 +51,14 @@ public class InputManager : MonoBehaviour
         
         _playerControls.Player.Move.performed += HandleMove;
         _playerControls.Player.Move.canceled += HandleMove;
-
         _playerControls.Player.Jump.performed += HandleJumpPerformed;
         _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-        
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        
-        // MUDANÇA: Agora escutamos apenas o 'performed' (pressionar o botão).
         _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
-        
         _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        
         _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
         _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
-        
         _playerControls.Player.Pause.performed += HandlePausePressed;
         _playerControls.UI.Unpause.performed += HandlePausePressed;
         
@@ -93,10 +82,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        
-        // MUDANÇA: Remove o listener do evento de toggle.
         _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
-        
         _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
         _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
         _playerControls.PostGame.RestartLevel.performed -= HandleRestartLevel;
@@ -111,10 +97,7 @@ public class InputManager : MonoBehaviour
     private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    
-    // NOVO MÉTODO: Dispara o evento de toggle.
     private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
-
     private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
     private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
     private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();

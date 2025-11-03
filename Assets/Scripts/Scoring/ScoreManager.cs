@@ -117,7 +117,6 @@ public class ScoreManager : MonoBehaviour
         _scoreUIController?.UpdateTimeAndRank(_levelTimer);
     }
 
-    // Retorna o Rank correspondente para um determinado tempo usando o LevelData atual.
     public Rank GetRankForTime(float time)
     {
         if (currentLevelData == null) return Rank.None;
@@ -126,6 +125,8 @@ public class ScoreManager : MonoBehaviour
 
     private async void ProcessLevelCompletion(float finalTime)
     {
+        SaveBestTime(finalTime);
+
         PostGamePanel postGamePanel = FindObjectOfType<PostGamePanel>(true);
         postGamePanel.gameObject.SetActive(true);
         postGamePanel.GetComponent<UIJuice>()?.PlayAnimation();
@@ -140,6 +141,38 @@ public class ScoreManager : MonoBehaviour
         _leaderboardUIController?.ShowLeaderboard();
     }
 
+    private void SaveBestTime(float finalTime)
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+
+        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            if (finalTime < record.bestTime)
+            {
+                record.bestTime = finalTime;
+                record.bestRank = GetRankForTime(finalTime);
+            }
+        }
+        else
+        {
+            record = new LevelRecord
+            {
+                bestTime = finalTime,
+                bestRank = GetRankForTime(finalTime)
+            };
+            activeProfile.levelRecords.Add(levelId, record);
+        }
+
+        SaveManager.Instance.SaveGame();
+    }
+
     private async Task<bool> SubmitScoreAsync(float finalTime)
     {
         if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
@@ -149,8 +182,8 @@ public class ScoreManager : MonoBehaviour
         }
 
         var scoreEntry = new ScoreEntry(
-            PlayerProfile.Instance.CurrentProfile.PlayerId,
-            PlayerProfile.Instance.CurrentProfile.PlayerName,
+            PlayerProfile.Instance.CurrentProfile.profileId,
+            PlayerProfile.Instance.CurrentProfile.profileName,
             finalTime,
             currentLevelData.GetFullLevelId()
         );
@@ -195,7 +228,12 @@ public class ScoreManager : MonoBehaviour
         {
             InputManager.Instance.OnMove -= HandleFirstMoveInput;
             _playerMovementController.OnJumped -= HandleFirstInput;
-           _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
         }
+    }
+    public LevelData GetCurrentLevelData()
+    {
+        return currentLevelData;
+        
     }
 }
