@@ -118,7 +118,7 @@ Transform:
   m_GameObject: {fileID: 233762149061522545}
   serializedVersion: 2
   m_LocalRotation: {x: -0.1114415, y: 0.01040655, z: 0.0011670556, w: 0.9937158}
-  m_LocalPosition: {x: 12.395849, y: 101.3742, z: -18.062506}
+  m_LocalPosition: {x: 0.39584965, y: 0.65420175, z: -3.0625057}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5255,7 +5255,6 @@ MonoBehaviour:
   highSpeedThreshold: 55.5
   jumpForce: 35
   doubleJumpForce: 60
-  allowDoubleJumpFromGround: 1
   jumpForwardBoost: 5
   jumpReleaseMultiplier: 0.8
   landingVelocityDampening: 0.423
@@ -5587,16 +5586,16 @@ MonoBehaviour:
   - Landing2
   footstepSfx: Footstep
   wallHitSfx: WallHit
-  ringSfx: Ring
-  jumpPadSfx: JumpPad
+  ringSfxOptions: []
+  jumpPadSfxOptions: []
   deathSfx: Death
   deathFallSFX: DeathFall
   respawnSfx: Respawn
   timeSkillOnSfx: TimeOn
   timeSkillOffSfx: TimeOff
-  grappleShootSfx: GrappleShoot
-  grappleAttachSfx: GrappleAttach
-  grappleReleaseSfx: GrappleRelease
+  grappleShootSfxOptions: []
+  grappleAttachSfxOptions: []
+  grappleReleaseSfxOptions: []
   stepInterval: 0.35
   minStepSpeed: 2
   wallHitMinForce: 5
@@ -5982,12 +5981,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5505339406488194832}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.31813022, y: 0.90646476, z: -0.14310136, w: 0.23798499}
-  m_LocalPosition: {x: -0.009145501, y: 0.0028027403, z: -0.0008297254}
-  m_LocalScale: {x: 1, y: 0.99998945, z: 1}
+  m_LocalRotation: {x: -0.43109933, y: 0.77153623, z: 0.4661457, w: -0.039917637}
+  m_LocalPosition: {x: 0.001410518, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2159141997899417808}
+  m_Father: {fileID: 4344265665749402752}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6924190449495164268
 GameObject:
@@ -11151,7 +11150,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 3579199554555247279, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 1158799108178654975, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4589415240201967841}
     m_AddedComponents:
@@ -11162,11 +11161,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 2768990499324084312}
   m_SourcePrefab: {fileID: 100100000, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
---- !u!4 &2159141997899417808 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3579199554555247279, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
-  m_PrefabInstance: {fileID: 3196728065471050367}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2349866273504055086 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
@@ -11207,8 +11201,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerMovementController: {fileID: 4943271865898170268}
+  grapplingHookController: {fileID: 0}
 --- !u!4 &3159194051485439380 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
+  m_PrefabInstance: {fileID: 3196728065471050367}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4344265665749402752 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1158799108178654975, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
   m_PrefabInstance: {fileID: 3196728065471050367}
   m_PrefabAsset: {fileID: 0}
