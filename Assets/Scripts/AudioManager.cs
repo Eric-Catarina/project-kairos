@@ -5,35 +5,6 @@ using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 
-[Serializable]
-public enum GameScene
-{
-    ART_BonesClimbGrayBox,
-    BackGroundTest,
-    BasicMovement,
-    BonesClimbGrayBox,
-    BonesStartGrayBox,
-    CarLevel,
-    ART_BonesClimbGrayBoxCopia,
-    BonesClimbGrayBoxCopia,
-    BonesStartGrayBoxCopia,
-    MenuCaioAUDIO,
-    EricAnimations,
-    EricGraybox,
-    FineTuningMovement,
-    LevelDesignCaio,
-    MainMenu,
-    Menu,
-    MenuCopiaPeu,
-    PrefabsTest,
-    TimeStop,
-    Tutorial,
-    VictorAgarrar,
-    VictorGraybox,
-    MainMenuCopia,
-    Hellcat,
-    ViniciusLevelDesign
-}
 
 [Serializable]
 public class SceneMusic

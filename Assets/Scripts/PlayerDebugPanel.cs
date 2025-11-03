@@ -1,3 +1,4 @@
+
 // Local: Assets/Scripts/UI/PlayerDebugPanel.cs
 
 using System.Linq;
@@ -45,13 +46,13 @@ public class PlayerDebugPanel : MonoBehaviour
         playerDropdown.ClearOptions();
         
         var options = PlayerProfile.Instance.AllProfiles
-            .Select(p => new TMP_Dropdown.OptionData(p.PlayerName))
+            .Select(p => new TMP_Dropdown.OptionData(p.profileName))
             .ToList();
             
         playerDropdown.AddOptions(options);
 
         int currentIndex = PlayerProfile.Instance.AllProfiles
-            .FindIndex(p => p.PlayerId == PlayerProfile.Instance.CurrentProfile.PlayerId);
+            .FindIndex(p => p.profileId == PlayerProfile.Instance.CurrentProfile.profileId);
             
         if (currentIndex != -1)
         {
@@ -66,9 +67,9 @@ public class PlayerDebugPanel : MonoBehaviour
     {
         if (_isPopulating || PlayerProfile.Instance == null) return;
 
-        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].PlayerId;
+        string selectedPlayerId = PlayerProfile.Instance.AllProfiles[index].profileId;
         
-        if (PlayerProfile.Instance.CurrentProfile.PlayerId != selectedPlayerId)
+        if (PlayerProfile.Instance.CurrentProfile.profileId != selectedPlayerId)
         {
             PlayerProfile.Instance.SwitchPlayer(selectedPlayerId);
             PlayFabAuthManager.Instance.Login();

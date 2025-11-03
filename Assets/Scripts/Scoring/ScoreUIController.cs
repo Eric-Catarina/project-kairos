@@ -24,14 +24,13 @@ public class ScoreUIController : MonoBehaviour
     {
         if (finalTimeText != null)
         {
-            finalTimeText.text = $"Tempo: {finalTime:F2}s";
+            finalTimeText.text = $"{finalTime:F3}s";
         }
-
-        // O rank não é mais fornecido pelo evento; podemos calcular localmente se necessário
+        
         if (rankText != null)
         {
             Rank rank = ScoreManager.Instance != null ? ScoreManager.Instance.GetRankForTime(finalTime) : Rank.None;
-            rankText.text = $"Ranque: {rank}";
+            rankText.text = $"Rank: {rank}";
         }
 
         if (resultsPanel != null)
@@ -44,7 +43,7 @@ public class ScoreUIController : MonoBehaviour
     {
         if (finalTimeText != null)
         {
-            finalTimeText.text = $"Tempo: {newTime:F2}s";
+            finalTimeText.text = $"{newTime:F3}s";
         }
     }
     
@@ -52,13 +51,13 @@ public class ScoreUIController : MonoBehaviour
     {
         if (finalTimeText != null)
         {
-            finalTimeText.text = $"Tempo: {newTime:F2}s";
+            finalTimeText.text = $"{newTime:F3}s";
         }
 
         if (rankText != null)
         {
             Rank rank = ScoreManager.Instance != null ? ScoreManager.Instance.GetRankForTime(newTime) : Rank.None;
-            rankText.text = $"Ranque: {rank}";
+            rankText.text = $"Rank: {rank}";
         }
     }
 }
