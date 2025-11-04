@@ -56,7 +56,6 @@ public class PlayFabLeaderboardService : ILeaderboardService
     {
         var tcs = new TaskCompletionSource<bool>();
         
-        // *** NOVO: Validação para não salvar tempos inválidos ***
         if (score.scoreTime <= 0)
         {
             Debug.LogWarning($"Tentativa de submeter pontuação inválida (<= 0). Tempo: {score.scoreTime}");
@@ -64,9 +63,7 @@ public class PlayFabLeaderboardService : ILeaderboardService
             return tcs.Task;
         }
         
-        // Converte o tempo para um inteiro positivo com 3 casas de precisão.
-        // Ex: 12.345s -> 12345
-        int finalValue = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER);
+        int finalValue = (int)(-score.scoreTime * SCORE_PRECISION_MULTIPLIER);
 
         var request = new UpdatePlayerStatisticsRequest
         {
@@ -99,9 +96,7 @@ public class PlayFabLeaderboardService : ILeaderboardService
 
     private ScoreEntry ConvertPlayFabEntryToScoreEntry(PlayerLeaderboardEntry playfabEntry, string levelId)
     {
-        // Converte o valor inteiro de volta para um tempo em float com 3 casas de precisão.
-        // Ex: 12345 -> 12.345s
-        float time = (float)playfabEntry.StatValue / SCORE_PRECISION_MULTIPLIER;
+        float time = (float)-playfabEntry.StatValue / SCORE_PRECISION_MULTIPLIER;
 
         var scoreEntry = new ScoreEntry(
             playfabEntry.PlayFabId,

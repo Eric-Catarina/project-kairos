@@ -9,13 +9,13 @@ public class PlayerLookController : MonoBehaviour
 {
     [Header("Referências")]
     [SerializeField] private PlayerMovementController playerMovementController;
+    [SerializeField] private GrapplingHookController grapplingHookController;
     [SerializeField] private Transform playerModel;
     [SerializeField] private Transform orientation;
     [SerializeField] private Transform cameraTransform;
     [SerializeField] private CinemachineInputAxisController cinemachineInputAxisController;
     [SerializeField] private CinemachineCamera freeLookCamera;
     private CinemachineBasicMultiChannelPerlin _cameraNoise;
-    
     [Header("Sensibilidade")]
     [SerializeField] private float minSensitivityGainX = 0.5f;
     [SerializeField] private float maxSensitivityGainX = 10f;
@@ -29,16 +29,12 @@ public class PlayerLookController : MonoBehaviour
     [SerializeField] private float fovTransitionDuration = 0.5f;
 
     [Header("Camera Shake (Noise)")]
-    [Tooltip("A intensidade máxima do tremor em altas velocidades (multiplicador).")]
     [SerializeField] private float maxShakeAmplitudeGain = 1.5f;
-    [Tooltip("A rapidez máxima do tremor em altas velocidades (multiplicador).")]
     [SerializeField] private float maxShakeFrequencyGain = 1.5f;
-    [Tooltip("Velocidade (m/s) a partir da qual o tremor começa.")]
     [SerializeField] private float shakeMinSpeedThreshold = 25f;
-    [Tooltip("Velocidade (m/s) na qual o tremor atinge sua intensidade máxima.")]
     [SerializeField] private float shakeMaxSpeedThreshold = 60f;
 
-    [Header("Outras Configurações")]
+    [Header("Rotação do Modelo")]
     [SerializeField] private float playerRotationSpeed = 10f;
 
     private float _baseFov;
@@ -63,7 +59,7 @@ public class PlayerLookController : MonoBehaviour
         GameSettingsManager.OnMouseSensitivityYChanged += HandleMouseSensitivityYChanged;
         GameSettingsManager.OnInvertXChanged += HandleInvertXChanged;
         GameSettingsManager.OnInvertYChanged += HandleInvertYChanged;
-        
+
         if (playerMovementController != null)
         {
             playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
@@ -103,7 +99,7 @@ public class PlayerLookController : MonoBehaviour
         _cameraNoise.FrequencyGain = 0;
 
         ConnectCinemachineToInputManager();
-        
+
         if (GameSettingsManager.Instance != null)
         {
             UpdateXAxisSettings();
@@ -113,7 +109,14 @@ public class PlayerLookController : MonoBehaviour
 
     private void Update()
     {
-        HandlePlayerModelRotation();
+        if (grapplingHookController != null && grapplingHookController.IsGrappling && !playerMovementController.isGrounded)
+        {
+            HandleGrappleModelRotation();
+        }
+        else
+        {
+            HandleStandardModelRotation();
+        }
     }
 
     private void HandleVelocityChanged(float currentHorizontalSpeed)
@@ -121,7 +124,7 @@ public class PlayerLookController : MonoBehaviour
         UpdateFov(currentHorizontalSpeed);
         UpdateCameraShake(currentHorizontalSpeed);
     }
-    
+
     private void HandleInvertXChanged(bool inverted) => UpdateXAxisSettings();
     private void HandleInvertYChanged(bool inverted) => UpdateYAxisSettings();
     private void HandleMouseSensitivityXChanged(float normalizedValue) => UpdateXAxisSettings();
@@ -133,7 +136,7 @@ public class PlayerLookController : MonoBehaviour
 
         float sensitivity = GameSettingsManager.Instance.MouseSensitivityX;
         bool isInverted = GameSettingsManager.Instance.InvertMouseX;
-        
+
         float baseGain = Mathf.Lerp(minSensitivityGainX, maxSensitivityGainX, sensitivity);
         float finalGain = isInverted ? -baseGain : baseGain;
 
@@ -168,7 +171,7 @@ public class PlayerLookController : MonoBehaviour
     private void UpdateFov(float speed)
     {
         if (freeLookCamera == null) return;
-        
+
         float normalizedSpeed = Mathf.InverseLerp(fovMinSpeedThreshold, fovMaxSpeedThreshold, speed);
         float targetFov = Mathf.Lerp(_baseFov, maxFov, normalizedSpeed);
 
@@ -186,11 +189,11 @@ public class PlayerLookController : MonoBehaviour
         if (freeLookCamera == null) return;
 
         float normalizedSpeed = Mathf.InverseLerp(shakeMinSpeedThreshold, shakeMaxSpeedThreshold, speed);
-        
+
         _cameraNoise.AmplitudeGain = Mathf.Lerp(0, maxShakeAmplitudeGain, normalizedSpeed);
         _cameraNoise.FrequencyGain = Mathf.Lerp(0, maxShakeFrequencyGain, normalizedSpeed);
     }
-    
+
     private void SetCameraFOV(float fov)
     {
         _tempLens = freeLookCamera.Lens;
@@ -208,23 +211,51 @@ public class PlayerLookController : MonoBehaviour
             controller.Input.InputAction = lookActionReference;
         }
     }
-    
-    private void HandlePlayerModelRotation()
+
+    private void HandleStandardModelRotation()
     {
-        if (cameraTransform == null || orientation == null || playerModel == null) return;
+        if (cameraTransform == null || orientation == null || playerModel == null || playerMovementController == null) return;
+
+
         Vector3 viewDirection = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
         if (viewDirection != Vector3.zero)
         {
             orientation.forward = viewDirection;
         }
-        playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+
+        if (playerMovementController.Rb.linearVelocity.sqrMagnitude < 0.1f)
+        {
+            playerModel.forward = Vector3.Slerp(playerModel.forward, orientation.forward, playerRotationSpeed * Time.deltaTime);
+            
+        }
+
+        Vector3 horizontalVelocity = new Vector3(playerMovementController.Rb.linearVelocity.x, 0f, playerMovementController.Rb.linearVelocity.z);
+
+        if (horizontalVelocity.sqrMagnitude > 0.1f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(horizontalVelocity.normalized);
+            playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
+        }
+    }
+
+    private void HandleGrappleModelRotation()
+    {
+        if (playerModel == null || cameraTransform == null || grapplingHookController == null) return;
+        if(playerMovementController.isGrounded) return;
+        Vector3 directionToGrapple = (grapplingHookController.GrapplePoint - playerModel.position).normalized;
+
+        if (directionToGrapple == Vector3.zero) return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(directionToGrapple, -playerModel.forward);
+
+        playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
     }
 
     private void OnDestroy()
     {
         _fovTween?.Kill();
-        
-        if (freeLookCamera != null)
+
+        if (freeLookCamera != null && _cameraNoise != null)
         {
             _cameraNoise.AmplitudeGain = 0;
             _cameraNoise.FrequencyGain = 0;

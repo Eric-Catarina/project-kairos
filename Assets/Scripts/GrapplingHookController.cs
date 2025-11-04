@@ -51,22 +51,22 @@ public class GrapplingHookController : MonoBehaviour
     #region State
     public bool IsGrappling => _isGrappling;
     public float grappleDistance { get; private set; }
-    
+    public Vector3 GrapplePoint { get; private set; }
+
     private bool _isGrappling = false;
     private bool _hasGrappleAvailable = true;
     private bool _hasValidGrappleTarget;
     private bool _isInputBuffered;
-    private bool _wasPredictionTargetValidLastFrame = false; 
+    private bool _wasPredictionTargetValidLastFrame = false;
 
     private float _cooldownTimer;
     private float _grappleTimer;
     private float _grappleInputBufferTimer;
-    
+
     private Vector2 _moveInput;
-    private Vector3 _grapplePoint;
     private Vector3 _grappledPointLocalOffset;
     private Rigidbody _grappledRigidbody;
-    
+
     private SpringJoint _joint;
     private GameObject _predictionPointInstance;
     private RaycastHit _predictionHit;
@@ -77,7 +77,7 @@ public class GrapplingHookController : MonoBehaviour
     {
         if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
         _hasGrappleAvailable = true;
-        
+
         if (predictionPointPrefab != null)
         {
             _predictionPointInstance = Instantiate(predictionPointPrefab);
@@ -103,8 +103,8 @@ public class GrapplingHookController : MonoBehaviour
 
         if (_wasPredictionTargetValidLastFrame)
         {
-             OnPredictionTargetChanged?.Invoke(null);
-             _wasPredictionTargetValidLastFrame = false;
+            OnPredictionTargetChanged?.Invoke(null);
+            _wasPredictionTargetValidLastFrame = false;
         }
         if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
     }
@@ -125,7 +125,7 @@ public class GrapplingHookController : MonoBehaviour
     {
         _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
         bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-        
+
         UpdatePredictionPointVisual(isPredictionReady);
         BroadcastPredictionStateChange(isPredictionReady);
     }
@@ -142,7 +142,7 @@ public class GrapplingHookController : MonoBehaviour
         {
             _predictionPointInstance.SetActive(false);
         }
-        
+
         if (show)
         {
             _predictionPointInstance.transform.position = _predictionHit.point;
@@ -162,8 +162,7 @@ public class GrapplingHookController : MonoBehaviour
         _wasPredictionTargetValidLastFrame = isReady;
     }
     #endregion
-    
-    // --- O RESTO DO SCRIPT (SEM ALTERAÇÕES) ---
+
     #region Input & Event Handlers
     private void SetMoveInput(Vector2 input) => _moveInput = input;
     private void OnGrappleInputStarted()
@@ -175,6 +174,7 @@ public class GrapplingHookController : MonoBehaviour
     private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
     public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
     #endregion
+
     #region Core Grapple Logic
     private void ExecuteGrapple()
     {
@@ -183,13 +183,14 @@ public class GrapplingHookController : MonoBehaviour
         _grappleTimer = maximumTimeGrappling;
         ClearInputBuffer();
         grappleDistance = _predictionHit.distance;
-        _grapplePoint = _predictionHit.point;
+        GrapplePoint = _predictionHit.point;
         _grappledRigidbody = _predictionHit.rigidbody;
-        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(_grapplePoint); }
-        CreateAndConfigureJoint(_grapplePoint);
+        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(GrapplePoint); }
+        CreateAndConfigureJoint(GrapplePoint);
         if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
         UpdateGrappleStateAndVisuals();
     }
+
     private void StopGrapple()
     {
         if (!_isGrappling) return;
@@ -222,11 +223,15 @@ public class GrapplingHookController : MonoBehaviour
         UpdateGrappleAnchorPosition();
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, _grapplePoint);
+        lineRenderer.SetPosition(1, GrapplePoint);
     }
     private void UpdateGrappleAnchorPosition()
     {
-        if (_grappledRigidbody != null) { _grapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset); if (_joint) _joint.connectedAnchor = _grapplePoint; }
+        if (_grappledRigidbody != null)
+        {
+            GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset);
+            if (_joint) _joint.connectedAnchor = GrapplePoint;
+        }
     }
     #region State & Timers
     private void HandleTimers()
@@ -239,6 +244,7 @@ public class GrapplingHookController : MonoBehaviour
         }
         if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
     }
+
     private void HandleInputBuffer()
     {
         if (!_isInputBuffered) return;
@@ -254,6 +260,7 @@ public class GrapplingHookController : MonoBehaviour
         return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
     }
     #endregion
+
     #region Utility
     private void CreateAndConfigureJoint(Vector3 connectedPoint)
     {
