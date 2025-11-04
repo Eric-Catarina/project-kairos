@@ -10,7 +10,7 @@ using UnityEngine;
 public class LeaderboardResult
 {
     public List<ScoreEntry> TopEntries { get; set; } = new List<ScoreEntry>();
-    public ScoreEntry PlayerEntry { get; set; } // Pode ser nulo se o jogador não tiver pontuação
+    public ScoreEntry PlayerEntry { get; set; }
 }
 
 public class PlayFabLeaderboardService : ILeaderboardService
@@ -48,7 +48,6 @@ public class PlayFabLeaderboardService : ILeaderboardService
         {
             result.PlayerEntry = ConvertPlayFabEntryToScoreEntry(playerTask.Result.Leaderboard[0], levelId);
         }
-        // Se a tarefa do jogador falhar ou não retornar nada, result.PlayerEntry permanecerá nulo.
 
         return result;
     }
@@ -56,9 +55,18 @@ public class PlayFabLeaderboardService : ILeaderboardService
     public Task<bool> SubmitScoreAsync(ScoreEntry score)
     {
         var tcs = new TaskCompletionSource<bool>();
-        if (score.scoreTime < 0) score.scoreTime = 0;
-        int invertedScore = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER) * -1;
-        int finalValue = Mathf.Min(0, invertedScore);
+        
+        // *** NOVO: Validação para não salvar tempos inválidos ***
+        if (score.scoreTime <= 0)
+        {
+            Debug.LogWarning($"Tentativa de submeter pontuação inválida (<= 0). Tempo: {score.scoreTime}");
+            tcs.SetResult(false);
+            return tcs.Task;
+        }
+        
+        // Converte o tempo para um inteiro positivo com 3 casas de precisão.
+        // Ex: 12.345s -> 12345
+        int finalValue = (int)(score.scoreTime * SCORE_PRECISION_MULTIPLIER);
 
         var request = new UpdatePlayerStatisticsRequest
         {
@@ -91,11 +99,14 @@ public class PlayFabLeaderboardService : ILeaderboardService
 
     private ScoreEntry ConvertPlayFabEntryToScoreEntry(PlayerLeaderboardEntry playfabEntry, string levelId)
     {
-        float correctedValue = Mathf.Min(0, playfabEntry.StatValue);
+        // Converte o valor inteiro de volta para um tempo em float com 3 casas de precisão.
+        // Ex: 12345 -> 12.345s
+        float time = (float)playfabEntry.StatValue / SCORE_PRECISION_MULTIPLIER;
+
         var scoreEntry = new ScoreEntry(
             playfabEntry.PlayFabId,
             playfabEntry.DisplayName ?? "Player",
-            (correctedValue / SCORE_PRECISION_MULTIPLIER) * -1,
+            time,
             levelId
         );
         scoreEntry.Position = playfabEntry.Position + 1;
