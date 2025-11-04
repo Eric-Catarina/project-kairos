@@ -4,110 +4,137 @@ using UnityEngine;
 
 public class RandomPrefabShooter : MonoBehaviour
 {
-	[Header("Prefab Settings")]
-	[Tooltip("Assign up to 5 prefabs to shoot randomly.")]
-	public GameObject[] prefabs = new GameObject[5];
+    [Header("Prefab Settings")]
+    [Tooltip("Assign up to 5 prefabs to shoot randomly.")]
+    public GameObject[] prefabs = new GameObject[5];
 
-	[Header("Shooting Settings")]
-	[Tooltip("Time interval between each shot (seconds).")]
-	public float shootInterval = 2f;
+    [Header("Shooting Settings")]
+    [Tooltip("Time interval between each shot (seconds).")]
+    public float shootInterval = 2f;
 
-	[Tooltip("Force applied to shoot the prefab forward.")]
-	public float shootForce = 10f;
+    [Tooltip("Force applied to shoot the prefab forward.")]
+    public float shootForce = 10f;
 
-	[Header("Lifetime Settings")]
-	[Tooltip("Time before each spawned prefab is destroyed (seconds).")]
-	public float prefabLifetime = 5f;
+    [Header("Lifetime Settings")]
+    [Tooltip("Time before each spawned prefab is destroyed (seconds).")]
+    public float prefabLifetime = 5f;
 
-	[Header("Prewarm Settings")]
-	[Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
-	public bool enablePrewarm = true;
+    [Header("Prewarm Settings")]
+    [Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
+    public bool enablePrewarm = true;
 
-	private float shootTimer;
-	private bool _isTimeStopped;
+    private float shootTimer;
+    private bool _isTimeStopped;
 
-	private void Start()
-	{
-		if (enablePrewarm)
-			PerformPrewarm();
-	}
+    // Nova estrutura para gerenciar objetos spawnados e seus tempos de vida restantes
+    private struct SpawnedObject
+    {
+        public GameObject obj;
+        public float remainingLifetime;
+    }
 
-	private void Update()
-	{
-		_isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
+    private List<SpawnedObject> spawnedObjects = new List<SpawnedObject>();
 
-		if (!_isTimeStopped)
-		{
-			shootTimer += Time.deltaTime;
-			if (shootTimer >= shootInterval)
-			{
-				ShootRandomPrefab();
-				shootTimer = 0f;
-			}
-		}
-	}
+    private void Start()
+    {
+        if (enablePrewarm)
+            PerformPrewarm();
+    }
 
-	private void PerformPrewarm()
-	{
-		if (prefabs == null || prefabs.Length == 0)
-			return;
+    private void Update()
+    {
+        _isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
 
-		int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
-		for (int i = 0; i < steps; i++)
-		{
-			float age = i * shootInterval; // seconds since it would have been fired
-			float remainingLife = prefabLifetime - age;
+        if (!_isTimeStopped)
+        {
+            shootTimer += Time.deltaTime;
+            if (shootTimer >= shootInterval)
+            {
+                ShootRandomPrefab();
+                shootTimer = 0f;
+            }
 
-			if (remainingLife > 0f)
-			{
-				GameObject spawned = SpawnPrefabAtTimeOffset(age);
-				Destroy(spawned, remainingLife);
-			}
-		}
-	}
+            // Gerenciar tempos de vida dos objetos spawnados
+            for (int i = spawnedObjects.Count - 1; i >= 0; i--)
+            {
+                SpawnedObject so = spawnedObjects[i];
+                so.remainingLifetime -= Time.deltaTime;
+                if (so.remainingLifetime <= 0f)
+                {
+                    Destroy(so.obj);
+                    spawnedObjects.RemoveAt(i);
+                }
+                else
+                {
+                    spawnedObjects[i] = so; // Atualizar na lista
+                }
+            }
+        }
+    }
 
-	private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
-	{
-		GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
-		if (validPrefabs.Length == 0) return null;
+    private void PerformPrewarm()
+    {
+        if (prefabs == null || prefabs.Length == 0)
+            return;
 
-		GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
-		GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+        int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
+        for (int i = 0; i < steps; i++)
+        {
+            float age = i * shootInterval; // seconds since it would have been fired
+            float remainingLife = prefabLifetime - age;
 
-		Rigidbody rb = spawned.GetComponent<Rigidbody>();
-		if (rb != null)
-		{
-			// Simulate where it would be if fired 'timeOffset' seconds ago
-			Vector3 velocity = transform.forward * shootForce;
-			spawned.transform.position += velocity * timeOffset;
+            if (remainingLife > 0f)
+            {
+                GameObject spawned = SpawnPrefabAtTimeOffset(age);
+                // Adicionar à lista de objetos gerenciados
+                spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = remainingLife });
+            }
+        }
+    }
 
-			rb.linearVelocity = velocity;
-		}
+    private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
+    {
+        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+        if (validPrefabs.Length == 0) return null;
 
-		return spawned;
-	}
+        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
 
-	private void ShootRandomPrefab()
-	{
-		GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
-		if (validPrefabs.Length == 0) return;
+        Rigidbody rb = spawned.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            // Simulate where it would be if fired 'timeOffset' seconds ago
+            Vector3 velocity = transform.forward * shootForce;
+            spawned.transform.position += velocity * timeOffset;
 
-		GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
-		GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+            rb.linearVelocity = velocity;
+        }
 
-		Rigidbody rb = spawned.GetComponent<Rigidbody>();
-		if (rb != null)
-		{
-			rb.linearVelocity = Vector3.zero;
-			rb.AddForce(transform.forward * shootForce, ForceMode.VelocityChange);
-		}
+        return spawned;
+    }
 
-		Destroy(spawned, prefabLifetime);
-	}
+    private void ShootRandomPrefab()
+    {
+        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+        if (validPrefabs.Length == 0) return;
 
-	private void OnDrawGizmosSelected()
-	{
-		Gizmos.color = Color.cyan;
-		Gizmos.DrawRay(transform.position, transform.forward * 2f);
-	}
+        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+
+        Rigidbody rb = spawned.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.AddForce(transform.forward * shootForce, ForceMode.VelocityChange);
+        }
+
+        // Adicionar à lista de objetos gerenciados com tempo de vida total
+        spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = prefabLifetime });
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawRay(transform.position, transform.forward * 2f);
+    }
 }
