@@ -433,7 +433,7 @@ public class PlayerMovementController : MonoBehaviour
         _rigidbody.isKinematic = true;
         yield return new WaitForFixedUpdate();
 
-        transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo);
+        yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
 
         // transform.position = position;
         transform.rotation = rotation;
