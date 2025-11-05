@@ -417,16 +417,16 @@ public class PlayerMovementController : MonoBehaviour
         Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
     }
 
-    public void ResetToPosition(Vector3 position, Quaternion rotation)
+    public void ResetToPosition(Vector3 position)
     {
         if (_resetCoroutine != null)
         {
             StopCoroutine(_resetCoroutine);
         }
-        _resetCoroutine = StartCoroutine(ResetPositionRoutine(position, rotation));
+        _resetCoroutine = StartCoroutine(ResetPositionRoutine(position));
     }
 
-    private IEnumerator ResetPositionRoutine(Vector3 position, Quaternion rotation)
+    private IEnumerator ResetPositionRoutine(Vector3 position)
     {
         grapplingHookController?.StopGrapple();
 
@@ -436,8 +436,8 @@ public class PlayerMovementController : MonoBehaviour
         yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
 
         // transform.position = position;
-        transform.rotation = rotation;
-        orientation.rotation = rotation;
+        // transform.rotation = rotation;
+        // orientation.rotation = rotation;
 
         yield return new WaitForFixedUpdate();
         _rigidbody.isKinematic = false;

@@ -8,7 +8,7 @@ public class DeathFogLogic : MonoBehaviour
         {
             if (CheckpointManager.Instance != null)
             {
-                CheckpointManager.Instance.ResetToLastCheckpoint();
+                CheckpointManager.Instance.SoftResetToCheckpoint();
             }
             else
             {

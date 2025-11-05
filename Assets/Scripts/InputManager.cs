@@ -58,7 +58,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
         _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
         _playerControls.Player.FullReset.performed += HandleFullLevelReset;
-        _playerControls.PostGame.RestartLevel.performed += HandleResetToCheckpoint; 
+        _playerControls.PostGame.RestartLevel.performed += HandleFullLevelReset; 
         _playerControls.Player.Pause.performed += HandlePausePressed;
         _playerControls.UI.Unpause.performed += HandlePausePressed;
         
@@ -86,7 +86,7 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
         _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
         _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
-        _playerControls.PostGame.RestartLevel.performed -= HandleResetToCheckpoint;
+        _playerControls.PostGame.RestartLevel.performed -= HandleFullLevelReset;
         _playerControls.Player.Pause.performed -= HandlePausePressed;
         _playerControls.UI.Unpause.performed -= HandlePausePressed;
 

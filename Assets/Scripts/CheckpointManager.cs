@@ -7,6 +7,10 @@ using System.Collections;
 public class CheckpointManager : MonoBehaviour
 {
     public static CheckpointManager Instance { get; private set; }
+    
+    [Header("Configuração de Spawn")]
+    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
+    [SerializeField] private Transform initialSpawnPoint;
 
     [Header("Configuração de Penalidade")]
     [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
@@ -35,8 +39,8 @@ public class CheckpointManager : MonoBehaviour
         Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnResetToCheckpoint += ResetToLastCheckpoint;
-            InputManager.Instance.OnFullLevelReset += ResetLevelFromStart;
+            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset += HardResetLevel;
         }
         if (GameSettingsManager.Instance != null)
         {
@@ -50,8 +54,8 @@ public class CheckpointManager : MonoBehaviour
         Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnResetToCheckpoint -= ResetToLastCheckpoint;
-            InputManager.Instance.OnFullLevelReset -= ResetLevelFromStart;
+            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
         }
         if (GameSettingsManager.Instance != null)
         {
@@ -103,12 +107,12 @@ public class CheckpointManager : MonoBehaviour
             _lastActivatedCheckpoint = activatedCheckpoint;
         }
     }
-
-    public void ResetToLastCheckpoint()
+    
+    public void SoftResetToCheckpoint()
     {
         if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
         {
-            ResetLevelFromStart();
+            SoftResetToStart();
             return;
         }
 
@@ -117,7 +121,7 @@ public class CheckpointManager : MonoBehaviour
 
         if (_player != null)
         {
-            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position, _lastActivatedCheckpoint.SpawnPoint.rotation);
+            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
         }
     }
 
@@ -139,8 +143,27 @@ public class CheckpointManager : MonoBehaviour
             resettable.ResetState();
         }
     }
+    
+    private void SoftResetToStart()
+    {
+        if (initialSpawnPoint == null)
+        {
+            Debug.LogWarning("Initial Spawn Point não está definido; recarregando a cena como fallback.", this);
+            HardResetLevel();
+            return;
+        }
 
-    private void ResetLevelFromStart()
+        ResetWorldState();
+        ScoreManager.Instance?.ResetLevelTimer();
+        _lastActivatedCheckpoint = null;
+
+        if (_player != null)
+        {
+            _player.ResetToPosition(initialSpawnPoint.position);
+        }
+    }
+
+    private void HardResetLevel()
     {
         SceneManagerLogic.Instance.RestartScene();
     }
