@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/PlayerMovementController.cs
-
 using System;
 using TMPro;
 using UnityEngine;
@@ -49,7 +47,7 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float airDrag = 2f;
     [SerializeField] private float grappleAirDrag = 0.5f;
     [SerializeField] private float highSpeedAirDragMultiplier = 1.2f;
-    [SerializeField] private float highSpeedThreshold = 55.5f; // 200 km/h
+    [SerializeField] private float highSpeedThreshold = 55.5f;
     private float _baseAirDrag;
     #endregion
 
@@ -80,11 +78,8 @@ public class PlayerMovementController : MonoBehaviour
     #region Ground Check
     [Header("Verificação de Chão")]
     [SerializeField] private float playerHeight = 2f;
-    [Tooltip("Raio da esfera usada para verificar o chão. Deve ser um pouco menor que a largura do jogador.")]
     [SerializeField] private float groundCheckSphereRadius = 0.4f;
-    [Tooltip("Distância extra para a verificação do chão.")]
     [SerializeField] private float groundCheckDistance = 0.2f;
-
     [SerializeField] private LayerMask groundCheckLayer;
     private Rigidbody _currentPlatformRb;
     private Vector3 _lastPlatformPosition;
@@ -94,7 +89,6 @@ public class PlayerMovementController : MonoBehaviour
 
     public Rigidbody Rb => _rigidbody;
 
-    #region Unity Lifecycle
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
@@ -132,9 +126,7 @@ public class PlayerMovementController : MonoBehaviour
         LimitVelocity();
         BroadcastHorizontalVelocity();
     }
-    #endregion
 
-    #region Event Handlers
     private void SetMoveInput(Vector2 input) => _moveInput = input;
 
     private void UpdateTimers()
@@ -143,9 +135,7 @@ public class PlayerMovementController : MonoBehaviour
         _jumpBufferCounter -= Time.deltaTime;
         _timeSinceLanded += Time.deltaTime;
     }
-    #endregion
     
-    #region Core Logic (FixedUpdate)
     private void CheckGroundedStatus()
     {
         bool wasGrounded = isGrounded;
@@ -274,9 +264,7 @@ public class PlayerMovementController : MonoBehaviour
         _horizontalSpeed = horizontalVelocity.magnitude;
         OnHorizontalVelocityChanged?.Invoke(_horizontalSpeed);
     }
-    #endregion
     
-    #region Movement
     private void ApplyGroundMovement()
     {
         if (_moveInput.sqrMagnitude < 0.01f) return;
@@ -298,9 +286,7 @@ public class PlayerMovementController : MonoBehaviour
 
         _rigidbody.AddForce(moveDirection * moveSpeed * 10f * airMultiplier * lateralInfluence, ForceMode.Force);
     }
-    #endregion
     
-    #region Jumping
     private void ProcessJumpRequest()
     {
         _jumpBufferCounter = jumpBufferDuration;
@@ -368,9 +354,7 @@ public class PlayerMovementController : MonoBehaviour
             OnDoubleJumpGained?.Invoke();
         }
     }
-    #endregion
-
-    #region Public API
+    
     public void ResetDoubleJump()
     {
         if (!isGrounded)
@@ -401,9 +385,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         return orientation;
     }
-    #endregion
     
-    #region Utility & Debug
     private void ApplyLandingDampening()
     {
         Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
@@ -432,5 +414,15 @@ public class PlayerMovementController : MonoBehaviour
         Vector3 sphereCenter = transform.position + Vector3.down * castDistance;
         Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
     }
-    #endregion
+
+    public void ResetToPosition(Vector3 position, Quaternion rotation)
+    {
+        transform.position = position;
+        orientation.rotation = rotation;
+        _rigidbody.linearVelocity = Vector3.zero;
+        _rigidbody.angularVelocity = Vector3.zero;
+
+        isJumping = false;
+        ResetDoubleJump();
+    }
 }

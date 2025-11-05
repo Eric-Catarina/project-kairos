@@ -1,5 +1,3 @@
-// Assets/Scripts/InputManager.cs
-
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -17,7 +15,8 @@ public class InputManager : MonoBehaviour
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
     public event Action OnSlowTimeToggled;
-    public event Action OnLevelRestarted;
+    public event Action OnResetToCheckpoint;
+    public event Action OnFullLevelReset;
     public event Action OnPausePressed;
 
 #if ENABLE_CHEATS
@@ -57,8 +56,9 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
         _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
         _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed += HandleRestartLevel;
-        _playerControls.PostGame.RestartLevel.performed += HandleRestartLevel; 
+        _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
+        _playerControls.Player.FullReset.performed += HandleFullLevelReset;
+        _playerControls.PostGame.RestartLevel.performed += HandleResetToCheckpoint; 
         _playerControls.Player.Pause.performed += HandlePausePressed;
         _playerControls.UI.Unpause.performed += HandlePausePressed;
         
@@ -84,8 +84,9 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
         _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
         _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed -= HandleRestartLevel;
-        _playerControls.PostGame.RestartLevel.performed -= HandleRestartLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
+        _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
+        _playerControls.PostGame.RestartLevel.performed -= HandleResetToCheckpoint;
         _playerControls.Player.Pause.performed -= HandlePausePressed;
         _playerControls.UI.Unpause.performed -= HandlePausePressed;
 
@@ -99,6 +100,7 @@ public class InputManager : MonoBehaviour
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
     private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
     private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
-    private void HandleRestartLevel(InputAction.CallbackContext context) => OnLevelRestarted?.Invoke();
+    private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
+    private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
     private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }

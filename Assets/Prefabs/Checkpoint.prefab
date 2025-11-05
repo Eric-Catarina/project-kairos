@@ -210,6 +210,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4616986456210483324}
+  - component: {fileID: 2464654833265772710}
+  - component: {fileID: 1608899415194293400}
   m_Layer: 0
   m_Name: Checkpoint
   m_TagString: Untagged
@@ -225,14 +227,54 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4348258777324966319}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 10.48, y: 60, z: 5.0800004}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8569054359792502755}
+  - {fileID: 8769716272665375970}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!135 &2464654833265772710
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4348258777324966319}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 4
+  m_Center: {x: 0, y: 0, z: -1.15}
+--- !u!114 &1608899415194293400
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4348258777324966319}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7be985d81a1e3855bae1a7428e6837ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  orderIndex: 0
+  spawnPoint: {fileID: 4616986456210483324}
+  inactiveVisual: {fileID: 3161841800856654375}
+  activatedVisual: {fileID: 1515221842596500061}
+  activationEffect: {fileID: 0}
+  activationSfx: CheckpointActivate
 --- !u!1 &4965048480215835001
 GameObject:
   m_ObjectHideFlags: 0
@@ -574,3 +616,70 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7dae2be0953cc2642afdb14c01614736, type: 3}
+--- !u!1001 &7384003614623988907
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 4616986456210483324}
+    m_Modifications:
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8322201409159982838, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+      propertyPath: m_Name
+      value: CheckpointOFF
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+--- !u!1 &1515221842596500061 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8322201409159982838, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+  m_PrefabInstance: {fileID: 7384003614623988907}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8769716272665375970 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2291499150840318025, guid: 180437540ee775d418e261a0628f5b4f, type: 3}
+  m_PrefabInstance: {fileID: 7384003614623988907}
+  m_PrefabAsset: {fileID: 0}

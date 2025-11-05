@@ -18,26 +18,9 @@ public class SceneManagerLogic : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    private void OnEnable()
-    {
-        // Ações de input agora são gerenciadas pelo InputManager
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnLevelRestarted += RestartScene;
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnLevelRestarted -= RestartScene;
-        }
-    }
-
     public void RestartScene()
     {
-        Time.timeScale = 1f; // Garante que o tempo volte ao normal
+        Time.timeScale = 1f;
         Scene currentScene = SceneManager.GetActiveScene();
         SceneManager.LoadScene(currentScene.name);
     }
@@ -54,7 +37,7 @@ public class SceneManagerLogic : MonoBehaviour
         }
         else
         {
-            LoadMainMenu(); // Se não houver próxima cena, volta ao menu
+            LoadMainMenu();
         }
     }
 
@@ -80,5 +63,3 @@ public class SceneManagerLogic : MonoBehaviour
         SceneManager.LoadScene(buildIndex);
     }
 }
-
-    
