@@ -13,6 +13,7 @@ public class CheckpointManager : MonoBehaviour
     [SerializeField] private float penaltyPerCheckpoint = 5f;
 
     private List<Checkpoint> _checkpointsInLevel;
+    private List<IResettable> _resettableObjects;
     private Checkpoint _lastActivatedCheckpoint;
     private PlayerMovementController _player;
     private bool _areCheckpointsEnabled;
@@ -68,12 +69,9 @@ public class CheckpointManager : MonoBehaviour
         yield return null;
 
         _player = FindObjectOfType<PlayerMovementController>();
-        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().ToList();
+        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
         
-        if (_checkpointsInLevel.Count > 0)
-        {
-            _checkpointsInLevel.Sort((a, b) => a.orderIndex.CompareTo(b.orderIndex));
-        }
+        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
 
         _lastActivatedCheckpoint = null;
         
@@ -83,7 +81,7 @@ public class CheckpointManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("GameSettingsManager.Instance é nulo durante a inicialização do CheckpointManager. Desativando checkpoints para esta cena.");
+            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
             _areCheckpointsEnabled = false;
         }
     }
@@ -106,7 +104,7 @@ public class CheckpointManager : MonoBehaviour
         }
     }
 
-    private void ResetToLastCheckpoint()
+    public void ResetToLastCheckpoint()
     {
         if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
         {
@@ -114,11 +112,11 @@ public class CheckpointManager : MonoBehaviour
             return;
         }
 
+        ResetWorldState();
         ApplyTimePenaltyAndReset();
 
         if (_player != null)
         {
-            Debug.Log("posição do checkpoint: " + _lastActivatedCheckpoint.SpawnPoint.position);
             _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position, _lastActivatedCheckpoint.SpawnPoint.rotation);
         }
     }
@@ -131,7 +129,15 @@ public class CheckpointManager : MonoBehaviour
         ScoreManager.Instance.SetCurrentTime(stampedTime);
         ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
         
-        Debug.Log($"Tempo restaurado para {stampedTime:F3}s com penalidade de {penaltyPerCheckpoint}s. Novo tempo: {ScoreManager.Instance.CurrentTime:F3}s");
+        Debug.Log($"Tempo restaurado para {stampedTime:F3}s com penalidade. Novo tempo: {ScoreManager.Instance.CurrentTime:F3}s");
+    }
+
+    private void ResetWorldState()
+    {
+        foreach (var resettable in _resettableObjects)
+        {
+            resettable.ResetState();
+        }
     }
 
     private void ResetLevelFromStart()

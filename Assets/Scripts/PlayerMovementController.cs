@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using TMPro;
+using DG.Tweening;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -86,7 +88,7 @@ public class PlayerMovementController : MonoBehaviour
     #endregion
     
     private const float METERS_PER_SECOND_TO_KM_PER_HOUR = 3.6f;
-
+    private Coroutine _resetCoroutine;
     public Rigidbody Rb => _rigidbody;
 
     private void Awake()
@@ -417,12 +419,37 @@ public class PlayerMovementController : MonoBehaviour
 
     public void ResetToPosition(Vector3 position, Quaternion rotation)
     {
-        transform.position = position;
+        if (_resetCoroutine != null)
+        {
+            StopCoroutine(_resetCoroutine);
+        }
+        _resetCoroutine = StartCoroutine(ResetPositionRoutine(position, rotation));
+    }
+
+    private IEnumerator ResetPositionRoutine(Vector3 position, Quaternion rotation)
+    {
+        grapplingHookController?.StopGrapple();
+
+        _rigidbody.isKinematic = true;
+        yield return new WaitForFixedUpdate();
+
+        transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo);
+
+        // transform.position = position;
+        transform.rotation = rotation;
         orientation.rotation = rotation;
+
+        yield return new WaitForFixedUpdate();
+        _rigidbody.isKinematic = false;
+        
         _rigidbody.linearVelocity = Vector3.zero;
         _rigidbody.angularVelocity = Vector3.zero;
 
         isJumping = false;
+        _coyoteTimeCounter = 0f;
+        _jumpBufferCounter = 0f;
         ResetDoubleJump();
+        
+        _resetCoroutine = null;
     }
 }

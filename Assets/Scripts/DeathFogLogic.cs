@@ -1,7 +1,4 @@
-// Local: Assets/Scripts/DeathFogLogic.cs
-
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
 
 public class DeathFogLogic : MonoBehaviour
 {
@@ -9,8 +6,14 @@ public class DeathFogLogic : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            Destroy(collision.gameObject);
-            SceneManagerLogic.Instance.RestartScene();
+            if (CheckpointManager.Instance != null)
+            {
+                CheckpointManager.Instance.ResetToLastCheckpoint();
+            }
+            else
+            {
+                SceneManagerLogic.Instance.RestartScene();
+            }
         }
     }
 }
