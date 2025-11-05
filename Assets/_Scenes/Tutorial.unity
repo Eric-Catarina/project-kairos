@@ -21851,11 +21851,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1763849060}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!4 &1665659692 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3258515427170321763, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-  m_PrefabInstance: {fileID: 3279603993199282714}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1666627810
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -30691,52 +30686,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: bee10c2fe9143ba419f2539874cd9199, type: 3}
---- !u!1 &2005183095
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2005183096}
-  - component: {fileID: 2005183097}
-  m_Layer: 0
-  m_Name: CheckpointManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2005183096
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2005183095}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1665659692}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2005183097
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2005183095}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f847ca93902d6cef0afa13ff03b6e86e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  initialSpawnPoint: {fileID: 1321935154}
-  penaltyPerCheckpoint: 5
 --- !u!43 &2015807857
 Mesh:
   m_ObjectHideFlags: 0
@@ -32935,28 +32884,17 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 8247791627934423295, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      propertyPath: slowPercentage
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 8247791627934423295, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      propertyPath: rechargeDuration
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 8247791627934423295, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      propertyPath: maxChargeDuration
-      value: 7
-      objectReference: {fileID: 0}
+    - target: {fileID: 8392232970332989018, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
+      propertyPath: initialSpawnPoint
+      value: 
+      objectReference: {fileID: 1321935154}
     - target: {fileID: 8569565230737803616, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 3258515427170321763, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2005183096}
+    m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
 --- !u!1001 &3336400038926629034
