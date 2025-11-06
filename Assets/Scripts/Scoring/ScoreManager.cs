@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/Scoring/ScoreManager.cs
-
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
@@ -10,11 +8,9 @@ public class ScoreManager : MonoBehaviour
 
     [Header("Configuração do Nível")]
     [SerializeField] private LevelData currentLevelData;
-    [Tooltip("Se marcado, o timer da fase começará com o primeiro input de movimento, pulo ou grapple.")]
     [SerializeField] private bool startLevelOnFirstMoveInput = false;
     
     [Header("Configurações de UI")]
-    [Tooltip("Tempo em milissegundos para esperar a atualização do PlayFab antes de mostrar o leaderboard.")]
     private int leaderboardDisplayDelayMs = 750;
 
     private ScoreUIController _scoreUIController;
@@ -25,6 +21,8 @@ public class ScoreManager : MonoBehaviour
     private float _levelTimer;
     private bool _isTimerRunning = false;
     private bool _levelStarted = false;
+
+    public float CurrentTime => _levelTimer;
 
     private void Awake()
     {
@@ -103,7 +101,7 @@ public class ScoreManager : MonoBehaviour
         }
         _isTimerRunning = false;
         finalTime = _levelTimer;
-        finalRank = currentLevelData.GetRankForTime(_levelTimer);
+        finalRank = currentLevelData.GetRankForTime(finalTime);
     }
 
     private void PauseTimer() { _isTimerRunning = false; }
@@ -115,6 +113,22 @@ public class ScoreManager : MonoBehaviour
         _isTimerRunning = false;
         _levelStarted = false;
         _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+    }
+
+    public void SetCurrentTime(float newTime)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer = Mathf.Max(0f, newTime);
+        }
+    }
+
+    public void AddPenalty(float penaltySeconds)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer += penaltySeconds;
+        }
     }
 
     public Rank GetRankForTime(float time)
