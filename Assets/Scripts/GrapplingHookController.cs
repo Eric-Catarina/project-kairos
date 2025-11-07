@@ -191,7 +191,7 @@ public class GrapplingHookController : MonoBehaviour
         UpdateGrappleStateAndVisuals();
     }
 
-    private void StopGrapple()
+    public void StopGrapple()
     {
         if (!_isGrappling) return;
         OnGrappleStopped?.Invoke();

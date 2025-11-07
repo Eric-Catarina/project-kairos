@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/GameSettingsManager.cs
-
 using System;
 using UnityEngine;
 
@@ -11,15 +9,16 @@ public class GameSettingsManager : MonoBehaviour
     public static event Action<float> OnMouseSensitivityYChanged;
     public static event Action<bool> OnInvertXChanged;
     public static event Action<bool> OnInvertYChanged;
+    public static event Action<bool> OnCheckpointsEnabledChanged;
 
     private GameSettings _settings;
 
-    // Propriedades agora leem diretamente do objeto de configurações
     public float MouseSensitivityX => _settings.mouseSensitivityX;
     public float MouseSensitivityY => _settings.mouseSensitivityY;
     public bool InvertMouseX => _settings.invertMouseX;
     public bool InvertMouseY => _settings.invertMouseY;
     public float MotionBlurIntensity => _settings.motionBlurIntensity;
+    public bool CheckpointsEnabled => _settings.checkpointsEnabled;
 
     private void Awake()
     {
@@ -34,11 +33,9 @@ public class GameSettingsManager : MonoBehaviour
 
     private void Start()
     {
-        // Pega a referência para as configurações do SaveManager
         _settings = SaveManager.Instance.GetSettings();
     }
 
-    // Métodos agora modificam o objeto de dados e depois salvam
     public void SetMouseSensitivityX(float normalizedValue)
     {
         float clampedValue = Mathf.Clamp01(normalizedValue);
@@ -73,6 +70,12 @@ public class GameSettingsManager : MonoBehaviour
     {
         _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
         SaveManager.Instance.SaveGame();
-        // Um evento poderia ser disparado aqui se algum sistema precisar ouvir
+    }
+    
+    public void SetCheckpointsEnabled(bool isEnabled)
+    {
+        _settings.checkpointsEnabled = isEnabled;
+        SaveManager.Instance.SaveGame();
+        OnCheckpointsEnabledChanged?.Invoke(isEnabled);
     }
 }

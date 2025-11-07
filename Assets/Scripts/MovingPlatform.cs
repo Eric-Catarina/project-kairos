@@ -1,16 +1,11 @@
-// Local: Assets/Scripts/MovingPlatform.cs
-
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class MovingPlatform : MonoBehaviour, ITimeSlowable
+public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable
 {
     [Header("Configurações de Patrulha")]
-    [Tooltip("O ponto de partida da patrulha.")]
     [SerializeField] private Transform targetA;
-    [Tooltip("O ponto final da patrulha.")]
     [SerializeField] private Transform targetB;
-    [Tooltip("A velocidade de movimento da plataforma.")]
     public float speed = 3f, playerInfluence = 0.69f;
 
     [Header("Visual")]
@@ -18,30 +13,28 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
     
     private Rigidbody _rb;
     private Transform _currentTarget;
+    private Vector3 _startPosition;
     private Vector3 _savedVelocity;
     private Renderer _renderer;
     private Color _originalColor;
-
     private bool _isSlowed = false;
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _renderer = GetComponent<Renderer>();
-
         if (_renderer != null) _originalColor = _renderer.material.color;
 
-        // Configuração crucial do Rigidbody para plataformas
         _rb.useGravity = false;
         _rb.freezeRotation = true;
-        _rb.isKinematic = false; // Deve ser dinâmico para interagir com o jogador
+        _rb.isKinematic = false;
+        _startPosition = transform.position;
     }
 
     private void Start()
     {
         if (targetA == null || targetB == null)
         {
-            Debug.LogError("Alvos de patrulha não configurados!", this);
             enabled = false;
             return;
         }
@@ -60,8 +53,7 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
 
     private void FixedUpdate()
     {
-        if (_isSlowed) return; // O movimento é controlado pelos métodos de slow
-
+        if (_isSlowed) return;
         MoveTowardsTarget();
     }
 
@@ -80,11 +72,9 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
     {
         if (_isSlowed) return;
         _isSlowed = true;
-
         _savedVelocity = _rb.linearVelocity;
         float slowFactor = 1.0f - (slowPercentage / 100.0f);
         _rb.linearVelocity = _savedVelocity * slowFactor;
-
         if (_renderer != null) _renderer.material.color = slowDownColor;
     }
 
@@ -92,10 +82,7 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
     {
         if (!_isSlowed) return;
         _isSlowed = false;
-
-        // A velocidade é recalculada no próximo FixedUpdate, ou podemos restaurar a salva
         _rb.linearVelocity = _savedVelocity;
-
         if (_renderer != null) _renderer.material.color = _originalColor;
     }
 
@@ -104,6 +91,12 @@ public class MovingPlatform : MonoBehaviour, ITimeSlowable
         slowDownColor = newColor;
     }
     
+    public void ResetState()
+    {
+        transform.position = _startPosition;
+        _currentTarget = targetB;
+    }
+
     private void OnDrawGizmos()
     {
         if (targetA != null && targetB != null)
