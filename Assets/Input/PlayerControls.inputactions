@@ -606,6 +606,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "FullReset",
+                    "type": "Button",
+                    "id": "1143bb5b-e5a9-4192-b1ce-5ac5de33e317",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Pause",
                     "type": "Button",
                     "id": "c24b30d7-7bcc-42f9-a744-77c36e284172",
@@ -807,6 +816,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "SlowTimeEffect",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4bd6cb42-3814-49a4-b25f-ac63f369f207",
+                    "path": "<Keyboard>/c",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "FullReset",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

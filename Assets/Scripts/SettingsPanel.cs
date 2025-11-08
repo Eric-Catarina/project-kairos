@@ -1,4 +1,4 @@
-// Local: Assets/Scripts/UI/SettingsPanel.cs
+
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +6,6 @@ using UnityEngine.UI;
 public class SettingsPanel : UIPanel
 {
     [Header("Referências Internas")]
-    [Tooltip("O botão 'Voltar' ou 'Fechar' dentro deste painel.")]
     [SerializeField] private Button backButton;
     [Header("Referências Sliders")]
     [SerializeField] private Slider masterSlider;
@@ -16,12 +15,26 @@ public class SettingsPanel : UIPanel
     [SerializeField] private Toggle masterToggle;
     [SerializeField] private Toggle musicToggle;
     [SerializeField] private Toggle sfxToggle;
+    [SerializeField] private Toggle checkpointsToggle; // Adicione este campo
 
     private void Awake()
     {
         SetupButtonListeners();
-	SetupVolumeListeners();
-	SetupToggleListeners();
+        SetupVolumeListeners();
+        SetupToggleListeners();
+    }
+
+    private void OnEnable()
+    {
+        LoadToggleStates();
+    }
+
+    private void LoadToggleStates()
+    {
+        if (GameSettingsManager.Instance != null && checkpointsToggle != null)
+        {
+            checkpointsToggle.isOn = GameSettingsManager.Instance.CheckpointsEnabled;
+        }
     }
 
     private void SetupVolumeListeners()
@@ -43,23 +56,28 @@ public class SettingsPanel : UIPanel
 
     private void SetupToggleListeners()
     {
-        if (AudioManager.instance == null) return;
+        if (AudioManager.instance != null)
+        {
+            masterToggle?.onValueChanged.RemoveAllListeners();
+            musicToggle?.onValueChanged.RemoveAllListeners();
+            sfxToggle?.onValueChanged.RemoveAllListeners();
 
-        masterToggle?.onValueChanged.RemoveAllListeners();
-        musicToggle?.onValueChanged.RemoveAllListeners();
-        sfxToggle?.onValueChanged.RemoveAllListeners();
+            masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
+            musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
+            sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
+        }
 
-        masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
-        musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
-        sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
+        if (GameSettingsManager.Instance != null)
+        {
+            checkpointsToggle?.onValueChanged.RemoveAllListeners();
+            checkpointsToggle?.onValueChanged.AddListener(GameSettingsManager.Instance.SetCheckpointsEnabled);
+        }
     }
 
     private void SetupButtonListeners()
     {
-        // Remove listeners antigos do Inspector para evitar chamadas duplicadas
         backButton?.onClick.RemoveAllListeners();
 
-        // Atribui o listener via código, garantindo a referência correta ao Singleton
         if (UIManager.Instance != null)
         {
             if (PanelType == UIPanelType.Settings)

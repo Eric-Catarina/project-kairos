@@ -692,6 +692,15 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""FullReset"",
+                    ""type"": ""Button"",
+                    ""id"": ""1143bb5b-e5a9-4192-b1ce-5ac5de33e317"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""Pause"",
                     ""type"": ""Button"",
                     ""id"": ""c24b30d7-7bcc-42f9-a744-77c36e284172"",
@@ -895,6 +904,17 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""SlowTimeEffect"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4bd6cb42-3814-49a4-b25f-ac63f369f207"",
+                    ""path"": ""<Keyboard>/c"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""FullReset"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -1059,6 +1079,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_SlowTime = m_Player.FindAction("SlowTime", throwIfNotFound: true);
         m_Player_FinishLevel = m_Player.FindAction("FinishLevel", throwIfNotFound: true);
         m_Player_RestartLevel = m_Player.FindAction("RestartLevel", throwIfNotFound: true);
+        m_Player_FullReset = m_Player.FindAction("FullReset", throwIfNotFound: true);
         m_Player_Pause = m_Player.FindAction("Pause", throwIfNotFound: true);
         m_Player_Dash = m_Player.FindAction("Dash", throwIfNotFound: true);
         m_Player_SlowTimeEffect = m_Player.FindAction("SlowTimeEffect", throwIfNotFound: true);
@@ -1368,6 +1389,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_SlowTime;
     private readonly InputAction m_Player_FinishLevel;
     private readonly InputAction m_Player_RestartLevel;
+    private readonly InputAction m_Player_FullReset;
     private readonly InputAction m_Player_Pause;
     private readonly InputAction m_Player_Dash;
     private readonly InputAction m_Player_SlowTimeEffect;
@@ -1410,6 +1432,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/RestartLevel".
         /// </summary>
         public InputAction @RestartLevel => m_Wrapper.m_Player_RestartLevel;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/FullReset".
+        /// </summary>
+        public InputAction @FullReset => m_Wrapper.m_Player_FullReset;
         /// <summary>
         /// Provides access to the underlying input action "Player/Pause".
         /// </summary>
@@ -1469,6 +1495,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @RestartLevel.started += instance.OnRestartLevel;
             @RestartLevel.performed += instance.OnRestartLevel;
             @RestartLevel.canceled += instance.OnRestartLevel;
+            @FullReset.started += instance.OnFullReset;
+            @FullReset.performed += instance.OnFullReset;
+            @FullReset.canceled += instance.OnFullReset;
             @Pause.started += instance.OnPause;
             @Pause.performed += instance.OnPause;
             @Pause.canceled += instance.OnPause;
@@ -1510,6 +1539,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @RestartLevel.started -= instance.OnRestartLevel;
             @RestartLevel.performed -= instance.OnRestartLevel;
             @RestartLevel.canceled -= instance.OnRestartLevel;
+            @FullReset.started -= instance.OnFullReset;
+            @FullReset.performed -= instance.OnFullReset;
+            @FullReset.canceled -= instance.OnFullReset;
             @Pause.started -= instance.OnPause;
             @Pause.performed -= instance.OnPause;
             @Pause.canceled -= instance.OnPause;
@@ -1929,6 +1961,13 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnRestartLevel(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "FullReset" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnFullReset(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "Pause" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
