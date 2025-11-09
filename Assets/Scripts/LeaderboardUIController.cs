@@ -1,61 +1,81 @@
-// Local: Assets/Scripts/UI/LeaderboardUIController.cs
-
+// Assets/Scripts/UI/LeaderboardUIController.cs
 using UnityEngine;
+using UnityEngine.UI; // Novo: Para Button
 
 public class LeaderboardUIController : MonoBehaviour
 {
     [Header("Referências")]
-  private LevelData levelData;
+    private LevelData levelData;
     [SerializeField] private GameObject scoreEntryPrefab;
     [SerializeField] private Transform topScoresContentParent;
     [SerializeField] private GameObject loadingIndicator;
+    [SerializeField] private Button nextLevelButton; 
 
     [Header("UI do Jogador Local")]
     [SerializeField] private GameObject playerScoreContainer;
     [SerializeField] private ScoreUIEntry playerScoreUIEntry;
     
-    private void OnEnable()
-    {
-        GameFlowManager.OnLevelCompleted += HandleLevelCompleted;
-    }
-
-    private void OnDisable()
-    {
-        GameFlowManager.OnLevelCompleted -= HandleLevelCompleted;
-    }
     private void Awake()
     {
         UpdateLevelData();
     }
 
-    private void HandleLevelCompleted(float finalTime)
+    private void Start()
     {
-        UpdateLevelData();
-        PrepareForDisplay(finalTime);
-    }
-    
-    public void PrepareForDisplay(float time)
-    {
-        ClearLeaderboard();
-        gameObject.SetActive(true);
-        if (playerScoreContainer != null) playerScoreContainer.SetActive(false);
-        loadingIndicator.SetActive(true);
-
-        if (playerScoreContainer != null && playerScoreUIEntry != null)
+        if (nextLevelButton != null)
         {
-            var tempEntry = new ScoreEntry(
-                PlayFabAuthManager.Instance.PlayFabId,
-                PlayerProfile.Instance.CurrentProfile.profileName,
-                time,
-                levelData.GetFullLevelId()
-            );
-            playerScoreUIEntry.Populate(0, tempEntry, true); 
-            playerScoreContainer.SetActive(true);
+            nextLevelButton.onClick.AddListener(GoToNextLevel); 
         }
     }
 
+    private void OnEnable()
+    {
+        Debug.Log("LeaderboardUIController: OnEnable called - panel is being activated!");
+        GameFlowManager.Instance.OnLevelCompleted += HandleLevelCompleted;
+    }
+
+    private void OnDisable()
+    {
+        GameFlowManager.Instance.OnLevelCompleted -= HandleLevelCompleted;
+    }
+
+    private void HandleLevelCompleted(LevelCompletionData data)
+    {
+        Debug.Log("LeaderboardUIController: HandleLevelCompleted called - updating level data only.");
+        UpdateLevelData();
+    }
+    
     public async void ShowLeaderboard()
     {
+        Debug.Log("LeaderboardUIController: ShowLeaderboard called - activating panel and fetching leaderboard.");
+        gameObject.SetActive(true);
+        Debug.Log($"LeaderboardUIController: Panel active after SetActive: {gameObject.activeSelf}");
+        
+        // Forçar visibilidade
+        CanvasGroup canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+            Debug.Log("LeaderboardUIController: CanvasGroup adjusted.");
+        }
+        else
+        {
+            Debug.Log("LeaderboardUIController: No CanvasGroup found.");
+        }
+        
+        // Novo: Verificar se o transform pai está ativo
+        if (transform.parent != null)
+        {
+            Debug.Log($"LeaderboardUIController: Parent active: {transform.parent.gameObject.activeSelf}");
+            if (!transform.parent.gameObject.activeSelf)
+            {
+                transform.parent.gameObject.SetActive(true);
+                Debug.Log("LeaderboardUIController: Parent activated.");
+            }
+        }
+        
         UpdateLevelData();
         if (levelData == null || LeaderboardManager.Instance == null || PlayFabAuthManager.Instance == null)
         {
@@ -93,6 +113,21 @@ public class LeaderboardUIController : MonoBehaviour
         }
     }
 
+    // Novo: Método para ir à próxima fase
+    private void GoToNextLevel()
+    {
+        Debug.Log("LeaderboardUIController: GoToNextLevel called - loading next level.");
+        // Assumindo que há um método para carregar o próximo nível (ajuste se necessário)
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.CompleteLevel();
+        }
+        else
+        {
+            Debug.LogError("GameFlowManager not found for loading next level.");
+        }
+    }
+
     private void ClearLeaderboard()
     {
         foreach (Transform child in topScoresContentParent)
@@ -100,6 +135,7 @@ public class LeaderboardUIController : MonoBehaviour
             Destroy(child.gameObject);
         }
     }
+
     public void UpdateLevelData()
     {
         levelData = ScoreManager.Instance.GetCurrentLevelData();

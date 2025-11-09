@@ -7,13 +7,19 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public enum GameState { MainMenu, Playing, Paused, LevelFinished }
+public struct LevelCompletionData
+{
+    public float FinalTime;
+    public int Deaths;
+    public Rank FinalRank;
+}
 
 public class GameFlowManager : MonoBehaviour
 {
     public static GameFlowManager Instance { get; private set; }
     public GameState CurrentState { get; private set; }
 
-    public static event Action<float> OnLevelCompleted;
+    public event System.Action<LevelCompletionData> OnLevelCompleted; // Mudar assinatura
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
@@ -109,18 +115,17 @@ public class GameFlowManager : MonoBehaviour
         else if (CurrentState == GameState.Paused)
             ResumeGame();
     }
-
+    
     public void CompleteLevel()
     {
         if (CurrentState != GameState.Playing) return;
-
         CurrentState = GameState.LevelFinished;
         Time.timeScale = 0f;
         InputStateManager.Instance.SwitchState(InputState.PostGame);
+        ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths);
 
-        ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank);
-        
-        OnLevelCompleted?.Invoke(finalTime);
+        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank };
+        OnLevelCompleted?.Invoke(data);
     }
 
     private void PauseGame()
