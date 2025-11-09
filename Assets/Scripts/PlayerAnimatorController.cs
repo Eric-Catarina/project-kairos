@@ -1,6 +1,7 @@
 // Local: Assets/Scripts/PlayerAnimationController.cs
 
 using UnityEngine;
+using System; // Adicionado para Action (embora não seja usado diretamente aqui, é bom para consistência)
 
 [RequireComponent(typeof(Animator))]
 public class PlayerAnimationController : MonoBehaviour
@@ -19,7 +20,10 @@ public class PlayerAnimationController : MonoBehaviour
     // Hashes do gancho
     private readonly int _hashGrappleStart = Animator.StringToHash("GrappleStartTrigger");
     private readonly int _hashGrappleStop = Animator.StringToHash("GrappleStopTrigger");
-    private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling"); // NOVO (o bool)
+    private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling");
+
+    // NOVO Hash para o Double Jump
+    private readonly int _hashDoubleJump = Animator.StringToHash("DoubleJumpTrigger");
 
 
     private void Awake()
@@ -49,6 +53,9 @@ public class PlayerAnimationController : MonoBehaviour
         playerMovementController.OnGroundLanded += HandleLand;
         playerMovementController.OnLeftGround += HandleLeftGround;
 
+        // NOVO: Inscrição para o Double Jump
+        playerMovementController.OnDoubleJumpUsed += HandleDoubleJump;
+
         // Inscrições do gancho
         if (grapplingHookController != null)
         {
@@ -66,6 +73,9 @@ public class PlayerAnimationController : MonoBehaviour
             playerMovementController.OnJumped -= HandleJump;
             playerMovementController.OnGroundLanded -= HandleLand;
             playerMovementController.OnLeftGround -= HandleLeftGround;
+
+            // NOVO: Desinscrição para o Double Jump
+            playerMovementController.OnDoubleJumpUsed -= HandleDoubleJump;
         }
 
         // Desinscrições do gancho
@@ -75,11 +85,11 @@ public class PlayerAnimationController : MonoBehaviour
             grapplingHookController.OnGrappleStopped -= HandleGrappleStopped;
         }
 
-        // Garante que o estado seja resetado se este script for desabilitado // NOVO
-        if (_animator != null && _animator.isInitialized) // NOVO
-        { // NOVO
-            _animator.SetBool(_hashIsGrappling, false); // NOVO
-        } // NOVO
+        // Garante que o estado seja resetado se este script for desabilitado
+        if (_animator != null && _animator.isInitialized)
+        {
+            _animator.SetBool(_hashIsGrappling, false);
+        }
     }
 
     // Handlers existentes
@@ -104,16 +114,24 @@ public class PlayerAnimationController : MonoBehaviour
         _animator.SetBool(_hashIsGrounded, false);
     }
 
-    // Handlers do gancho (agora com o bool)
+    // NOVO Handler para o Double Jump
+    private void HandleDoubleJump()
+    {
+        // Não reseta IsGrounded aqui, pois o jogador já estava no ar.
+        _animator.SetTrigger(_hashDoubleJump);
+    }
+
+
+    // Handlers do gancho 
     private void HandleGrappleStarted()
     {
         _animator.SetTrigger(_hashGrappleStart);
-        _animator.SetBool(_hashIsGrappling, true); // NOVO
+        _animator.SetBool(_hashIsGrappling, true);
     }
 
     private void HandleGrappleStopped()
     {
         _animator.SetTrigger(_hashGrappleStop);
-        _animator.SetBool(_hashIsGrappling, false); // NOVO
+        _animator.SetBool(_hashIsGrappling, false);
     }
 }
