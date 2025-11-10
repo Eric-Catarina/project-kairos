@@ -3126,6 +3126,10 @@ PrefabInstance:
       propertyPath: grapplingHookController
       value: 
       objectReference: {fileID: 1972654277}
+    - target: {fileID: 7596768071946879737, guid: e845135526f54be26836a8c0237d8347, type: 3}
+      propertyPath: longGrappleThreshold
+      value: 0.3
+      objectReference: {fileID: 0}
     - target: {fileID: 7810922796063219411, guid: e845135526f54be26836a8c0237d8347, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -4393,7 +4397,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7425233173421720333, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7596240044996276590, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
       propertyPath: m_fontColor.b
@@ -4427,6 +4431,10 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8721062368220591042, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: levelNameLabel
+      value: 
+      objectReference: {fileID: 1964713152}
     - target: {fileID: 8859016291325925213, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -27290,6 +27298,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: cad01522886f5174a81dcf11e515c6de, type: 3}
+--- !u!114 &1964713152 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7418228219442606015, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+  m_PrefabInstance: {fileID: 416039480}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1968344662
 GameObject:
   m_ObjectHideFlags: 0
