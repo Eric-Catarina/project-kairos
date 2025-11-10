@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 
-// [ExecuteAlways]
 public class LinePrefabRendererEffects : MonoBehaviour
 {
     [Header("References")]
@@ -13,8 +12,6 @@ public class LinePrefabRendererEffects : MonoBehaviour
     public GameObject endTipPrefab;
 
     [Header("Settings")]
-    public bool updateInEditor = true;
-    public bool updateInPlay = true;
     public float minSegmentLength = 0.001f;
     [Range(0f, 1f)] public float flickerChance = 0.3f;
     public float flickerRate = 0.05f;
@@ -27,17 +24,57 @@ public class LinePrefabRendererEffects : MonoBehaviour
 
     private Transform segmentParent;
     private float prefabLength = 1f;
-    private Vector3 prefabPrimaryAxisLocal = Vector3.forward; // Eixo principal do prefab
+    private Vector3 prefabPrimaryAxisLocal = Vector3.forward;
     private Vector3 prefabOriginalLocalScale = Vector3.one;
 
     private List<Coroutine> _flickerCoroutines = new List<Coroutine>();
 
-    void OnEnable()
+    private GrapplingHookController _grapplingHookController;
+
+    void Awake()
     {
-        CleanupAll();
-        CachePrefabInfo();
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>();
+        if (_grapplingHookController == null)
+        {
+            Debug.LogError("LinePrefabRendererEffects: GrapplingHookController não encontrado na cena. Este componente será desativado.", this);
+            enabled = false;
+            return;
+        }
+
+        if (lineRenderer == null)
+            lineRenderer = GetComponent<LineRenderer>();
+    }
+    
+    void Start()
+    {
         EnsureContainer();
-        RebuildAll();
+        CachePrefabInfo();
+        
+        EnsureSingleInstance(ref segmentAInstance, lineSegmentPrefabA);
+        EnsureSingleInstance(ref segmentBInstance, lineSegmentPrefabB);
+        EnsureSingleInstance(ref startTipInstance, startTipPrefab);
+        EnsureSingleInstance(ref endTipInstance, endTipPrefab);
+
+        // Garante que tudo comece desativado
+        CleanupAllChildObjects();
+        if (segmentParent != null) segmentParent.gameObject.SetActive(false);
+    }
+    
+    // A lógica principal agora está em LateUpdate
+    void LateUpdate()
+    {
+        if (_grapplingHookController.IsGrappling)
+        {
+            RebuildAll();
+        }
+        else
+        {
+            CleanupAllChildObjects();
+            if (segmentParent != null && segmentParent.gameObject.activeSelf)
+            {
+                segmentParent.gameObject.SetActive(false);
+            }
+        }
     }
 
     void OnDestroy()
@@ -45,27 +82,7 @@ public class LinePrefabRendererEffects : MonoBehaviour
         CleanupAll();
         StopAllFlickerCoroutines();
     }
-
-    void Start()
-    {
-        if (lineRenderer == null)
-            lineRenderer = GetComponent<LineRenderer>();
-
-        CachePrefabInfo();
-        EnsureContainer();
-        RebuildAll();
-    }
-
-    void Update()
-    {
-#if UNITY_EDITOR
-        if (!Application.isPlaying && updateInEditor)
-            RebuildAll();
-#endif
-        if (Application.isPlaying && updateInPlay)
-            RebuildAll();
-    }
-
+    
     void EnsureContainer()
     {
         if (segmentParent == null)
@@ -95,6 +112,19 @@ public class LinePrefabRendererEffects : MonoBehaviour
         segmentBInstance = null;
         startTipInstance = null;
         endTipInstance = null;
+        
+        if (segmentParent != null)
+        {
+            segmentParent.gameObject.SetActive(false);
+        }
+    }
+    
+    private void CleanupAllChildObjects()
+    {
+        if (segmentAInstance != null) segmentAInstance.SetActive(false);
+        if (segmentBInstance != null) segmentBInstance.SetActive(false);
+        if (startTipInstance != null) startTipInstance.SetActive(false);
+        if (endTipInstance != null) endTipInstance.SetActive(false);
     }
 
     void CachePrefabInfo()
@@ -106,13 +136,8 @@ public class LinePrefabRendererEffects : MonoBehaviour
         Vector3 localSize = Vector3.zero;
         bool found = false;
 
-        // É crucial pegar os bounds do MeshFilter/SkinnedMeshRenderer/SpriteRenderer
-        // NOVO: Acessa o MeshFilter/etc. diretamente no prefabRef, não em children.
-        // Se o prefab principal é o modelo, o MeshFilter está nele.
-        // Se o modelo é um filho, você teria que procurar nos filhos.
-        // Assumindo que o prefab é o próprio visual ou que o MeshFilter está em um filho imediato.
         MeshFilter mf = prefabRef.GetComponent<MeshFilter>();
-        if (mf == null) mf = prefabRef.GetComponentInChildren<MeshFilter>(); // Busca em filhos se não encontrou no pai
+        if (mf == null) mf = prefabRef.GetComponentInChildren<MeshFilter>();
         if (mf && mf.sharedMesh) { localSize = mf.sharedMesh.bounds.size; found = true; }
         else
         {
@@ -129,8 +154,6 @@ public class LinePrefabRendererEffects : MonoBehaviour
 
         if (!found) localSize = new Vector3(0.1f, 0.1f, 1f);
 
-        // Determina o eixo principal do prefab (o eixo ao longo do qual ele deve ser esticado)
-        // Isso é feito comparando as dimensões do bounding box
         if (localSize.x >= localSize.y && localSize.x >= localSize.z)
         {
             prefabPrimaryAxisLocal = Vector3.right;
@@ -154,19 +177,25 @@ public class LinePrefabRendererEffects : MonoBehaviour
     {
         if (lineRenderer == null || lineRenderer.positionCount < 2)
         {
-            CleanupAll();
+            if (segmentParent != null) segmentParent.gameObject.SetActive(false);
+            CleanupAllChildObjects();
             return;
         }
 
         EnsureContainer();
+        if (segmentParent != null && !segmentParent.gameObject.activeSelf)
+        {
+            segmentParent.gameObject.SetActive(true);
+        }
 
         Vector3 startPos = lineRenderer.GetPosition(0);
         Vector3 endPos = lineRenderer.GetPosition(lineRenderer.positionCount - 1);
         Vector3 dir = (endPos - startPos);
         float segmentDistance = dir.magnitude;
-        if (segmentDistance < minSegmentLength) // Garante que a distância não é muito pequena
+        if (segmentDistance < minSegmentLength)
         {
-            CleanupAll();
+            if (segmentParent != null) segmentParent.gameObject.SetActive(false);
+            CleanupAllChildObjects();
             return;
         }
         dir.Normalize();
@@ -189,10 +218,10 @@ public class LinePrefabRendererEffects : MonoBehaviour
 
         if (instance == null)
         {
+            if(segmentParent == null) EnsureContainer();
+            
             foreach (Transform child in segmentParent)
             {
-                // NOVO: Verificação mais robusta de que o child.name começa com o prefab.name
-                // e que o child.gameObject ainda existe (não foi destruído por outro processo)
                 if (child != null && child.gameObject != null && child.name.StartsWith(prefab.name))
                 {
                     instance = child.gameObject;
@@ -204,35 +233,27 @@ public class LinePrefabRendererEffects : MonoBehaviour
             {
                 instance = Instantiate(prefab, segmentParent);
                 instance.name = prefab.name + "_Instance";
-                if (Application.isPlaying && instance != null)
+                instance.SetActive(false); 
+
+                if (Application.isPlaying)
                 {
                     Coroutine flicker = StartCoroutine(FlickerRoutine(instance));
                     _flickerCoroutines.Add(flicker);
                 }
             }
-            PlayAnimator(instance);
         }
     }
 
-    /// <summary>
-    /// Aplica a posição, rotação e escala a um segmento de linha.
-    /// </summary>
     void ApplySegmentTransform(GameObject seg, Vector3 startPos, Vector3 dir, float segLength)
     {
         if (seg == null) return;
 
         seg.transform.position = startPos + dir * (segLength / 2f);
-        
-        // NOVO CÁLCULO DE ROTAÇÃO:
-        // Crie uma rotação que alinhe o 'prefabPrimaryAxisLocal' do prefab com a direção da linha 'dir'.
-        // Quaternion.FromToRotation(fromVector, toVector) cria uma rotação que gira 'fromVector' para 'toVector'.
         seg.transform.rotation = Quaternion.FromToRotation(prefabPrimaryAxisLocal, dir);
 
-        // Calcula a escala necessária
         float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
         Vector3 newScale = prefabOriginalLocalScale;
 
-        // Aplica o fator de escala apenas no eixo principal (comprimento) do prefab
         if (prefabPrimaryAxisLocal == Vector3.right) newScale.x *= scaleFactor;
         else if (prefabPrimaryAxisLocal == Vector3.up) newScale.y *= scaleFactor;
         else newScale.z *= scaleFactor;
@@ -241,9 +262,6 @@ public class LinePrefabRendererEffects : MonoBehaviour
         seg.SetActive(true);
     }
 
-    /// <summary>
-    /// Aplica a posição e rotação a uma ponta (tip) da linha.
-    /// </summary>
     void ApplyTipTransform(GameObject tip, Vector3 position, Vector3 dir, bool align)
     {
         if (tip == null) return;
@@ -254,36 +272,6 @@ public class LinePrefabRendererEffects : MonoBehaviour
             tip.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
         }
         tip.SetActive(true);
-    }
-
-    void PlayAnimator(GameObject seg)
-    {
-        if (seg == null) return;
-
-        Animator animator = seg.GetComponentInChildren<Animator>();
-        if (animator != null && animator.runtimeAnimatorController != null)
-        {
-            animator.enabled = true;
-            animator.Rebind();
-            if (animator.runtimeAnimatorController.animationClips.Length > 0) 
-            {
-                animator.Play(animator.GetCurrentAnimatorStateInfo(0).fullPathHash, 0, 0f);
-            }
-        }
-
-        Animation legacy = seg.GetComponentInChildren<Animation>();
-        if (legacy && legacy.clip)
-        {
-            legacy.Stop();
-            legacy.Play();
-        }
-
-        ParticleSystem[] ps = seg.GetComponentsInChildren<ParticleSystem>();
-        foreach (var p in ps)
-        {
-            p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            p.Play(true);
-        }
     }
 
     void SafeDestroy(GameObject go)
@@ -326,7 +314,10 @@ public class LinePrefabRendererEffects : MonoBehaviour
             }
             else
             {
-                seg.SetActive(Random.value > flickerChance);
+                if (seg.activeSelf)
+                {
+                    seg.SetActive(Random.value > flickerChance);
+                }
             }
         }
     }

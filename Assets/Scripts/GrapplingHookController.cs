@@ -7,6 +7,7 @@ public class GrapplingHookController : MonoBehaviour
     public event Action OnGrappleStarted;
     public event Action OnGrappleStopped;
     public event Action<Transform> OnPredictionTargetChanged;
+    // O evento OnGrappleVisualNeedsUpdate não é mais necessário
     #endregion
 
     #region Dependencies
@@ -70,9 +71,7 @@ public class GrapplingHookController : MonoBehaviour
     private SpringJoint _joint;
     private GameObject _predictionPointInstance;
     private RaycastHit _predictionHit;
-
-    // NOVO: Offset do ponto de grapple relativo ao Transform do objeto agarrado (collider.transform)
-    // Isso é usado quando não há um Rigidbody dinâmico conectado.
+    
     private Vector3 _grappledPointOffsetLocalToTarget; 
     #endregion
 
@@ -87,6 +86,8 @@ public class GrapplingHookController : MonoBehaviour
             _predictionPointInstance = Instantiate(predictionPointPrefab);
             _predictionPointInstance.SetActive(false);
         }
+        
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
 
     private void OnEnable()
@@ -116,6 +117,7 @@ public class GrapplingHookController : MonoBehaviour
         {
             StopGrapple();
         }
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
 
     private void Update()
@@ -126,7 +128,13 @@ public class GrapplingHookController : MonoBehaviour
         CheckGrappleValidity();
     }
 
-    private void LateUpdate() { DrawRope(); }
+    private void LateUpdate() 
+    { 
+        if (_isGrappling) 
+        {
+            DrawRope(); 
+        }
+    }
     private void FixedUpdate() { ApplySwingForce(); }
     #endregion
 
@@ -197,21 +205,14 @@ public class GrapplingHookController : MonoBehaviour
         
         _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
 
-        // SE o Rigidbody do alvo NÃO FOR cinemático, nos conectamos a ele.
-        // CASO CONTRÁRIO (alvo estático ou cinemático), o Rigidbody agarrado é nulo,
-        // e o grapple se conecta a um ponto fixo no mundo.
         if (_predictionHit.rigidbody != null && !_predictionHit.rigidbody.isKinematic)
         {
              _grappledRigidbody = _predictionHit.rigidbody;
-             // Se conectamos a um Rigidbody, o offset é local a ele.
-             // _grappledPointLocalOffset não é mais usado aqui, mas sim a nova _grappledPointOffsetLocalToTarget
-             // para consistência.
              _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
         }
         else
         {
             _grappledRigidbody = null;
-            // Se não há Rigidbody dinâmico, o offset é local ao transform do collider.
             _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
         }
 
@@ -226,13 +227,13 @@ public class GrapplingHookController : MonoBehaviour
         OnGrappleStopped?.Invoke();
         _isGrappling = false;
         if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
-        lineRenderer.positionCount = 0;
         Destroy(_joint);
         _grappledRigidbody = null;
         _currentGrappleableTarget = null;
-        _grappledPointOffsetLocalToTarget = Vector3.zero; // Reseta o offset
+        _grappledPointOffsetLocalToTarget = Vector3.zero;
         playerMovement.ResetDoubleJump();
         UpdateGrappleStateAndVisuals();
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
     private void ApplySwingForce()
     {
@@ -245,12 +246,10 @@ public class GrapplingHookController : MonoBehaviour
     #endregion
     private bool FindValidGrappleTarget(out RaycastHit hit)
     {
-        // NOVO: A lógica de validação de alvo foi movida para um método auxiliar.
         return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
                TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
     }
 
-    // NOVO: Método auxiliar para evitar duplicação de código na validação do alvo.
     private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
     {
         bool didHit;
@@ -265,13 +264,8 @@ public class GrapplingHookController : MonoBehaviour
 
         if (didHit)
         {
-            // Tenta obter a interface IGrappleable.
             IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
 
-            // Um alvo é válido se:
-            // 1. Tem a interface IGrappleable E CanBeGrappledNow() é true, OU
-            // 2. NÃO tem a interface IGrappleable E NÃO é um Rigidbody cinemático (pode ser estático ou dinâmico normal).
-            //    (Se tem IGrappleable mas CanBeGrappledNow() é false, não é válido).
             if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
                 (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
             {
@@ -285,31 +279,21 @@ public class GrapplingHookController : MonoBehaviour
     {
         if (!_joint) return;
         
-        // APENAS atualiza a posição do grapple point se houver um Rigidbody dinâmico conectado.
-        // Se o grapple estiver conectado a um objeto estático ou cinemático (sem _grappledRigidbody),
-        // o GrapplePoint já é um ponto fixo no mundo e não precisa ser recalculado.
         if (_grappledRigidbody != null) 
         {
             UpdateGrappleAnchorPosition();
         }
         else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
         {
-            // Se não há um Rigidbody dinâmico, mas há um alvo IGrappleable (e ele ainda existe),
-            // atualiza o GrapplePoint relativo ao Transform do GameObject agarrado.
             GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
         }
-        // Se _currentGrappleableTarget for null (target estático simples), o GrapplePoint já é um ponto fixo.
-
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, GrapplePoint);
     }
     
-    // Este método agora só é chamado se _grappledRigidbody NÃO FOR null.
     private void UpdateGrappleAnchorPosition()
     {
-        // Se o objeto agarrado tem um Rigidbody dinâmico, o ponto de grapple deve se mover com ele.
-        // Usamos _grappledRigidbody.transform para o Transform que o Rigidbody controla.
         GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
         if (_joint) _joint.connectedAnchor = GrapplePoint;
     }
@@ -349,9 +333,6 @@ public class GrapplingHookController : MonoBehaviour
         _joint.autoConfigureConnectedAnchor = false;
         _joint.anchor = Vector3.zero;
         _joint.connectedAnchor = connectedPoint;
-        
-        // O SpringJoint.connectedBody só deve ser definido se houver um Rigidbody dinâmico para se conectar.
-        // Caso contrário, ele se conectará ao connectedAnchor como um ponto fixo no mundo.
         _joint.connectedBody = _grappledRigidbody; 
 
         float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
@@ -362,9 +343,6 @@ public class GrapplingHookController : MonoBehaviour
         _joint.massScale = massScale;
     }
 
-    /// <summary>
-    /// Verifica periodicamente se o alvo atual do grapple ainda é válido.
-    /// </summary>
     private void CheckGrappleValidity()
     {
         if (!_isGrappling || _currentGrappleableTarget == null) return;
@@ -372,7 +350,6 @@ public class GrapplingHookController : MonoBehaviour
         _grappleValidityCheckTimer -= Time.deltaTime;
         if (_grappleValidityCheckTimer <= 0f)
         {
-            // Se o alvo IGrappleable não existe mais ou não é mais agarrável, solta o grapple.
             if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
             {
                 Debug.Log($"Grapple solto do alvo '{_currentGrappleableTarget.GetGameObject()?.name ?? "Objeto Destruído"}' porque ele não é mais agarrável ou foi destruído.");
