@@ -1,4 +1,3 @@
-// Assets/Scripts/ScoreManager.cs
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
@@ -11,9 +10,6 @@ public class ScoreManager : MonoBehaviour
     [SerializeField] private LevelData currentLevelData;
     [SerializeField] private bool startLevelOnFirstMoveInput = false;
 
-    [Header("Configurações de UI")]
-    private int leaderboardDisplayDelayMs = 750; // Ainda usado, mas removido do fluxo automático
-
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
     private PlayerMovementController _playerMovementController;
@@ -22,10 +18,11 @@ public class ScoreManager : MonoBehaviour
     private float _levelTimer;
     private bool _isTimerRunning = false;
     private bool _levelStarted = false;
-    private int _deathCount = 0; // Contador de mortes para o nível atual
-    private bool _levelCompleted = false; // Flag para evitar processamento duplicado
+    private int _deathCount = 0;
+    private bool _levelCompleted = false;
 
     public float CurrentTime => _levelTimer;
+    public int DeathCount => _deathCount;
 
     private void Awake()
     {
@@ -36,28 +33,24 @@ public class ScoreManager : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-        GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
-
         if (GameFlowManager.Instance != null)
         {
+            GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
             GameFlowManager.Instance.OnGamePaused += PauseTimer;
             GameFlowManager.Instance.OnGameResumed += ResumeTimer;
         }
-
         SubscribeToFirstInputEvents();
     }
 
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
-
         if (GameFlowManager.Instance != null)
         {
+            GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
             GameFlowManager.Instance.OnGamePaused -= PauseTimer;
             GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
         }
-
         UnsubscribeFromFirstInputEvents();
     }
 
@@ -65,8 +58,8 @@ public class ScoreManager : MonoBehaviour
     {
         FindSceneReferences();
         ResetLevelTimer();
-        ResetDeathCount();
-        _levelCompleted = false; // Resetar flag para novo nível
+        LoadDeathCountForLevel();
+        _levelCompleted = false;
         SubscribeToFirstInputEvents();
     }
 
@@ -102,7 +95,7 @@ public class ScoreManager : MonoBehaviour
         {
             finalTime = -1f;
             finalRank = Rank.None;
-            deaths = 0;
+            deaths = _deathCount;
             return;
         }
         _isTimerRunning = false;
@@ -149,17 +142,32 @@ public class ScoreManager : MonoBehaviour
         _deathCount++;
     }
 
-    private void ResetDeathCount()
+    private void LoadDeathCountForLevel()
     {
-        _deathCount = 0;
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            _deathCount = 0;
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            _deathCount = record.totalDeaths;
+        }
+        else
+        {
+            _deathCount = 0;
+        }
     }
 
     private async void ProcessLevelCompletion(LevelCompletionData data)
     {
-        if (_levelCompleted) return; // Evitar processamento duplicado
+        if (_levelCompleted) return;
         _levelCompleted = true;
 
-        SaveBestTime(data.FinalTime);
+        SaveLevelStats(data.FinalTime, data.Deaths);
 
         VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
         if (victoryPanel != null)
@@ -169,7 +177,6 @@ public class ScoreManager : MonoBehaviour
             victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
             victoryPanel.OnNextClicked += () =>
             {
-                Debug.Log("ScoreManager: OnNextClicked triggered, showing leaderboard.");
                 _leaderboardUIController?.ShowLeaderboard();
             };
         }
@@ -177,7 +184,7 @@ public class ScoreManager : MonoBehaviour
         await SubmitScoreAsync(data.FinalTime);
     }
 
-    private void SaveBestTime(float finalTime)
+    private void SaveLevelStats(float finalTime, int totalDeathsForLevel)
     {
         UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
         if (activeProfile == null || currentLevelData == null)
@@ -188,24 +195,19 @@ public class ScoreManager : MonoBehaviour
 
         string levelId = currentLevelData.GetFullLevelId();
 
-        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        if (!activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
         {
-            if (finalTime < record.bestTime)
-            {
-                record.bestTime = finalTime;
-                record.bestRank = GetRankForTime(finalTime);
-            }
-        }
-        else
-        {
-            record = new LevelRecord
-            {
-                bestTime = finalTime,
-                bestRank = GetRankForTime(finalTime)
-            };
+            record = new LevelRecord();
             activeProfile.levelRecords.Add(levelId, record);
         }
-
+        
+        if (finalTime < record.bestTime)
+        {
+            record.bestTime = finalTime;
+            record.bestRank = GetRankForTime(finalTime);
+        }
+        
+        record.totalDeaths = totalDeathsForLevel;
         SaveManager.Instance.SaveGame();
     }
 
@@ -253,8 +255,8 @@ public class ScoreManager : MonoBehaviour
         if (InputManager.Instance != null && startLevelOnFirstMoveInput)
         {
             InputManager.Instance.OnMove += HandleFirstMoveInput;
-            _playerMovementController.OnJumped += HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+            if (_playerMovementController != null) _playerMovementController.OnJumped += HandleFirstInput;
+            if (_grapplingHookController != null) _grapplingHookController.OnGrappleStarted += HandleFirstInput;
         }
     }
 
@@ -272,6 +274,4 @@ public class ScoreManager : MonoBehaviour
     {
         return currentLevelData;
     }
-
-    public int GetDeathCount() => _deathCount;
 }

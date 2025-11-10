@@ -89,6 +89,7 @@ Assets/
     GrappleVisual.cs
     GrapplingCooldownSlider.cs
     GrapplingHookController.cs
+    IGrappleable.cs
     ILeaderboardService.cs
     InputManager.cs
     InputStateManager.cs
@@ -694,279 +695,6 @@ public class FlyingDroneEnemy : MonoBehaviour, ITimeSlowable
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, attackRange);
     }
-}
-</file>
-
-<file path="Assets/Scripts/GrappleVisual.cs">
-using UnityEngine;
-using System.Collections;
-using System.Collections.Generic;
-
-[ExecuteAlways]
-public class LinePrefabRendererEffects : MonoBehaviour
-{
-	[Header("References")]
-	public LineRenderer lineRenderer;
-	public GameObject lineSegmentPrefabA;
-	public GameObject lineSegmentPrefabB;
-	public GameObject startTipPrefab;
-	public GameObject endTipPrefab;
-
-	[Header("Settings")]
-	public bool updateInEditor = true;
-	public bool updateInPlay = true;
-	public float minSegmentLength = 0.001f;
-	[Range(0f, 1f)] public float flickerChance = 0.3f;
-	public float flickerRate = 0.05f;
-	public bool alignTipsToLine = true;
-
-	private GameObject segmentAInstance;
-	private GameObject segmentBInstance;
-	private GameObject startTipInstance;
-	private GameObject endTipInstance;
-
-	private Transform segmentParent;
-	private float prefabLength = 1f;
-	private Vector3 prefabPrimaryAxisLocal = Vector3.forward;
-	private Vector3 prefabOriginalLocalScale = Vector3.one;
-
-	void OnEnable()
-	{
-		CleanupAll();
-		CachePrefabInfo();
-		EnsureContainer();
-		RebuildAll();
-	}
-
-	void OnDestroy() => CleanupAll();
-
-	void Start()
-	{
-		if (lineRenderer == null)
-			lineRenderer = GetComponent<LineRenderer>();
-
-		CachePrefabInfo();
-		EnsureContainer();
-		RebuildAll();
-	}
-
-	void Update()
-	{
-#if UNITY_EDITOR
-		if (!Application.isPlaying && updateInEditor)
-			RebuildAll();
-#endif
-		if (Application.isPlaying && updateInPlay)
-			RebuildAll();
-	}
-
-	void EnsureContainer()
-	{
-		if (segmentParent == null)
-		{
-			Transform existing = transform.Find("LineSegmentsContainer");
-			if (existing)
-				segmentParent = existing;
-			else
-			{
-				GameObject container = new GameObject("LineSegmentsContainer");
-				container.transform.SetParent(transform, false);
-				segmentParent = container.transform;
-			}
-		}
-	}
-
-	void CleanupAll()
-	{
-		SafeDestroy(segmentAInstance);
-		SafeDestroy(segmentBInstance);
-		SafeDestroy(startTipInstance);
-		SafeDestroy(endTipInstance);
-
-		segmentAInstance = null;
-		segmentBInstance = null;
-		startTipInstance = null;
-		endTipInstance = null;
-	}
-
-	void CachePrefabInfo()
-	{
-		GameObject prefabRef = lineSegmentPrefabA != null ? lineSegmentPrefabA : lineSegmentPrefabB;
-		if (prefabRef == null) return;
-
-		prefabOriginalLocalScale = prefabRef.transform.localScale;
-		Vector3 localSize = Vector3.zero;
-		bool found = false;
-
-		MeshFilter mf = prefabRef.GetComponentInChildren<MeshFilter>();
-		if (mf && mf.sharedMesh) { localSize = mf.sharedMesh.bounds.size; found = true; }
-		else
-		{
-			SkinnedMeshRenderer smr = prefabRef.GetComponentInChildren<SkinnedMeshRenderer>();
-			if (smr && smr.sharedMesh) { localSize = smr.sharedMesh.bounds.size; found = true; }
-			else
-			{
-				SpriteRenderer sr = prefabRef.GetComponentInChildren<SpriteRenderer>();
-				if (sr && sr.sprite) { localSize = sr.sprite.bounds.size; found = true; }
-			}
-		}
-
-		if (!found) localSize = new Vector3(0.1f, 0.1f, 1f);
-
-		if (localSize.x >= localSize.y && localSize.x >= localSize.z)
-		{
-			prefabPrimaryAxisLocal = Vector3.right;
-			prefabLength = localSize.x * Mathf.Abs(prefabOriginalLocalScale.x);
-		}
-		else if (localSize.y >= localSize.x && localSize.y >= localSize.z)
-		{
-			prefabPrimaryAxisLocal = Vector3.up;
-			prefabLength = localSize.y * Mathf.Abs(prefabOriginalLocalScale.y);
-		}
-		else
-		{
-			prefabPrimaryAxisLocal = Vector3.forward;
-			prefabLength = localSize.z * Mathf.Abs(prefabOriginalLocalScale.z);
-		}
-
-		if (prefabLength <= 0f) prefabLength = 1f;
-	}
-
-	void RebuildAll()
-	{
-		if (lineRenderer == null || lineRenderer.positionCount < 2)
-		{
-			CleanupAll();
-			return;
-		}
-
-		EnsureContainer();
-
-		Vector3 startPos = lineRenderer.GetPosition(0);
-		Vector3 endPos = lineRenderer.GetPosition(lineRenderer.positionCount - 1);
-		Vector3 dir = (endPos - startPos).normalized;
-
-		// Ensure single instance for each prefab
-		EnsureSingleInstance(ref segmentAInstance, lineSegmentPrefabA);
-		EnsureSingleInstance(ref segmentBInstance, lineSegmentPrefabB);
-		EnsureSingleInstance(ref startTipInstance, startTipPrefab);
-		EnsureSingleInstance(ref endTipInstance, endTipPrefab);
-
-		// Place segments at midpoint and scale
-		Vector3 mid = (startPos + endPos) * 0.5f;
-		ApplyTransform(segmentAInstance, mid, dir, Vector3.Distance(startPos, endPos));
-		ApplyTransform(segmentBInstance, mid, dir, Vector3.Distance(startPos, endPos));
-
-		// Place tips
-		if (startTipInstance != null)
-		{
-			startTipInstance.SetActive(true);
-			startTipInstance.transform.position = startPos;
-			if (alignTipsToLine) startTipInstance.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
-		}
-
-		if (endTipInstance != null)
-		{
-			endTipInstance.SetActive(true);
-			endTipInstance.transform.position = endPos;
-			if (alignTipsToLine) endTipInstance.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
-		}
-	}
-
-	void EnsureSingleInstance(ref GameObject instance, GameObject prefab)
-	{
-		if (prefab == null) return;
-
-		// Check if instance already exists in the container
-		if (instance == null)
-		{
-			foreach (Transform child in segmentParent)
-			{
-				if (child.name.StartsWith(prefab.name))
-				{
-					instance = child.gameObject;
-					break;
-				}
-			}
-
-			// Instantiate if still null
-			if (instance == null)
-			{
-				instance = Instantiate(prefab, segmentParent);
-				PlayAnimator(instance);
-				if (Application.isPlaying) StartCoroutine(FlickerRoutine(instance));
-			}
-		}
-	}
-
-	void ApplyTransform(GameObject seg, Vector3 mid, Vector3 dir, float segLength)
-	{
-		if (seg == null) return;
-
-		seg.transform.position = mid;
-		Vector3 prefabAxisWorld = seg.transform.TransformDirection(prefabPrimaryAxisLocal).normalized;
-		Quaternion align = Quaternion.FromToRotation(prefabAxisWorld, dir);
-		seg.transform.rotation = align * seg.transform.rotation;
-
-		float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
-		Vector3 newScale = prefabOriginalLocalScale;
-		if (prefabPrimaryAxisLocal == Vector3.right) newScale.x *= scaleFactor;
-		else if (prefabPrimaryAxisLocal == Vector3.up) newScale.y *= scaleFactor;
-		else newScale.z *= scaleFactor;
-
-		seg.transform.localScale = newScale;
-	}
-
-	void PlayAnimator(GameObject seg)
-	{
-		if (seg == null) return;
-
-		Animator animator = seg.GetComponentInChildren<Animator>();
-		if (animator != null && animator.runtimeAnimatorController != null)
-		{
-			animator.enabled = true;
-			animator.Rebind();
-			animator.Play(animator.GetCurrentAnimatorStateInfo(0).fullPathHash, 0, 0f);
-		}
-
-		Animation legacy = seg.GetComponentInChildren<Animation>();
-		if (legacy && legacy.clip)
-		{
-			legacy.Stop();
-			legacy.Play();
-		}
-
-		ParticleSystem[] ps = seg.GetComponentsInChildren<ParticleSystem>();
-		foreach (var p in ps)
-		{
-			p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-			p.Play(true);
-		}
-	}
-
-	void SafeDestroy(GameObject go)
-	{
-		if (go == null) return;
-#if UNITY_EDITOR
-		if (!Application.isPlaying) DestroyImmediate(go);
-		else Destroy(go);
-#else
-        Destroy(go);
-#endif
-	}
-
-	IEnumerator FlickerRoutine(GameObject seg)
-	{
-		if (seg == null) yield break;
-		SpriteRenderer sr = seg.GetComponentInChildren<SpriteRenderer>();
-
-		while (seg != null)
-		{
-			yield return new WaitForSeconds(flickerRate);
-			if (sr) sr.enabled = Random.value > flickerChance;
-			else seg.SetActive(Random.value > flickerChance);
-		}
-	}
 }
 </file>
 
@@ -1941,6 +1669,183 @@ public class UIFollowWorldObject : MonoBehaviour
     public void SetTarget(Transform newTarget)
     {
         _targetToFollow = newTarget;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/UIJuice.cs">
+using UnityEngine;
+using UnityEngine.Events;
+using DG.Tweening;
+
+[RequireComponent(typeof(CanvasGroup))]
+public class UIJuice : MonoBehaviour
+{
+    [Header("Configurações de Animação")]
+    [SerializeField] protected float duration = 0.5f;
+    [SerializeField] protected float delay = 0f;
+    [SerializeField] protected Ease easeType = Ease.OutBack;
+    [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
+
+    // Novo campo para a escala inicial da animação TV Scan (ponto pequeno)
+    [SerializeField] private Vector3 tvScanStartScale = new Vector3(0.01f, 0.01f, 1f);
+
+    [Header("Comportamento")]
+    [SerializeField] protected bool playOnEnable = false; // Irrelevante agora, pois sempre roda a TV Scan
+
+    [Header("Eventos de Animação")]
+    public UnityEvent OnPlayStart;
+    public UnityEvent OnPlayComplete;
+    public UnityEvent OnReverseStart;
+    public UnityEvent OnReverseComplete;
+
+    private CanvasGroup canvasGroup;
+    private RectTransform rectTransform;
+    private Sequence sequence;
+
+    private void Awake()
+    {
+        canvasGroup = GetComponent<CanvasGroup>();
+        rectTransform = GetComponent<RectTransform>();
+    }
+
+    protected virtual void OnEnable()
+    {
+        // Sempre roda a animação TV Scan quando o painel é ativado (OnEnable).
+        PlayTVScanAnimation();
+    }
+
+    public virtual void PlayAnimation()
+    {
+        // A ativação do GameObject agora é responsabilidade do UIPanel.
+        // Isso garante que o objeto esteja ativo antes desta função ser chamada.
+        // if (!gameObject.activeInHierarchy) return;
+        gameObject.SetActive(true);
+        KillExistingSequence();
+        CreateForwardSequence();
+
+        sequence?.OnStart(() => OnPlayStart?.Invoke());
+        sequence?.OnComplete(() => OnPlayComplete?.Invoke());
+        sequence?.Play();
+    }
+
+    // Novo método para a animação TV Scan (abertura estética) - roda automaticamente no OnEnable
+    public virtual void PlayTVScanAnimation()
+    {
+        gameObject.SetActive(true);
+        KillExistingSequence();
+        CreateTVScanSequence();
+
+        sequence?.OnStart(() => OnPlayStart?.Invoke());
+        sequence?.OnComplete(() => OnPlayComplete?.Invoke());
+        sequence?.Play();
+    }
+
+    // Novo método para o reverse da animação TV Scan (fechamento)
+    public virtual void PlayReverseTVScanAnimation()
+    {
+        if (!gameObject.activeInHierarchy) return;
+
+        KillExistingSequence();
+        CreateReverseTVScanSequence();
+
+        sequence?.OnStart(() => OnReverseStart?.Invoke());
+        sequence?.OnComplete(() => OnReverseComplete?.Invoke());
+        sequence?.Play();
+    }
+
+    public virtual void PlayReverseAnimation()
+    {
+        if (!gameObject.activeInHierarchy) return;
+
+        KillExistingSequence();
+        CreateReverseSequence();
+
+        sequence?.OnStart(() => OnReverseStart?.Invoke());
+        sequence?.OnComplete(() => OnReverseComplete?.Invoke());
+        sequence?.Play();
+    }
+
+    private void CreateForwardSequence()
+    {
+        canvasGroup.blocksRaycasts = true;
+        canvasGroup.alpha = 0f;
+        rectTransform.localScale = startScale;
+
+        sequence = DOTween.Sequence().SetUpdate(true);
+
+        if (delay > 0)
+        {
+            sequence.AppendInterval(delay);
+        }
+
+        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
+        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
+        sequence.Pause();
+    }
+
+    // Novo método para criar a sequência TV Scan
+    private void CreateTVScanSequence()
+    {
+        canvasGroup.blocksRaycasts = true;
+        canvasGroup.alpha = 0f;
+        rectTransform.localScale = tvScanStartScale; // Começa como um ponto pequeno
+
+        sequence = DOTween.Sequence().SetUpdate(true);
+
+        if (delay > 0)
+        {
+            sequence.AppendInterval(delay);
+        }
+
+        // Parte 1: Escalar horizontalmente para formar uma linha reta (X de 0.01 para 1, Y permanece pequeno)
+        sequence.Append(rectTransform.DOScaleX(1f, duration / 2f).SetEase(easeType));
+        sequence.Join(canvasGroup.DOFade(0.5f, duration / 2f).SetEase(easeType)); // Fade parcial
+
+        // Parte 2: Escalar verticalmente para o tamanho normal (Y de 0.01 para 1, X permanece 1)
+        sequence.Append(rectTransform.DOScaleY(1f, duration / 2f).SetEase(easeType));
+        sequence.Join(canvasGroup.DOFade(1f, duration / 2f).SetEase(easeType)); // Fade completo
+        sequence.Pause();
+    }
+
+    // Novo método para criar a sequência reverse TV Scan
+    private void CreateReverseTVScanSequence()
+    {
+        canvasGroup.blocksRaycasts = false;
+
+        sequence = DOTween.Sequence().SetUpdate(true);
+
+        // Parte 1: Escalar verticalmente para formar uma linha reta (Y de 1 para 0.01, X permanece 1)
+        sequence.Append(rectTransform.DOScaleY(tvScanStartScale.y, duration / 2f).SetEase(Ease.InBack));
+        sequence.Join(canvasGroup.DOFade(0.5f, duration / 2f).SetEase(Ease.InBack)); // Fade parcial
+
+        // Parte 2: Escalar horizontalmente para um ponto (X de 1 para 0.01, Y permanece pequeno)
+        sequence.Append(rectTransform.DOScaleX(tvScanStartScale.x, duration / 2f).SetEase(Ease.InBack));
+        sequence.Join(canvasGroup.DOFade(0f, duration / 2f).SetEase(Ease.InBack)); // Fade completo
+        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o painel no final
+        sequence.Pause();
+    }
+    
+    private void CreateReverseSequence()
+    {
+        canvasGroup.blocksRaycasts = false;
+
+        sequence = DOTween.Sequence().SetUpdate(true);
+        
+        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
+        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
+        sequence.OnComplete(() => gameObject.SetActive(false));
+        sequence.Pause();
+    }
+
+    private void KillExistingSequence()
+    {
+        sequence?.Kill();
+    }
+
+    protected virtual void OnDestroy()
+    {
+        KillExistingSequence();
     }
 }
 </file>
@@ -4662,6 +4567,197 @@ public class AnimationTrigger : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/AudioManager.cs">
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
+
+
+[Serializable]
+public class SceneMusic
+{
+    public GameScene scene;
+    public string musicName;
+}
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager instance;
+
+    public Sound[] musicSounds, ambientSounds, sfxSounds;
+    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
+    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
+
+    [SerializeField] private AudioMixer audioMixer;
+    [SerializeField] private float sfxPitchVariation = 0.1f;
+
+    [Header("Músicas por Cena (Enum)")]
+    [SerializeField] private SceneMusic[] sceneMusics;
+
+    private void Awake()
+    {
+        AddSoundsToDictionary(sfxSounds);
+        AddSoundsToDictionary(musicSounds);
+        AddSoundsToDictionary(ambientSounds);
+
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    private void Start()
+    {
+        GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
+        PlaySceneMusic(currentSceneEnum);
+    }
+
+    private void AddSoundsToDictionary(Sound[] soundArray)
+    {
+        foreach (Sound s in soundArray)
+        {
+            if (!sfxDictionary.ContainsKey(s.name))
+            {
+                sfxDictionary.Add(s.name, s.clip);
+            }
+        }
+    }
+
+    public void PlayMusic(string name)
+    {
+        Sound s = Array.Find(musicSounds, x => x.name == name);
+
+        if (s == null)
+        {
+            Debug.LogWarning($"Sound Not Found: {name}");
+        }
+        else
+        {
+            musicSource.clip = s.clip;
+            musicSource.volume = musicSource.volume * masterSource.volume;
+            musicSource.Play();
+        }
+    }
+
+    public void PlayAmbient(string name)
+    {
+        Sound s = Array.Find(ambientSounds, x => x.name == name);
+        if (s == null)
+        {
+            Debug.LogWarning("Ambient sound not found: " + name);
+        }
+        else
+        {
+            ambientSource.clip = s.clip;
+            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            ambientSource.loop = true;
+            ambientSource.Play();
+        }
+    }
+
+    public void PlaySFX(string name)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            sfxSource.pitch = randomPitch;
+            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+        }
+        else
+        {
+            Debug.LogWarning("Sound Not Found: " + name);
+        }
+    }
+
+    public void ToggleMusic() => musicSource.mute = !musicSource.mute;
+    public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
+    public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
+
+    public void MusicVolume(float volume) => musicSource.volume = volume * masterSource.volume;
+    public void AmbientVolume(float volume) => ambientSource.volume = volume * masterSource.volume;
+    public void SFXVolume(float volume) => sfxSource.volume = volume * masterSource.volume;
+    public void MasterVolume(float volume) => audioMixer.SetFloat("MasterVolume", volume);
+
+    public void SetMasterMute(bool muteState) 
+    {
+    	masterSource.mute = muteState;
+    	musicSource.mute = muteState;
+    	sfxSource.mute = muteState;
+    }
+
+    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
+
+    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
+
+    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
+
+    private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
+    private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
+
+    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
+    {
+        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
+            return existingSource;
+
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("LoopingSFX_" + name);
+            obj.transform.parent = transform;
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+            newSource.Play();
+
+            loopingSources.Add(name, newSource);
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Looping Sound Not Found: " + name);
+            return null;
+        }
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        GameScene sceneEnum = GetSceneEnum(scene.name);
+        PlaySceneMusic(sceneEnum);
+    }
+
+    private void PlaySceneMusic(GameScene sceneEnum)
+    {
+        foreach (var sceneMusic in sceneMusics)
+        {
+            if (sceneMusic.scene == sceneEnum)
+            {
+                PlayMusic(sceneMusic.musicName);
+                return;
+            }
+        }
+    }
+
+    private GameScene GetSceneEnum(string sceneName)
+    {
+        if (Enum.TryParse(sceneName, out GameScene parsedEnum))
+            return parsedEnum;
+
+        return (GameScene)(-1);
+    }
+}
+</file>
+
 <file path="Assets/Scripts/BackButton.cs">
 using System.Collections;
 
@@ -5356,6 +5452,44 @@ public class DoubleJumpUIController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/GameSceneEnum.cs">
+using System;
+
+[Serializable]
+public enum GameScene
+{
+    ARTBonesClimbGrayBox,
+    ARTBonesClimbGrayBoxCopia,
+    BackGroundTest,
+    Basic,
+    BasicMovement,
+    BonesClimbGrayBox,
+    BonesClimbGrayBoxCopia,
+    BonesStartGrayBox,
+    BonesStartGrayBoxCopia,
+    CarLevel,
+    EricAnimations,
+    EricGraybox,
+    FineTuningMovement,
+    Hellcat,
+    LevelDesignCaio,
+    MainMenu,
+    MainMenuCopia,
+    MenuCaio,
+    MenuCaioAUDIO,
+    MenuCopiaPeu,
+    PrefabsTest,
+    Standard,
+    TimeStop,
+    Tutorial,
+    VFXBonesTest,
+    VFXGabriel,
+    VictorAgarrar,
+    VictorGraybox,
+    ViniciusLevelDesign,
+}
+</file>
+
 <file path="Assets/Scripts/GameSystem.cs">
 using UnityEngine;
 
@@ -5398,6 +5532,29 @@ public class GrappleResetRing : BasePowerUpRing
             grappleController.ResetGrapple();
         }
     }
+}
+</file>
+
+<file path="Assets/Scripts/IGrappleable.cs">
+using UnityEngine;
+
+/// <summary>
+/// Interface para objetos que podem ser agarrados pelo GrapplingHookController.
+/// Permite que o hook verifique dinamicamente a validade da conexão.
+/// </summary>
+public interface IGrappleable
+{
+    /// <summary>
+    /// Verifica se o objeto ainda pode ser agarrado.
+    /// Chamado pelo GrapplingHookController para validar a conexão atual.
+    /// </summary>
+    /// <returns>True se o objeto ainda é agarrável, False caso contrário.</returns>
+    bool CanBeGrappledNow();
+
+    /// <summary>
+    /// Retorna o GameObject associado a esta interface.
+    /// </summary>
+    GameObject GetGameObject();
 }
 </file>
 
@@ -5950,114 +6107,387 @@ public class MainMenu : UIPanel
 }
 </file>
 
-<file path="Assets/Scripts/MovingPlatform.cs">
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody))]
-public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour
 {
-    [Header("Configurações de Patrulha")]
-    [SerializeField] private Transform targetA;
-    [SerializeField] private Transform targetB;
-    public float speed = 3f, playerInfluence = 0.69f;
+    private PlayerMovementController movement;
+    private GrapplingHookController grapple;
+    private Rigidbody rb;
 
-    [Header("Visual")]
-    [SerializeField] private Color slowDownColor = Color.cyan;
-    
-    private Rigidbody _rb;
-    private Transform _currentTarget;
-    private Vector3 _startPosition;
-    private Vector3 _savedVelocity;
-    private Renderer _renderer;
-    private Color _originalColor;
-    private bool _isSlowed = false;
+    private bool jumpSoundPlayed = false;
+
+    [Header("Sons - Movimento")]
+    [SerializeField] private string[] footstepSfxOptions;
+    [SerializeField] private string[] jumpSfxOptions;
+    [SerializeField] private string[] doubleJumpSfxOptions;
+    [SerializeField] private string[] landSfxOptions;
+    [SerializeField] private string footstepSfx = "footstep";
+    [SerializeField] private string wallHitSfx = "WallHit";
+    [SerializeField] private string[] ringSfxOptions;
+    [SerializeField] private string[] jumpPadSfxOptions;
+
+
+    [Header("Sons - Estado do Player")]
+    [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string deathFallSFX = "DeathFall";
+    [SerializeField] private string respawnSfx = "Respawn";
+    [SerializeField] private string timeSkillOnSfx = "TimeOn";
+    [SerializeField] private string timeSkillOffSfx = "TimeOff";
+
+    [Header("Sons - Grappling Hook")]
+    [SerializeField] private string[] grappleShootSfxOptions;
+    [SerializeField] private string[] grappleAttachSfxOptions;
+    [SerializeField] private string[] grappleReleaseSfxOptions;
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+    [SerializeField] private float wallHitMinForce = 5f;
+
+    [Header("Som - Vento")]
+    [SerializeField] private string windSfx = "Wind";
+    [SerializeField] private float windMinSpeed = 20f;
+    [SerializeField] private float windMaxSpeed = 60f;
+    [SerializeField] private float windFadeSpeed = 5f;
+
+    private float stepTimer;
+    private bool hasLandedOnce = false;
+    private Vector3 lastPosition;
+
+    private bool wasGrappling;
+    private bool grappleJustStarted;
+
+    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
+    private bool canDoubleJump = false; // Se double jump pode tocar
+
+    private bool doubleJumpAvailable = false;
+    private bool doubleJumpSoundPlayed = false;
+
+
+    private AudioSource windSource;
 
     private void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
-        _renderer = GetComponent<Renderer>();
-        if (_renderer != null) _originalColor = _renderer.material.color;
+        movement = GetComponent<PlayerMovementController>();
+        grapple = GetComponent<GrapplingHookController>();
+        rb = GetComponent<Rigidbody>();
 
-        _rb.useGravity = false;
-        _rb.freezeRotation = true;
-        _rb.isKinematic = false;
-        _startPosition = transform.position;
+        stepTimer = stepInterval;
+        lastPosition = transform.position;
+
+        if (AudioManager.instance != null)
+        {
+            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
+        }
     }
 
-    private void Start()
+    private void OnEnable()
     {
-        if (targetA == null || targetB == null)
+        if (InputManager.Instance != null)
         {
-            enabled = false;
-            return;
+            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
+
+            BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
+
+            // Escuta manualmente JumpPads que existirem na cena
+            foreach (var jumpPad in FindObjectsOfType<JumpPad>())
+            {
+                AddJumpPadListener(jumpPad);
+            }
         }
-        _currentTarget = targetB;
-        TimeManipulationManager.Instance.Register(this);
+
+        movement.OnGroundLanded += PlayLand;
     }
 
     private void OnDisable()
     {
-        if (_isSlowed) RestoreNormalTime();
-        if (TimeManipulationManager.Instance != null)
+        if (InputManager.Instance != null)
         {
-            TimeManipulationManager.Instance.Unregister(this);
+            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
+            BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
+        }
+
+        movement.OnGroundLanded -= PlayLand;
+    }
+
+    private void Update()
+    {
+        HandleFootsteps();
+        DetectRespawn();
+        HandleGrappleAudio();
+        HandleWindAudio();
+        //HandleDoubleJumpAudio();
+
+        if (movement.isGrounded)
+        {
+            hasJumpedOnce = false;
+            canDoubleJump = false;
+            doubleJumpSoundPlayed = false;
         }
     }
 
-    private void FixedUpdate()
-    {
-        if (_isSlowed) return;
-        MoveTowardsTarget();
-    }
 
-    private void MoveTowardsTarget()
+    private void HandleJumpAudio()
     {
-        Vector3 direction = (_currentTarget.position - _rb.position).normalized;
-        _rb.linearVelocity = direction * speed;
-
-        if (Vector3.Distance(_rb.position, _currentTarget.position) < 0.5f)
+        if (movement.isGrounded)
         {
-            _currentTarget = (_currentTarget == targetA) ? targetB : targetA;
+            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, jumpSfxOptions.Length);
+                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
+            }
+
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+        else
+        {
+            // Double jump: toca som apenas se ainda estiver disponível
+            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+            {
+                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+                {
+                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
+                    {
+                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
+                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
+                    }
+
+                    doubleJumpSoundPlayed = true;
+                    doubleJumpAvailable = false;
+                }
+            }
         }
     }
 
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-        _savedVelocity = _rb.linearVelocity;
-        float slowFactor = 1.0f - (slowPercentage / 100.0f);
-        _rb.linearVelocity = _savedVelocity * slowFactor;
-        if (_renderer != null) _renderer.material.color = slowDownColor;
-    }
 
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-        _rb.linearVelocity = _savedVelocity;
-        if (_renderer != null) _renderer.material.color = _originalColor;
-    }
 
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
-    
-    public void ResetState()
-    {
-        transform.position = _startPosition;
-        _currentTarget = targetB;
-    }
 
-    private void OnDrawGizmos()
+
+    private void HandleFootsteps()
     {
-        if (targetA != null && targetB != null)
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
         {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(targetA.position, targetB.position);
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            string sfxToPlay = footstepSfx;
+
+            if (footstepSfxOptions != null && footstepSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, footstepSfxOptions.Length);
+
+
+                if (!string.IsNullOrEmpty(footstepSfxOptions[idx]))
+                    sfxToPlay = footstepSfxOptions[idx];
+            }
+
+            AudioManager.instance.PlaySFX(sfxToPlay);
+            stepTimer = stepInterval;
         }
     }
+
+    private void DetectRespawn()
+    {
+        float distance = Vector3.Distance(transform.position, lastPosition);
+        if (distance > 10f && movement.isGrounded)
+        {
+            AudioManager.instance.PlaySFX(respawnSfx);
+            if (windSource != null)
+            {
+                windSource.Stop();
+                windSource.Play();
+            }
+        }
+        lastPosition = transform.position;
+    }
+
+    private void HandleGrappleStart()
+    {
+        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleShootSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
+        }
+        //AudioManager.instance.PlaySFX(grappleShootSfx);
+        grappleJustStarted = true;
+    }
+
+    private void HandleGrappleEnd()
+    {
+        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
+        }
+
+        //AudioManager.instance.PlaySFX(grappleReleaseSfx);
+
+        // Libera double jump só se tinha realmente se agarrado
+        if (wasGrappling)
+        {
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+
+        grappleJustStarted = false;
+        wasGrappling = false;
+    }
+
+    private void HandleGrappleAudio()
+    {
+        if (grapple == null || !grappleJustStarted) return;
+
+        // Som e estado só se realmente conectar
+        if (grapple.IsGrappling)
+        {
+            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
+                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
+            }
+            //AudioManager.instance.PlaySFX(grappleAttachSfx);
+
+            // Bloqueia double jump enquanto estiver agarrado
+            doubleJumpAvailable = false;
+            doubleJumpSoundPlayed = false;
+
+            wasGrappling = true;
+            grappleJustStarted = false;
+        }
+
+    }
+
+
+    private void HandleWindAudio()
+    {
+        if (windSource == null) return;
+
+        // Se o jogo está pausado, zera o volume
+        if (Time.timeScale == 0f)
+        {
+            windSource.volume = 0f;
+            return;
+        }
+
+        // Calcula volume base pelo movimento do player
+        float speed = rb.linearVelocity.magnitude;
+        float targetVolume = 0f;
+
+        if (speed > windMinSpeed)
+            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+
+        // Aplica SFX e Master volume, e considera muting
+        if (AudioManager.instance != null)
+        {
+            float sfxVolume = AudioManager.instance.sfxSource.volume;
+            float masterVolume = AudioManager.instance.masterSource.volume;
+            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+
+            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
+        }
+
+        // Suaviza a transição do volume
+        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+    }
+
+
+
+    private void PlayLand()
+    {
+        if (!hasLandedOnce)
+        {
+            hasLandedOnce = true;
+            return;
+        }
+
+        if (landSfxOptions != null && landSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, landSfxOptions.Length);
+            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
+        {
+            AudioManager.instance.PlaySFX(wallHitSfx);
+        }
+    }
+
+
+
+    private void HandlePowerRingAudio()
+    {
+        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, ringSfxOptions.Length);
+            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
+        //AudioManager.instance.PlaySFX(ringSfx);
+    }
+
+    private void AddJumpPadListener(JumpPad pad)
+    {
+        // Essa parte é uma gambiarra temporária, mas funciona bem
+        var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
+        trigger.Setup(pad, this);
+    }
+
+    public void PlayJumpPadAudio()
+    {
+        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, jumpPadSfxOptions.Length);
+            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
+        //AudioManager.instance.PlaySFX(jumpPadSfx);
+    }
+
+
+
+
+
+
+
+
+    // Funções públicas de áudio
+    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
+    public void PlayRespawnManual()
+    {
+        AudioManager.instance.PlaySFX(respawnSfx);
+        if (windSource != null)
+            windSource.volume = 0f;
+    }
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
@@ -6935,180 +7365,19 @@ public class Sound
 }
 </file>
 
-<file path="Assets/Scripts/UIJuice.cs">
+<file path="Assets/Scripts/TvScanController.cs">
 using UnityEngine;
-using UnityEngine.Events;
-using DG.Tweening;
 
-[RequireComponent(typeof(CanvasGroup))]
-public class UIJuice : MonoBehaviour
+public class TVScanMaterialController : MonoBehaviour
 {
-    [Header("Configurações de Animação")]
-    [SerializeField] protected float duration = 0.5f;
-    [SerializeField] protected float delay = 0f;
-    [SerializeField] protected Ease easeType = Ease.OutBack;
-    [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
+	public string Unscaled = "_UnscaledTime";
+	public Material material;
 
-    // Novo campo para a escala inicial da animação TV Scan (ponto pequeno)
-    [SerializeField] private Vector3 tvScanStartScale = new Vector3(0.01f, 0.01f, 1f);
-
-    [Header("Comportamento")]
-    [SerializeField] protected bool playOnEnable = false; // Irrelevante agora, pois sempre roda a TV Scan
-
-    [Header("Eventos de Animação")]
-    public UnityEvent OnPlayStart;
-    public UnityEvent OnPlayComplete;
-    public UnityEvent OnReverseStart;
-    public UnityEvent OnReverseComplete;
-
-    private CanvasGroup canvasGroup;
-    private RectTransform rectTransform;
-    private Sequence sequence;
-
-    private void Awake()
-    {
-        canvasGroup = GetComponent<CanvasGroup>();
-        rectTransform = GetComponent<RectTransform>();
-    }
-
-    protected virtual void OnEnable()
-    {
-        // Sempre roda a animação TV Scan quando o painel é ativado (OnEnable).
-        PlayTVScanAnimation();
-    }
-
-    public virtual void PlayAnimation()
-    {
-        // A ativação do GameObject agora é responsabilidade do UIPanel.
-        // Isso garante que o objeto esteja ativo antes desta função ser chamada.
-        // if (!gameObject.activeInHierarchy) return;
-        gameObject.SetActive(true);
-        KillExistingSequence();
-        CreateForwardSequence();
-
-        sequence?.OnStart(() => OnPlayStart?.Invoke());
-        sequence?.OnComplete(() => OnPlayComplete?.Invoke());
-        sequence?.Play();
-    }
-
-    // Novo método para a animação TV Scan (abertura estética) - roda automaticamente no OnEnable
-    public virtual void PlayTVScanAnimation()
-    {
-        gameObject.SetActive(true);
-        KillExistingSequence();
-        CreateTVScanSequence();
-
-        sequence?.OnStart(() => OnPlayStart?.Invoke());
-        sequence?.OnComplete(() => OnPlayComplete?.Invoke());
-        sequence?.Play();
-    }
-
-    // Novo método para o reverse da animação TV Scan (fechamento)
-    public virtual void PlayReverseTVScanAnimation()
-    {
-        if (!gameObject.activeInHierarchy) return;
-
-        KillExistingSequence();
-        CreateReverseTVScanSequence();
-
-        sequence?.OnStart(() => OnReverseStart?.Invoke());
-        sequence?.OnComplete(() => OnReverseComplete?.Invoke());
-        sequence?.Play();
-    }
-
-    public virtual void PlayReverseAnimation()
-    {
-        if (!gameObject.activeInHierarchy) return;
-
-        KillExistingSequence();
-        CreateReverseSequence();
-
-        sequence?.OnStart(() => OnReverseStart?.Invoke());
-        sequence?.OnComplete(() => OnReverseComplete?.Invoke());
-        sequence?.Play();
-    }
-
-    private void CreateForwardSequence()
-    {
-        canvasGroup.blocksRaycasts = true;
-        canvasGroup.alpha = 0f;
-        rectTransform.localScale = startScale;
-
-        sequence = DOTween.Sequence().SetUpdate(true);
-
-        if (delay > 0)
-        {
-            sequence.AppendInterval(delay);
-        }
-
-        sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
-        sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
-        sequence.Pause();
-    }
-
-    // Novo método para criar a sequência TV Scan
-    private void CreateTVScanSequence()
-    {
-        canvasGroup.blocksRaycasts = true;
-        canvasGroup.alpha = 0f;
-        rectTransform.localScale = tvScanStartScale; // Começa como um ponto pequeno
-
-        sequence = DOTween.Sequence().SetUpdate(true);
-
-        if (delay > 0)
-        {
-            sequence.AppendInterval(delay);
-        }
-
-        // Parte 1: Escalar horizontalmente para formar uma linha reta (X de 0.01 para 1, Y permanece pequeno)
-        sequence.Append(rectTransform.DOScaleX(1f, duration / 2f).SetEase(easeType));
-        sequence.Join(canvasGroup.DOFade(0.5f, duration / 2f).SetEase(easeType)); // Fade parcial
-
-        // Parte 2: Escalar verticalmente para o tamanho normal (Y de 0.01 para 1, X permanece 1)
-        sequence.Append(rectTransform.DOScaleY(1f, duration / 2f).SetEase(easeType));
-        sequence.Join(canvasGroup.DOFade(1f, duration / 2f).SetEase(easeType)); // Fade completo
-        sequence.Pause();
-    }
-
-    // Novo método para criar a sequência reverse TV Scan
-    private void CreateReverseTVScanSequence()
-    {
-        canvasGroup.blocksRaycasts = false;
-
-        sequence = DOTween.Sequence().SetUpdate(true);
-
-        // Parte 1: Escalar verticalmente para formar uma linha reta (Y de 1 para 0.01, X permanece 1)
-        sequence.Append(rectTransform.DOScaleY(tvScanStartScale.y, duration / 2f).SetEase(Ease.InBack));
-        sequence.Join(canvasGroup.DOFade(0.5f, duration / 2f).SetEase(Ease.InBack)); // Fade parcial
-
-        // Parte 2: Escalar horizontalmente para um ponto (X de 1 para 0.01, Y permanece pequeno)
-        sequence.Append(rectTransform.DOScaleX(tvScanStartScale.x, duration / 2f).SetEase(Ease.InBack));
-        sequence.Join(canvasGroup.DOFade(0f, duration / 2f).SetEase(Ease.InBack)); // Fade completo
-        sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o painel no final
-        sequence.Pause();
-    }
-    
-    private void CreateReverseSequence()
-    {
-        canvasGroup.blocksRaycasts = false;
-
-        sequence = DOTween.Sequence().SetUpdate(true);
-        
-        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
-        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
-        sequence.OnComplete(() => gameObject.SetActive(false));
-        sequence.Pause();
-    }
-
-    private void KillExistingSequence()
-    {
-        sequence?.Kill();
-    }
-
-    protected virtual void OnDestroy()
-    {
-        KillExistingSequence();
-    }
+	void Update()
+	{
+	   material.SetFloat("_UnscaledTime", Time.unscaledTime);
+            
+	}
 }
 </file>
 
@@ -7262,6 +7531,66 @@ public class UIManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/UIPanel.cs">
+// Local: Assets/Scripts/UI/UIPanel.cs
+
+using UnityEngine;
+
+[RequireComponent(typeof(UIJuice))]
+public abstract class UIPanel : MonoBehaviour
+{
+    [SerializeField] private UIPanelType panelType;
+    public UIPanelType PanelType => panelType;
+
+    private UIJuice _uiJuice;
+    
+    protected UIJuice UiJuice
+    {
+        get
+        {
+            if (_uiJuice == null)
+            {
+                _uiJuice = GetComponent<UIJuice>();
+            }
+            return _uiJuice;
+        }
+    }
+
+    protected virtual void Awake()
+    {
+        // Tenta se registrar o mais cedo possível
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.RegisterPanel(this);
+        }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UnregisterPanel(this);
+        }
+    }
+    
+    public virtual void Show()
+    {
+        // *** MUDANÇA CRÍTICA ***
+        // Garante que o GameObject esteja ativo antes de iniciar a animação.
+        if (!gameObject.activeInHierarchy)
+        {
+            gameObject.SetActive(true);
+        }
+        UiJuice.PlayTVScanAnimation();
+    }
+
+    public virtual void Hide()
+    {
+        UiJuice.PlayReverseTVScanAnimation();
+    }
+}
+</file>
+
 <file path="Assets/Scripts/UIPanelType.cs">
 // Local: Assets/Scripts/UI/UIPanelType.cs
 
@@ -7335,235 +7664,6 @@ public class WinLogic : MonoBehaviour
         
         GameFlowManager.Instance.CompleteLevel();
     }
-}
-</file>
-
-<file path="Assets/Scripts/AudioManager.cs">
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Audio;
-using UnityEngine.SceneManagement;
-
-
-[Serializable]
-public class SceneMusic
-{
-    public GameScene scene;
-    public string musicName;
-}
-
-public class AudioManager : MonoBehaviour
-{
-    public static AudioManager instance;
-
-    public Sound[] musicSounds, ambientSounds, sfxSounds;
-    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
-    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
-    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
-
-    [SerializeField] private AudioMixer audioMixer;
-    [SerializeField] private float sfxPitchVariation = 0.1f;
-
-    [Header("Músicas por Cena (Enum)")]
-    [SerializeField] private SceneMusic[] sceneMusics;
-
-    private void Awake()
-    {
-        AddSoundsToDictionary(sfxSounds);
-        AddSoundsToDictionary(musicSounds);
-        AddSoundsToDictionary(ambientSounds);
-
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    private void Start()
-    {
-        GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
-        PlaySceneMusic(currentSceneEnum);
-    }
-
-    private void AddSoundsToDictionary(Sound[] soundArray)
-    {
-        foreach (Sound s in soundArray)
-        {
-            if (!sfxDictionary.ContainsKey(s.name))
-            {
-                sfxDictionary.Add(s.name, s.clip);
-            }
-        }
-    }
-
-    public void PlayMusic(string name)
-    {
-        Sound s = Array.Find(musicSounds, x => x.name == name);
-
-        if (s == null)
-        {
-            Debug.LogWarning($"Sound Not Found: {name}");
-        }
-        else
-        {
-            musicSource.clip = s.clip;
-            musicSource.volume = musicSource.volume * masterSource.volume;
-            musicSource.Play();
-        }
-    }
-
-    public void PlayAmbient(string name)
-    {
-        Sound s = Array.Find(ambientSounds, x => x.name == name);
-        if (s == null)
-        {
-            Debug.LogWarning("Ambient sound not found: " + name);
-        }
-        else
-        {
-            ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
-            ambientSource.loop = true;
-            ambientSource.Play();
-        }
-    }
-
-    public void PlaySFX(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-            sfxSource.pitch = randomPitch;
-            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
-        }
-        else
-        {
-            Debug.LogWarning("Sound Not Found: " + name);
-        }
-    }
-
-    public void ToggleMusic() => musicSource.mute = !musicSource.mute;
-    public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
-    public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
-
-    public void MusicVolume(float volume) => musicSource.volume = volume * masterSource.volume;
-    public void AmbientVolume(float volume) => ambientSource.volume = volume * masterSource.volume;
-    public void SFXVolume(float volume) => sfxSource.volume = volume * masterSource.volume;
-    public void MasterVolume(float volume) => audioMixer.SetFloat("MasterVolume", volume);
-
-    public void SetMasterMute(bool muteState) 
-    {
-    	masterSource.mute = muteState;
-    	musicSource.mute = muteState;
-    	sfxSource.mute = muteState;
-    }
-
-    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
-
-    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
-
-    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
-
-    private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
-    private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
-
-    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
-    {
-        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
-            return existingSource;
-
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            GameObject obj = new GameObject("LoopingSFX_" + name);
-            obj.transform.parent = transform;
-
-            AudioSource newSource = obj.AddComponent<AudioSource>();
-            newSource.clip = clip;
-            newSource.loop = true;
-            newSource.playOnAwake = false;
-            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
-            newSource.Play();
-
-            loopingSources.Add(name, newSource);
-            return newSource;
-        }
-        else
-        {
-            Debug.LogWarning("Looping Sound Not Found: " + name);
-            return null;
-        }
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        GameScene sceneEnum = GetSceneEnum(scene.name);
-        PlaySceneMusic(sceneEnum);
-    }
-
-    private void PlaySceneMusic(GameScene sceneEnum)
-    {
-        foreach (var sceneMusic in sceneMusics)
-        {
-            if (sceneMusic.scene == sceneEnum)
-            {
-                PlayMusic(sceneMusic.musicName);
-                return;
-            }
-        }
-    }
-
-    private GameScene GetSceneEnum(string sceneName)
-    {
-        if (Enum.TryParse(sceneName, out GameScene parsedEnum))
-            return parsedEnum;
-
-        return (GameScene)(-1);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/GameSceneEnum.cs">
-using System;
-
-[Serializable]
-public enum GameScene
-{
-    ARTBonesClimbGrayBox,
-    ARTBonesClimbGrayBoxCopia,
-    BackGroundTest,
-    Basic,
-    BasicMovement,
-    BonesClimbGrayBox,
-    BonesClimbGrayBoxCopia,
-    BonesStartGrayBox,
-    BonesStartGrayBoxCopia,
-    CarLevel,
-    EricAnimations,
-    EricGraybox,
-    FineTuningMovement,
-    Hellcat,
-    LevelDesignCaio,
-    MainMenu,
-    MainMenuCopia,
-    MenuCaio,
-    MenuCaioAUDIO,
-    MenuCopiaPeu,
-    PrefabsTest,
-    Standard,
-    TimeStop,
-    Tutorial,
-    VFXBonesTest,
-    VFXGabriel,
-    VictorAgarrar,
-    VictorGraybox,
-    ViniciusLevelDesign,
 }
 </file>
 
@@ -7648,288 +7748,6 @@ public class GameSettingsManager : MonoBehaviour
         SaveManager.Instance.SaveGame();
         OnCheckpointsEnabledChanged?.Invoke(isEnabled);
     }
-}
-</file>
-
-<file path="Assets/Scripts/GrapplingHookController.cs">
-// Assets/Scripts/GrapplingHookController.cs
-
-using UnityEngine;
-using System;
-
-public class GrapplingHookController : MonoBehaviour
-{
-    #region Events
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleStopped;
-    public event Action<Transform> OnPredictionTargetChanged; // NOVO EVENTO
-    #endregion
-
-    #region Dependencies
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovement;
-    [SerializeField] private Transform grappleTip;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private GameObject predictionPointPrefab;
-    #endregion
-
-    #region Grapple Settings
-    [Header("Configurações do Gancho")]
-    [SerializeField] private float maxGrappleDistance = 50f;
-    [SerializeField] private float grappleCooldown = 1f;
-    [SerializeField] private LayerMask grappleableLayer;
-    [SerializeField] private bool canDoMultipleGrapple = false;
-    [SerializeField] private float maximumTimeGrappling = 3f;
-    #endregion
-
-    #region Joint Settings
-    [Header("Configurações da Junta (Puxão)")]
-    [SerializeField] private float springForce = 8f;
-    [SerializeField] private float damper = 7f;
-    [SerializeField] private float massScale = 4.5f;
-    [SerializeField] private float minSpringSize = .1f;
-    [SerializeField] private float maxSpringSize = .8f;
-    #endregion
-
-    #region Swing Settings
-    [Header("Configurações do Pêndulo")]
-    [SerializeField] private float swingForce = 50f;
-    #endregion
-
-    #region Input Buffer
-    [Header("Buffer de Input")]
-    [SerializeField] private float grappleInputBufferTime = 0.5f;
-    #endregion
-
-    #region State
-    public bool IsGrappling => _isGrappling;
-    public float grappleDistance { get; private set; }
-    public Vector3 GrapplePoint { get; private set; }
-
-    private bool _isGrappling = false;
-    private bool _hasGrappleAvailable = true;
-    private bool _hasValidGrappleTarget;
-    private bool _isInputBuffered;
-    private bool _wasPredictionTargetValidLastFrame = false;
-
-    private float _cooldownTimer;
-    private float _grappleTimer;
-    private float _grappleInputBufferTimer;
-
-    private Vector2 _moveInput;
-    private Vector3 _grappledPointLocalOffset;
-    private Rigidbody _grappledRigidbody;
-
-    private SpringJoint _joint;
-    private GameObject _predictionPointInstance;
-    private RaycastHit _predictionHit;
-    #endregion
-
-    #region Unity Lifecycle
-    private void Awake()
-    {
-        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
-        _hasGrappleAvailable = true;
-
-        if (predictionPointPrefab != null)
-        {
-            _predictionPointInstance = Instantiate(predictionPointPrefab);
-            _predictionPointInstance.SetActive(false);
-        }
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
-        InputManager.Instance.OnMove += SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
-
-        if (_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-            _wasPredictionTargetValidLastFrame = false;
-        }
-        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
-    }
-
-    private void Update()
-    {
-        HandleTimers();
-        HandleInputBuffer();
-        UpdateGrappleStateAndVisuals();
-    }
-
-    private void LateUpdate() { DrawRope(); }
-    private void FixedUpdate() { ApplySwingForce(); }
-    #endregion
-
-    #region Prediction & State Broadcasting
-    private void UpdateGrappleStateAndVisuals()
-    {
-        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
-        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-
-        UpdatePredictionPointVisual(isPredictionReady);
-        BroadcastPredictionStateChange(isPredictionReady);
-    }
-
-    private void UpdatePredictionPointVisual(bool show)
-    {
-        if (_predictionPointInstance == null) return;
-
-        if (show && !_predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(true);
-        }
-        else if (!show && _predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(false);
-        }
-
-        if (show)
-        {
-            _predictionPointInstance.transform.position = _predictionHit.point;
-        }
-    }
-
-    private void BroadcastPredictionStateChange(bool isReady)
-    {
-        if (isReady && !_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
-        }
-        else if (!isReady && _wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-        }
-        _wasPredictionTargetValidLastFrame = isReady;
-    }
-    #endregion
-
-    #region Input & Event Handlers
-    private void SetMoveInput(Vector2 input) => _moveInput = input;
-    private void OnGrappleInputStarted()
-    {
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
-    }
-    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
-    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
-    #endregion
-
-    #region Core Grapple Logic
-    private void ExecuteGrapple()
-    {
-        OnGrappleStarted?.Invoke();
-        _isGrappling = true;
-        _grappleTimer = maximumTimeGrappling;
-        ClearInputBuffer();
-        grappleDistance = _predictionHit.distance;
-        GrapplePoint = _predictionHit.point;
-        _grappledRigidbody = _predictionHit.rigidbody;
-        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(GrapplePoint); }
-        CreateAndConfigureJoint(GrapplePoint);
-        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
-        UpdateGrappleStateAndVisuals();
-    }
-
-    public void StopGrapple()
-    {
-        if (!_isGrappling) return;
-        OnGrappleStopped?.Invoke();
-        _isGrappling = false;
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
-        lineRenderer.positionCount = 0;
-        Destroy(_joint);
-        _grappledRigidbody = null;
-        playerMovement.ResetDoubleJump();
-        UpdateGrappleStateAndVisuals();
-    }
-    private void ApplySwingForce()
-    {
-        if (!_joint) return;
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
-        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
-    }
-    #endregion
-    private bool FindValidGrappleTarget(out RaycastHit hit)
-    {
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer)) { return true; }
-        return Physics.SphereCast(playerMovement.Rb.transform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
-    }
-    private void DrawRope()
-    {
-        if (!_joint) return;
-        UpdateGrappleAnchorPosition();
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, GrapplePoint);
-    }
-    private void UpdateGrappleAnchorPosition()
-    {
-        if (_grappledRigidbody != null)
-        {
-            GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset);
-            if (_joint) _joint.connectedAnchor = GrapplePoint;
-        }
-    }
-    #region State & Timers
-    private void HandleTimers()
-    {
-        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
-        if (_isGrappling)
-        {
-            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
-            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
-        }
-        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
-    }
-
-    private void HandleInputBuffer()
-    {
-        if (!_isInputBuffered) return;
-        _grappleInputBufferTimer -= Time.deltaTime;
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
-    }
-    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
-    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
-    private bool CanCurrentlyAttemptGrapple()
-    {
-        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
-        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
-    }
-    #endregion
-
-    #region Utility
-    private void CreateAndConfigureJoint(Vector3 connectedPoint)
-    {
-        _joint = gameObject.AddComponent<SpringJoint>();
-        _joint.autoConfigureConnectedAnchor = false;
-        _joint.anchor = Vector3.zero;
-        _joint.connectedAnchor = connectedPoint;
-        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
-        _joint.maxDistance = distanceFromPoint * maxSpringSize;
-        _joint.minDistance = distanceFromPoint * minSpringSize;
-        _joint.spring = springForce;
-        _joint.damper = damper;
-        _joint.massScale = massScale;
-    }
-    #endregion
 }
 </file>
 
@@ -8040,10 +7858,262 @@ public class InputStateManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/MovingPlatform.cs">
+using UnityEngine;
+using System;
+
+[RequireComponent(typeof(Rigidbody))]
+public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable, IGrappleable
+{
+    // O evento OnGrappabilityChanged não é mais necessário, pois o GrapplingHookController
+    // fará uma verificação ativa via IGrappleable.
+
+    [Header("Configurações de Patrulha")]
+    [SerializeField] private Transform targetA;
+    [SerializeField] private Transform targetB;
+    [Tooltip("A velocidade da plataforma em unidades por segundo.")]
+    public float speed = 3f;
+    [Tooltip("Fator de influência no movimento do jogador quando está sobre a plataforma.")]
+    public float playerInfluence = 0.69f;
+
+    [Header("Visual")]
+    [SerializeField] private Color slowDownColor = Color.cyan;
+
+    [Header("Configurações de Grapple")]
+    [Tooltip("Se marcado, a plataforma pode ser agarrada (grapple) mesmo quando está se movendo normalmente. Se desmarcado, só pode ser agarrada com o tempo parado.")]
+    [SerializeField] private bool canBeGrappledWhileMoving = true;
+    [Tooltip("Nome da camada para a qual a plataforma será movida quando puder ser agarrada. Certifique-se de que o GrapplingHookController possa interagir com esta camada.")]
+    [SerializeField] private string grappleableLayerName = "Grappleable";
+    [Tooltip("Nome da camada original da plataforma, para onde ela retorna quando não pode ser agarrada. Será detectada automaticamente se deixado vazio.")]
+    [SerializeField] private string defaultLayerName = ""; // Preenche automaticamente
+
+    private Rigidbody _rb;
+    private Renderer _renderer;
+    private Color _originalColor;
+
+    // --- NOVA ARQUITETURA DE MOVIMENTO ---
+    private Vector3 _startPoint;
+    private Vector3 _endPoint;
+    private float _journeyLength;
+    private float _journeyTravelled;
+    private float _originalSpeed; // Para salvar a velocidade durante o slow-motion
+
+    // --- ESTADO ---
+    private bool _isSlowed = false;
+    private Vector3 _initialPosition; // Para IResettable
+    private int _originalLayer; // Armazena a camada inicial do objeto
+    private int _grappleableLayerIndex;
+    private int _nonGrappleableLayerIndex; // Usaremos a camada original como a "não-grappable" se a checkbox estiver desmarcada
+
+    // private bool _currentGrappabilityState; // Não é mais necessário rastrear aqui, a interface lida com isso.
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        _renderer = GetComponent<Renderer>();
+        if (_renderer != null) _originalColor = _renderer.material.color;
+
+        _rb.useGravity = false;
+        _rb.freezeRotation = true;
+        
+        _rb.isKinematic = true; 
+        
+        _initialPosition = transform.position;
+
+        // Armazena a camada original e resolve os índices de camada
+        _originalLayer = gameObject.layer;
+        _grappleableLayerIndex = LayerMask.NameToLayer(grappleableLayerName);
+
+        // Se o nome da camada padrão não for especificado, usamos a camada original
+        if (string.IsNullOrEmpty(defaultLayerName))
+        {
+            _nonGrappleableLayerIndex = _originalLayer;
+        }
+        else
+        {
+            _nonGrappleableLayerIndex = LayerMask.NameToLayer(defaultLayerName);
+        }
+
+        if (_grappleableLayerIndex == -1)
+        {
+            Debug.LogError($"Camada 'Grappleable' ({grappleableLayerName}) não encontrada para MovingPlatform em {gameObject.name}. Verifique as configurações de Layer do projeto.", this);
+            _grappleableLayerIndex = _originalLayer; 
+        }
+        if (_nonGrappleableLayerIndex == -1)
+        {
+            Debug.LogError($"Camada 'Não-Grappleable' ({defaultLayerName}) não encontrada para MovingPlatform em {gameObject.name}. Usando a camada original.", this);
+            _nonGrappleableLayerIndex = _originalLayer;
+        }
+    }
+
+    private void Start()
+    {
+        if (targetA == null || targetB == null)
+        {
+            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
+            enabled = false;
+            return;
+        }
+
+        InitializeJourney();
+        _originalSpeed = speed;
+
+        TimeManipulationManager.Instance.Register(this);
+        UpdateGrappleableLayer(); // Define o estado inicial da camada
+    }
+
+    private void OnDisable()
+    {
+        if (_isSlowed) RestoreNormalTime();
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        UpdateMovement();
+    }
+
+    /// <summary>
+    /// Lógica principal de movimento. Calcula a posição exata da plataforma
+    /// ao longo do trajeto com base no tempo e na velocidade, evitando o problema de "overshooting".
+    /// </summary>
+    private void UpdateMovement()
+    {
+        if (_journeyLength <= 0) return;
+
+        _journeyTravelled += speed * Time.fixedDeltaTime;
+
+        if (_journeyTravelled >= _journeyLength)
+        {
+            float overshoot = _journeyTravelled - _journeyLength;
+            SwapEndpoints();
+            _journeyTravelled = overshoot;
+        }
+
+        float fractionOfJourney = _journeyTravelled / _journeyLength;
+
+        Vector3 newPosition = Vector3.Lerp(_startPoint, _endPoint, fractionOfJourney);
+        _rb.MovePosition(newPosition);
+    }
+    
+    /// <summary>
+    /// Configura ou reconfigura o estado inicial do trajeto da plataforma.
+    /// </summary>
+    private void InitializeJourney()
+    {
+        transform.position = _initialPosition; // Garante que a plataforma comece na posição certa
+        _startPoint = targetA.position;
+        _endPoint = targetB.position;
+        _journeyLength = Vector3.Distance(_startPoint, _endPoint);
+        _journeyTravelled = 0f;
+    }
+    
+    /// <summary>
+    /// Inverte os pontos de início e fim para fazer a plataforma voltar.
+    /// </summary>
+    private void SwapEndpoints()
+    {
+        Vector3 temp = _startPoint;
+        _startPoint = _endPoint;
+        _endPoint = temp;
+    }
+
+    #region ITimeSlowable Implementation
+
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+
+        float slowFactor = 1.0f - (slowPercentage / 100.0f);
+        speed = _originalSpeed * slowFactor;
+
+        if (_renderer != null) _renderer.material.color = slowDownColor;
+        UpdateGrappleableLayer(); // Atualiza a camada quando o tempo é lento
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+
+        speed = _originalSpeed;
+
+        if (_renderer != null) _renderer.material.color = _originalColor;
+        UpdateGrappleableLayer(); // Atualiza a camada quando o tempo volta ao normal
+    }
+
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+    
+    #endregion
+
+    #region IResettable Implementation
+    
+    public void ResetState()
+    {
+        InitializeJourney();
+        RestoreNormalTime();
+        UpdateGrappleableLayer(); // Garante que a camada seja redefinida corretamente
+    }
+    
+    #endregion
+
+    /// <summary>
+    /// Controla dinamicamente a camada do GameObject para permitir ou impedir o grapple.
+    /// </summary>
+    private void UpdateGrappleableLayer()
+    {
+        // A camada é definida com base na checkbox e no estado de lentidão.
+        // O método CanBeGrappledNow() será o ponto de verificação para o GrapplingHookController.
+        if (CanBeGrappledNow())
+        {
+            gameObject.layer = _grappleableLayerIndex;
+        }
+        else
+        {
+            gameObject.layer = _nonGrappleableLayerIndex;
+        }
+    }
+
+    #region IGrappleable Implementation
+    public bool CanBeGrappledNow()
+    {
+        // A plataforma é agarrável se:
+        // 1. A checkbox permite agarrar enquanto ela se move, OU
+        // 2. O tempo está lento.
+        return canBeGrappledWhileMoving || _isSlowed;
+    }
+
+    public GameObject GetGameObject()
+    {
+        return gameObject;
+    }
+    #endregion
+
+    private void OnDrawGizmos()
+    {
+        if (targetA != null && targetB != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(targetA.position, targetB.position);
+            Gizmos.DrawWireSphere(targetA.position, 0.5f);
+            Gizmos.DrawWireSphere(targetB.position, 0.5f);
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/PlayerAnimatorController.cs">
 // Local: Assets/Scripts/PlayerAnimationController.cs
 
 using UnityEngine;
+using System; // Adicionado para Action (embora não seja usado diretamente aqui, é bom para consistência)
 
 [RequireComponent(typeof(Animator))]
 public class PlayerAnimationController : MonoBehaviour
@@ -8062,7 +8132,10 @@ public class PlayerAnimationController : MonoBehaviour
     // Hashes do gancho
     private readonly int _hashGrappleStart = Animator.StringToHash("GrappleStartTrigger");
     private readonly int _hashGrappleStop = Animator.StringToHash("GrappleStopTrigger");
-    private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling"); // NOVO (o bool)
+    private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling");
+
+    // NOVO Hash para o Double Jump
+    private readonly int _hashDoubleJump = Animator.StringToHash("DoubleJumpTrigger");
 
 
     private void Awake()
@@ -8092,6 +8165,9 @@ public class PlayerAnimationController : MonoBehaviour
         playerMovementController.OnGroundLanded += HandleLand;
         playerMovementController.OnLeftGround += HandleLeftGround;
 
+        // NOVO: Inscrição para o Double Jump
+        playerMovementController.OnDoubleJumpUsed += HandleDoubleJump;
+
         // Inscrições do gancho
         if (grapplingHookController != null)
         {
@@ -8109,6 +8185,9 @@ public class PlayerAnimationController : MonoBehaviour
             playerMovementController.OnJumped -= HandleJump;
             playerMovementController.OnGroundLanded -= HandleLand;
             playerMovementController.OnLeftGround -= HandleLeftGround;
+
+            // NOVO: Desinscrição para o Double Jump
+            playerMovementController.OnDoubleJumpUsed -= HandleDoubleJump;
         }
 
         // Desinscrições do gancho
@@ -8118,11 +8197,11 @@ public class PlayerAnimationController : MonoBehaviour
             grapplingHookController.OnGrappleStopped -= HandleGrappleStopped;
         }
 
-        // Garante que o estado seja resetado se este script for desabilitado // NOVO
-        if (_animator != null && _animator.isInitialized) // NOVO
-        { // NOVO
-            _animator.SetBool(_hashIsGrappling, false); // NOVO
-        } // NOVO
+        // Garante que o estado seja resetado se este script for desabilitado
+        if (_animator != null && _animator.isInitialized)
+        {
+            _animator.SetBool(_hashIsGrappling, false);
+        }
     }
 
     // Handlers existentes
@@ -8147,402 +8226,26 @@ public class PlayerAnimationController : MonoBehaviour
         _animator.SetBool(_hashIsGrounded, false);
     }
 
-    // Handlers do gancho (agora com o bool)
+    // NOVO Handler para o Double Jump
+    private void HandleDoubleJump()
+    {
+        // Não reseta IsGrounded aqui, pois o jogador já estava no ar.
+        _animator.SetTrigger(_hashDoubleJump);
+    }
+
+
+    // Handlers do gancho 
     private void HandleGrappleStarted()
     {
         _animator.SetTrigger(_hashGrappleStart);
-        _animator.SetBool(_hashIsGrappling, true); // NOVO
+        _animator.SetBool(_hashIsGrappling, true);
     }
 
     private void HandleGrappleStopped()
     {
         _animator.SetTrigger(_hashGrappleStop);
-        _animator.SetBool(_hashIsGrappling, false); // NOVO
+        _animator.SetBool(_hashIsGrappling, false);
     }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerAudioHandler.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour
-{
-    private PlayerMovementController movement;
-    private GrapplingHookController grapple;
-    private Rigidbody rb;
-
-    private bool jumpSoundPlayed = false;
-
-    [Header("Sons - Movimento")]
-    [SerializeField] private string[] footstepSfxOptions;
-    [SerializeField] private string[] jumpSfxOptions;
-    [SerializeField] private string[] doubleJumpSfxOptions;
-    [SerializeField] private string[] landSfxOptions;
-    [SerializeField] private string footstepSfx = "footstep";
-    [SerializeField] private string wallHitSfx = "WallHit";
-    [SerializeField] private string[] ringSfxOptions;
-    [SerializeField] private string[] jumpPadSfxOptions;
-
-
-    [Header("Sons - Estado do Player")]
-    [SerializeField] private string deathSfx = "Death";
-    [SerializeField] private string deathFallSFX = "DeathFall";
-    [SerializeField] private string respawnSfx = "Respawn";
-    [SerializeField] private string timeSkillOnSfx = "TimeOn";
-    [SerializeField] private string timeSkillOffSfx = "TimeOff";
-
-    [Header("Sons - Grappling Hook")]
-    [SerializeField] private string[] grappleShootSfxOptions;
-    [SerializeField] private string[] grappleAttachSfxOptions;
-    [SerializeField] private string[] grappleReleaseSfxOptions;
-
-    [Header("Parâmetros")]
-    [SerializeField] private float stepInterval = 0.35f;
-    [SerializeField] private float minStepSpeed = 2f;
-    [SerializeField] private float wallHitMinForce = 5f;
-
-    [Header("Som - Vento")]
-    [SerializeField] private string windSfx = "Wind";
-    [SerializeField] private float windMinSpeed = 20f;
-    [SerializeField] private float windMaxSpeed = 60f;
-    [SerializeField] private float windFadeSpeed = 5f;
-
-    private float stepTimer;
-    private bool hasLandedOnce = false;
-    private Vector3 lastPosition;
-
-    private bool wasGrappling;
-    private bool grappleJustStarted;
-
-    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
-    private bool canDoubleJump = false; // Se double jump pode tocar
-
-    private bool doubleJumpAvailable = false;
-    private bool doubleJumpSoundPlayed = false;
-
-
-    private AudioSource windSource;
-
-    private void Awake()
-    {
-        movement = GetComponent<PlayerMovementController>();
-        grapple = GetComponent<GrapplingHookController>();
-        rb = GetComponent<Rigidbody>();
-
-        stepTimer = stepInterval;
-        lastPosition = transform.position;
-
-        if (AudioManager.instance != null)
-        {
-            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
-        }
-        else
-        {
-            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
-        }
-    }
-
-    private void OnEnable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
-
-            BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
-
-            // Escuta manualmente JumpPads que existirem na cena
-            foreach (var jumpPad in FindObjectsOfType<JumpPad>())
-            {
-                AddJumpPadListener(jumpPad);
-            }
-        }
-
-        movement.OnGroundLanded += PlayLand;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
-            BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
-        }
-
-        movement.OnGroundLanded -= PlayLand;
-    }
-
-    private void Update()
-    {
-        HandleFootsteps();
-        DetectRespawn();
-        HandleGrappleAudio();
-        HandleWindAudio();
-        //HandleDoubleJumpAudio();
-
-        if (movement.isGrounded)
-        {
-            hasJumpedOnce = false;
-            canDoubleJump = false;
-            doubleJumpSoundPlayed = false;
-        }
-    }
-
-
-    private void HandleJumpAudio()
-    {
-        if (movement.isGrounded)
-        {
-            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, jumpSfxOptions.Length);
-                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
-            }
-
-            doubleJumpAvailable = true;
-            doubleJumpSoundPlayed = false;
-        }
-        else
-        {
-            // Double jump: toca som apenas se ainda estiver disponível
-            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
-            {
-                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
-                {
-                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
-                    {
-                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
-                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
-                    }
-
-                    doubleJumpSoundPlayed = true;
-                    doubleJumpAvailable = false;
-                }
-            }
-        }
-    }
-
-
-
-
-
-    private void HandleFootsteps()
-    {
-        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
-        {
-            stepTimer = stepInterval;
-            return;
-        }
-
-        stepTimer -= Time.deltaTime;
-        if (stepTimer <= 0f)
-        {
-            string sfxToPlay = footstepSfx;
-
-            if (footstepSfxOptions != null && footstepSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, footstepSfxOptions.Length);
-
-
-                if (!string.IsNullOrEmpty(footstepSfxOptions[idx]))
-                    sfxToPlay = footstepSfxOptions[idx];
-            }
-
-            AudioManager.instance.PlaySFX(sfxToPlay);
-            stepTimer = stepInterval;
-        }
-    }
-
-    private void DetectRespawn()
-    {
-        float distance = Vector3.Distance(transform.position, lastPosition);
-        if (distance > 10f && movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(respawnSfx);
-            if (windSource != null)
-            {
-                windSource.Stop();
-                windSource.Play();
-            }
-        }
-        lastPosition = transform.position;
-    }
-
-    private void HandleGrappleStart()
-    {
-        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, grappleShootSfxOptions.Length);
-            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
-        }
-        //AudioManager.instance.PlaySFX(grappleShootSfx);
-        grappleJustStarted = true;
-    }
-
-    private void HandleGrappleEnd()
-    {
-        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
-            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
-        }
-
-        //AudioManager.instance.PlaySFX(grappleReleaseSfx);
-
-        // Libera double jump só se tinha realmente se agarrado
-        if (wasGrappling)
-        {
-            doubleJumpAvailable = true;
-            doubleJumpSoundPlayed = false;
-        }
-
-        grappleJustStarted = false;
-        wasGrappling = false;
-    }
-
-    private void HandleGrappleAudio()
-    {
-        if (grapple == null || !grappleJustStarted) return;
-
-        // Som e estado só se realmente conectar
-        if (grapple.IsGrappling)
-        {
-            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
-                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
-            }
-            //AudioManager.instance.PlaySFX(grappleAttachSfx);
-
-            // Bloqueia double jump enquanto estiver agarrado
-            doubleJumpAvailable = false;
-            doubleJumpSoundPlayed = false;
-
-            wasGrappling = true;
-            grappleJustStarted = false;
-        }
-
-    }
-
-
-    private void HandleWindAudio()
-    {
-        if (windSource == null) return;
-
-        // Se o jogo está pausado, zera o volume
-        if (Time.timeScale == 0f)
-        {
-            windSource.volume = 0f;
-            return;
-        }
-
-        // Calcula volume base pelo movimento do player
-        float speed = rb.linearVelocity.magnitude;
-        float targetVolume = 0f;
-
-        if (speed > windMinSpeed)
-            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
-
-        // Aplica SFX e Master volume, e considera muting
-        if (AudioManager.instance != null)
-        {
-            float sfxVolume = AudioManager.instance.sfxSource.volume;
-            float masterVolume = AudioManager.instance.masterSource.volume;
-            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
-
-            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
-        }
-
-        // Suaviza a transição do volume
-        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
-    }
-
-
-
-    private void PlayLand()
-    {
-        if (!hasLandedOnce)
-        {
-            hasLandedOnce = true;
-            return;
-        }
-
-        if (landSfxOptions != null && landSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, landSfxOptions.Length);
-            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
-        }
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        Vector3 normal = collision.contacts[0].normal;
-        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
-        {
-            AudioManager.instance.PlaySFX(wallHitSfx);
-        }
-    }
-
-
-
-    private void HandlePowerRingAudio()
-    {
-        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, ringSfxOptions.Length);
-            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
-        }
-
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
-        //AudioManager.instance.PlaySFX(ringSfx);
-    }
-
-    private void AddJumpPadListener(JumpPad pad)
-    {
-        // Essa parte é uma gambiarra temporária, mas funciona bem
-        var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
-        trigger.Setup(pad, this);
-    }
-
-    public void PlayJumpPadAudio()
-    {
-        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, jumpPadSfxOptions.Length);
-            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
-        }
-
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
-        //AudioManager.instance.PlaySFX(jumpPadSfx);
-    }
-
-
-
-
-
-
-
-
-    // Funções públicas de áudio
-    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual()
-    {
-        AudioManager.instance.PlaySFX(respawnSfx);
-        if (windSource != null)
-            windSource.volume = 0f;
-    }
-    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
-    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
@@ -8708,82 +8411,6 @@ public class SettingsPanel : UIPanel
         {
             Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
         }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/TvScanController.cs">
-using UnityEngine;
-
-public class TVScanMaterialController : MonoBehaviour
-{
-	public string Unscaled = "_UnscaledTime";
-	public Material material;
-
-	void Update()
-	{
-	   material.SetFloat("_UnscaledTime", Time.unscaledTime);
-            
-	}
-}
-</file>
-
-<file path="Assets/Scripts/UIPanel.cs">
-// Local: Assets/Scripts/UI/UIPanel.cs
-
-using UnityEngine;
-
-[RequireComponent(typeof(UIJuice))]
-public abstract class UIPanel : MonoBehaviour
-{
-    [SerializeField] private UIPanelType panelType;
-    public UIPanelType PanelType => panelType;
-
-    private UIJuice _uiJuice;
-    
-    protected UIJuice UiJuice
-    {
-        get
-        {
-            if (_uiJuice == null)
-            {
-                _uiJuice = GetComponent<UIJuice>();
-            }
-            return _uiJuice;
-        }
-    }
-
-    protected virtual void Awake()
-    {
-        // Tenta se registrar o mais cedo possível
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.RegisterPanel(this);
-        }
-    }
-
-    protected virtual void OnDestroy()
-    {
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.UnregisterPanel(this);
-        }
-    }
-    
-    public virtual void Show()
-    {
-        // *** MUDANÇA CRÍTICA ***
-        // Garante que o GameObject esteja ativo antes de iniciar a animação.
-        if (!gameObject.activeInHierarchy)
-        {
-            gameObject.SetActive(true);
-        }
-        UiJuice.PlayTVScanAnimation();
-    }
-
-    public virtual void Hide()
-    {
-        UiJuice.PlayReverseTVScanAnimation();
     }
 }
 </file>
@@ -9569,6 +9196,333 @@ public class GameFlowManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/GrappleVisual.cs">
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+
+public class LinePrefabRendererEffects : MonoBehaviour
+{
+    [Header("References")]
+    public LineRenderer lineRenderer;
+    public GameObject lineSegmentPrefabA;
+    public GameObject lineSegmentPrefabB;
+    public GameObject startTipPrefab;
+    public GameObject endTipPrefab;
+
+    [Header("Settings")]
+    public float minSegmentLength = 0.001f;
+    [Range(0f, 1f)] public float flickerChance = 0.3f;
+    public float flickerRate = 0.05f;
+    public bool alignTipsToLine = true;
+
+    private GameObject segmentAInstance;
+    private GameObject segmentBInstance;
+    private GameObject startTipInstance;
+    private GameObject endTipInstance;
+
+    private Transform segmentParent;
+    private float prefabLength = 1f;
+    private Vector3 prefabPrimaryAxisLocal = Vector3.forward;
+    private Vector3 prefabOriginalLocalScale = Vector3.one;
+
+    private List<Coroutine> _flickerCoroutines = new List<Coroutine>();
+
+    private GrapplingHookController _grapplingHookController;
+
+    void Awake()
+    {
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>();
+        if (_grapplingHookController == null)
+        {
+            Debug.LogError("LinePrefabRendererEffects: GrapplingHookController não encontrado na cena. Este componente será desativado.", this);
+            enabled = false;
+            return;
+        }
+
+        if (lineRenderer == null)
+            lineRenderer = GetComponent<LineRenderer>();
+    }
+    
+    void Start()
+    {
+        EnsureContainer();
+        CachePrefabInfo();
+        
+        EnsureSingleInstance(ref segmentAInstance, lineSegmentPrefabA);
+        EnsureSingleInstance(ref segmentBInstance, lineSegmentPrefabB);
+        EnsureSingleInstance(ref startTipInstance, startTipPrefab);
+        EnsureSingleInstance(ref endTipInstance, endTipPrefab);
+
+        // Garante que tudo comece desativado
+        CleanupAllChildObjects();
+        if (segmentParent != null) segmentParent.gameObject.SetActive(false);
+    }
+    
+    // A lógica principal agora está em LateUpdate
+    void LateUpdate()
+    {
+        if (_grapplingHookController.IsGrappling)
+        {
+            RebuildAll();
+        }
+        else
+        {
+            CleanupAllChildObjects();
+            if (segmentParent != null && segmentParent.gameObject.activeSelf)
+            {
+                segmentParent.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    void OnDestroy()
+    {
+        CleanupAll();
+        StopAllFlickerCoroutines();
+    }
+    
+    void EnsureContainer()
+    {
+        if (segmentParent == null)
+        {
+            Transform existing = transform.Find("LineSegmentsContainer");
+            if (existing)
+                segmentParent = existing;
+            else
+            {
+                GameObject container = new GameObject("LineSegmentsContainer");
+                container.transform.SetParent(transform, false);
+                segmentParent = container.transform;
+            }
+        }
+    }
+
+    void CleanupAll()
+    {
+        StopAllFlickerCoroutines();
+
+        SafeDestroy(segmentAInstance);
+        SafeDestroy(segmentBInstance);
+        SafeDestroy(startTipInstance);
+        SafeDestroy(endTipInstance);
+
+        segmentAInstance = null;
+        segmentBInstance = null;
+        startTipInstance = null;
+        endTipInstance = null;
+        
+        if (segmentParent != null)
+        {
+            segmentParent.gameObject.SetActive(false);
+        }
+    }
+    
+    private void CleanupAllChildObjects()
+    {
+        if (segmentAInstance != null) segmentAInstance.SetActive(false);
+        if (segmentBInstance != null) segmentBInstance.SetActive(false);
+        if (startTipInstance != null) startTipInstance.SetActive(false);
+        if (endTipInstance != null) endTipInstance.SetActive(false);
+    }
+
+    void CachePrefabInfo()
+    {
+        GameObject prefabRef = lineSegmentPrefabA != null ? lineSegmentPrefabA : lineSegmentPrefabB;
+        if (prefabRef == null) return;
+
+        prefabOriginalLocalScale = prefabRef.transform.localScale;
+        Vector3 localSize = Vector3.zero;
+        bool found = false;
+
+        MeshFilter mf = prefabRef.GetComponent<MeshFilter>();
+        if (mf == null) mf = prefabRef.GetComponentInChildren<MeshFilter>();
+        if (mf && mf.sharedMesh) { localSize = mf.sharedMesh.bounds.size; found = true; }
+        else
+        {
+            SkinnedMeshRenderer smr = prefabRef.GetComponent<SkinnedMeshRenderer>();
+            if (smr == null) smr = prefabRef.GetComponentInChildren<SkinnedMeshRenderer>();
+            if (smr && smr.sharedMesh) { localSize = smr.sharedMesh.bounds.size; found = true; }
+            else
+            {
+                SpriteRenderer sr = prefabRef.GetComponent<SpriteRenderer>();
+                if (sr == null) sr = prefabRef.GetComponentInChildren<SpriteRenderer>();
+                if (sr && sr.sprite) { localSize = sr.sprite.bounds.size; found = true; }
+            }
+        }
+
+        if (!found) localSize = new Vector3(0.1f, 0.1f, 1f);
+
+        if (localSize.x >= localSize.y && localSize.x >= localSize.z)
+        {
+            prefabPrimaryAxisLocal = Vector3.right;
+            prefabLength = localSize.x * Mathf.Abs(prefabOriginalLocalScale.x);
+        }
+        else if (localSize.y >= localSize.x && localSize.y >= localSize.z)
+        {
+            prefabPrimaryAxisLocal = Vector3.up;
+            prefabLength = localSize.y * Mathf.Abs(prefabOriginalLocalScale.y);
+        }
+        else
+        {
+            prefabPrimaryAxisLocal = Vector3.forward;
+            prefabLength = localSize.z * Mathf.Abs(prefabOriginalLocalScale.z);
+        }
+
+        if (prefabLength <= 0f) prefabLength = 1f;
+    }
+
+    void RebuildAll()
+    {
+        if (lineRenderer == null || lineRenderer.positionCount < 2)
+        {
+            if (segmentParent != null) segmentParent.gameObject.SetActive(false);
+            CleanupAllChildObjects();
+            return;
+        }
+
+        EnsureContainer();
+        if (segmentParent != null && !segmentParent.gameObject.activeSelf)
+        {
+            segmentParent.gameObject.SetActive(true);
+        }
+
+        Vector3 startPos = lineRenderer.GetPosition(0);
+        Vector3 endPos = lineRenderer.GetPosition(lineRenderer.positionCount - 1);
+        Vector3 dir = (endPos - startPos);
+        float segmentDistance = dir.magnitude;
+        if (segmentDistance < minSegmentLength)
+        {
+            if (segmentParent != null) segmentParent.gameObject.SetActive(false);
+            CleanupAllChildObjects();
+            return;
+        }
+        dir.Normalize();
+
+        EnsureSingleInstance(ref segmentAInstance, lineSegmentPrefabA);
+        EnsureSingleInstance(ref segmentBInstance, lineSegmentPrefabB);
+        EnsureSingleInstance(ref startTipInstance, startTipPrefab);
+        EnsureSingleInstance(ref endTipInstance, endTipPrefab);
+
+        ApplySegmentTransform(segmentAInstance, startPos, dir, segmentDistance);
+        ApplySegmentTransform(segmentBInstance, startPos, dir, segmentDistance);
+
+        ApplyTipTransform(startTipInstance, startPos, dir, alignTipsToLine);
+        ApplyTipTransform(endTipInstance, endPos, dir, alignTipsToLine);
+    }
+
+    void EnsureSingleInstance(ref GameObject instance, GameObject prefab)
+    {
+        if (prefab == null) return;
+
+        if (instance == null)
+        {
+            if(segmentParent == null) EnsureContainer();
+            
+            foreach (Transform child in segmentParent)
+            {
+                if (child != null && child.gameObject != null && child.name.StartsWith(prefab.name))
+                {
+                    instance = child.gameObject;
+                    break;
+                }
+            }
+
+            if (instance == null)
+            {
+                instance = Instantiate(prefab, segmentParent);
+                instance.name = prefab.name + "_Instance";
+                instance.SetActive(false); 
+
+                if (Application.isPlaying)
+                {
+                    Coroutine flicker = StartCoroutine(FlickerRoutine(instance));
+                    _flickerCoroutines.Add(flicker);
+                }
+            }
+        }
+    }
+
+    void ApplySegmentTransform(GameObject seg, Vector3 startPos, Vector3 dir, float segLength)
+    {
+        if (seg == null) return;
+
+        seg.transform.position = startPos + dir * (segLength / 2f);
+        seg.transform.rotation = Quaternion.FromToRotation(prefabPrimaryAxisLocal, dir);
+
+        float scaleFactor = segLength / Mathf.Max(0.0001f, prefabLength);
+        Vector3 newScale = prefabOriginalLocalScale;
+
+        if (prefabPrimaryAxisLocal == Vector3.right) newScale.x *= scaleFactor;
+        else if (prefabPrimaryAxisLocal == Vector3.up) newScale.y *= scaleFactor;
+        else newScale.z *= scaleFactor;
+
+        seg.transform.localScale = newScale;
+        seg.SetActive(true);
+    }
+
+    void ApplyTipTransform(GameObject tip, Vector3 position, Vector3 dir, bool align)
+    {
+        if (tip == null) return;
+
+        tip.transform.position = position;
+        if (align)
+        {
+            tip.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+        }
+        tip.SetActive(true);
+    }
+
+    void SafeDestroy(GameObject go)
+    {
+        if (go == null) return;
+#if UNITY_EDITOR
+        if (!Application.isPlaying) DestroyImmediate(go);
+        else Destroy(go);
+#else
+        Destroy(go);
+#endif
+    }
+    
+    private void StopAllFlickerCoroutines()
+    {
+        foreach (Coroutine coroutine in _flickerCoroutines)
+        {
+            if (coroutine != null)
+            {
+                StopCoroutine(coroutine);
+            }
+        }
+        _flickerCoroutines.Clear();
+    }
+
+    IEnumerator FlickerRoutine(GameObject seg)
+    {
+        if (seg == null) yield break;
+
+        SpriteRenderer sr = seg.GetComponentInChildren<SpriteRenderer>();
+
+        while (seg != null && this != null)
+        {
+            yield return new WaitForSeconds(flickerRate);
+            if (seg == null) yield break;
+            
+            if (sr != null)
+            {
+                sr.enabled = Random.value > flickerChance;
+            }
+            else
+            {
+                if (seg.activeSelf)
+                {
+                    seg.SetActive(Random.value > flickerChance);
+                }
+            }
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/PlayerLookController.cs">
 // Local: Assets/Scripts/PlayerLookController.cs
 
@@ -9862,6 +9816,371 @@ public class DeathFogLogic : MonoBehaviour
             }
         }
     }
+}
+</file>
+
+<file path="Assets/Scripts/GrapplingHookController.cs">
+using UnityEngine;
+using System;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    #region Events
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleStopped;
+    public event Action<Transform> OnPredictionTargetChanged;
+    // O evento OnGrappleVisualNeedsUpdate não é mais necessário
+    #endregion
+
+    #region Dependencies
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovement;
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+    #endregion
+
+    #region Grapple Settings
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleableLayer;
+    [SerializeField] private bool canDoMultipleGrapple = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
+    [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
+    [SerializeField] private float grappleValidityCheckInterval = 0.1f;
+    #endregion
+
+    #region Joint Settings
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+    [SerializeField] private float maxSpringSize = .8f;
+    #endregion
+
+    #region Swing Settings
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+    #endregion
+
+    #region Input Buffer
+    [Header("Buffer de Input")]
+    [SerializeField] private float grappleInputBufferTime = 0.5f;
+    #endregion
+
+    #region State
+    public bool IsGrappling => _isGrappling;
+    public float grappleDistance { get; private set; }
+    public Vector3 GrapplePoint { get; private set; }
+
+    private bool _isGrappling = false;
+    private bool _hasGrappleAvailable = true;
+    private bool _hasValidGrappleTarget;
+    private bool _isInputBuffered;
+    private bool _wasPredictionTargetValidLastFrame = false;
+
+    private float _cooldownTimer;
+    private float _grappleTimer;
+    private float _grappleInputBufferTimer;
+    private float _grappleValidityCheckTimer;
+
+    private Vector2 _moveInput;
+    private Rigidbody _grappledRigidbody;
+    private IGrappleable _currentGrappleableTarget;
+    private SpringJoint _joint;
+    private GameObject _predictionPointInstance;
+    private RaycastHit _predictionHit;
+    
+    private Vector3 _grappledPointOffsetLocalToTarget; 
+    #endregion
+
+    #region Unity Lifecycle
+    private void Awake()
+    {
+        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
+        _hasGrappleAvailable = true;
+
+        if (predictionPointPrefab != null)
+        {
+            _predictionPointInstance = Instantiate(predictionPointPrefab);
+            _predictionPointInstance.SetActive(false);
+        }
+        
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
+        InputManager.Instance.OnMove += SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
+
+        if (_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+            _wasPredictionTargetValidLastFrame = false;
+        }
+        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
+        
+        if (_isGrappling)
+        {
+            StopGrapple();
+        }
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void Update()
+    {
+        HandleTimers();
+        HandleInputBuffer();
+        UpdateGrappleStateAndVisuals();
+        CheckGrappleValidity();
+    }
+
+    private void LateUpdate() 
+    { 
+        if (_isGrappling) 
+        {
+            DrawRope(); 
+        }
+    }
+    private void FixedUpdate() { ApplySwingForce(); }
+    #endregion
+
+    #region Prediction & State Broadcasting
+    private void UpdateGrappleStateAndVisuals()
+    {
+        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
+        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
+
+        UpdatePredictionPointVisual(isPredictionReady);
+        BroadcastPredictionStateChange(isPredictionReady);
+    }
+
+    private void UpdatePredictionPointVisual(bool show)
+    {
+        if (_predictionPointInstance == null) return;
+
+        if (show && !_predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(true);
+        }
+        else if (!show && _predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(false);
+        }
+
+        if (show)
+        {
+            _predictionPointInstance.transform.position = _predictionHit.point;
+        }
+    }
+
+    private void BroadcastPredictionStateChange(bool isReady)
+    {
+        if (isReady && !_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
+        }
+        else if (!isReady && _wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+        }
+        _wasPredictionTargetValidLastFrame = isReady;
+    }
+    #endregion
+
+    #region Input & Event Handlers
+    private void SetMoveInput(Vector2 input) => _moveInput = input;
+    private void OnGrappleInputStarted()
+    {
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
+    }
+    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
+    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
+    #endregion
+
+    #region Core Grapple Logic
+    private void ExecuteGrapple()
+    {
+        OnGrappleStarted?.Invoke();
+        _isGrappling = true;
+        _grappleTimer = maximumTimeGrappling;
+        ClearInputBuffer();
+        grappleDistance = _predictionHit.distance;
+        GrapplePoint = _predictionHit.point;
+        
+        _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
+
+        if (_predictionHit.rigidbody != null && !_predictionHit.rigidbody.isKinematic)
+        {
+             _grappledRigidbody = _predictionHit.rigidbody;
+             _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
+        }
+        else
+        {
+            _grappledRigidbody = null;
+            _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
+        }
+
+        CreateAndConfigureJoint(GrapplePoint);
+        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
+        UpdateGrappleStateAndVisuals();
+    }
+
+    public void StopGrapple()
+    {
+        if (!_isGrappling) return;
+        OnGrappleStopped?.Invoke();
+        _isGrappling = false;
+        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
+        Destroy(_joint);
+        _grappledRigidbody = null;
+        _currentGrappleableTarget = null;
+        _grappledPointOffsetLocalToTarget = Vector3.zero;
+        playerMovement.ResetDoubleJump();
+        UpdateGrappleStateAndVisuals();
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+    private void ApplySwingForce()
+    {
+        if (!_joint) return;
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
+    }
+    #endregion
+    private bool FindValidGrappleTarget(out RaycastHit hit)
+    {
+        return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
+               TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
+    }
+
+    private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
+    {
+        bool didHit;
+        if (sphereRadius > 0)
+        {
+            didHit = Physics.SphereCast(origin, sphereRadius, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+        else
+        {
+            didHit = Physics.Raycast(origin, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+
+        if (didHit)
+        {
+            IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
+
+            if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
+                (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void DrawRope()
+    {
+        if (!_joint) return;
+        
+        if (_grappledRigidbody != null) 
+        {
+            UpdateGrappleAnchorPosition();
+        }
+        else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
+        {
+            GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+        }
+        lineRenderer.positionCount = 2;
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, GrapplePoint);
+    }
+    
+    private void UpdateGrappleAnchorPosition()
+    {
+        GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+        if (_joint) _joint.connectedAnchor = GrapplePoint;
+    }
+
+    #region State & Timers
+    private void HandleTimers()
+    {
+        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
+        if (_isGrappling)
+        {
+            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
+            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
+        }
+        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
+    }
+
+    private void HandleInputBuffer()
+    {
+        if (!_isInputBuffered) return;
+        _grappleInputBufferTimer -= Time.deltaTime;
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
+    }
+    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
+    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
+    private bool CanCurrentlyAttemptGrapple()
+    {
+        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
+        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
+    }
+    #endregion
+
+    #region Utility
+    private void CreateAndConfigureJoint(Vector3 connectedPoint)
+    {
+        _joint = gameObject.AddComponent<SpringJoint>();
+        _joint.autoConfigureConnectedAnchor = false;
+        _joint.anchor = Vector3.zero;
+        _joint.connectedAnchor = connectedPoint;
+        _joint.connectedBody = _grappledRigidbody; 
+
+        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
+        _joint.maxDistance = distanceFromPoint * maxSpringSize;
+        _joint.minDistance = distanceFromPoint * minSpringSize;
+        _joint.spring = springForce;
+        _joint.damper = damper;
+        _joint.massScale = massScale;
+    }
+
+    private void CheckGrappleValidity()
+    {
+        if (!_isGrappling || _currentGrappleableTarget == null) return;
+
+        _grappleValidityCheckTimer -= Time.deltaTime;
+        if (_grappleValidityCheckTimer <= 0f)
+        {
+            if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
+            {
+                Debug.Log($"Grapple solto do alvo '{_currentGrappleableTarget.GetGameObject()?.name ?? "Objeto Destruído"}' porque ele não é mais agarrável ou foi destruído.");
+                StopGrapple();
+            }
+            _grappleValidityCheckTimer = grappleValidityCheckInterval;
+        }
+    }
+    #endregion
 }
 </file>
 
