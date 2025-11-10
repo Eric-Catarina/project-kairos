@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-[ExecuteAlways]
+// [ExecuteAlways]
 public class LinePrefabRendererEffects : MonoBehaviour
 {
     [Header("References")]
