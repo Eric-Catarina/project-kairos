@@ -7,7 +7,6 @@ public class GrapplingHookController : MonoBehaviour
     public event Action OnGrappleStarted;
     public event Action OnGrappleStopped;
     public event Action<Transform> OnPredictionTargetChanged;
-    // O evento OnGrappleVisualNeedsUpdate não é mais necessário
     #endregion
 
     #region Dependencies
@@ -28,6 +27,14 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private float maximumTimeGrappling = 3f;
     [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
     [SerializeField] private float grappleValidityCheckInterval = 0.1f;
+    #endregion
+    
+    #region Cooldown Tolerance
+    [Header("Tolerância de Cooldown")]
+    [Tooltip("Se um grapple durar menos que este tempo, o cooldown é ignorado (se a tolerância estiver ativa).")]
+    [SerializeField] private float quickReleaseThreshold = 0.1f;
+    [Tooltip("Um grapple precisa durar mais que este tempo para restaurar a tolerância de cooldown.")]
+    [SerializeField] private float longGrappleThreshold = 1.0f;
     #endregion
 
     #region Joint Settings
@@ -64,6 +71,9 @@ public class GrapplingHookController : MonoBehaviour
     private float _grappleTimer;
     private float _grappleInputBufferTimer;
     private float _grappleValidityCheckTimer;
+    
+    private float _grappleElapsedTime;
+    private bool _hasCooldownTolerance = true;
 
     private Vector2 _moveInput;
     private Rigidbody _grappledRigidbody;
@@ -190,12 +200,13 @@ public class GrapplingHookController : MonoBehaviour
     }
     private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
     private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
     #endregion
 
     #region Core Grapple Logic
     private void ExecuteGrapple()
     {
+        _grappleElapsedTime = 0f;
         OnGrappleStarted?.Invoke();
         _isGrappling = true;
         _grappleTimer = maximumTimeGrappling;
@@ -224,17 +235,39 @@ public class GrapplingHookController : MonoBehaviour
     public void StopGrapple()
     {
         if (!_isGrappling) return;
+
+        bool isQuickRelease = _hasCooldownTolerance && _grappleElapsedTime < quickReleaseThreshold;
+
         OnGrappleStopped?.Invoke();
         _isGrappling = false;
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
+        
         Destroy(_joint);
         _grappledRigidbody = null;
         _currentGrappleableTarget = null;
         _grappledPointOffsetLocalToTarget = Vector3.zero;
-        playerMovement.ResetDoubleJump();
+
+        if (isQuickRelease)
+        {
+            _hasCooldownTolerance = false;
+        }
+        else
+        {
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
+            {
+                _cooldownTimer = grappleCooldown;
+            }
+            playerMovement.ResetDoubleJump();
+            
+            if (!_hasCooldownTolerance && _grappleElapsedTime >= longGrappleThreshold)
+            {
+                _hasCooldownTolerance = true;
+            }
+        }
+        
         UpdateGrappleStateAndVisuals();
         if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
+
     private void ApplySwingForce()
     {
         if (!_joint) return;
@@ -304,6 +337,7 @@ public class GrapplingHookController : MonoBehaviour
         if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
         if (_isGrappling)
         {
+            _grappleElapsedTime += Time.deltaTime;
             bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
             if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
         }
@@ -352,7 +386,6 @@ public class GrapplingHookController : MonoBehaviour
         {
             if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
             {
-                Debug.Log($"Grapple solto do alvo '{_currentGrappleableTarget.GetGameObject()?.name ?? "Objeto Destruído"}' porque ele não é mais agarrável ou foi destruído.");
                 StopGrapple();
             }
             _grappleValidityCheckTimer = grappleValidityCheckInterval;
