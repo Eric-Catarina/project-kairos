@@ -29,7 +29,6 @@ public class VictoryPanelUI : MonoBehaviour
 
     private void HandleNextClicked()
     {
-        Debug.Log("VictoryPanel: Next button clicked!");
         OnNextClicked?.Invoke();
     }
 }

@@ -110,6 +110,9 @@ public class CheckpointManager : MonoBehaviour
     
     public void SoftResetToCheckpoint()
     {
+        ScoreManager.Instance?.IncrementDeathCount();
+        TimeManipulationManager.Instance?.ResetCharge();
+
         if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
         {
             SoftResetToStart();
@@ -132,8 +135,6 @@ public class CheckpointManager : MonoBehaviour
         float stampedTime = _lastActivatedCheckpoint.ActivationTime;
         ScoreManager.Instance.SetCurrentTime(stampedTime);
         ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
-        
-        Debug.Log($"Tempo restaurado para {stampedTime:F3}s com penalidade. Novo tempo: {ScoreManager.Instance.CurrentTime:F3}s");
     }
 
     private void ResetWorldState()
@@ -148,7 +149,6 @@ public class CheckpointManager : MonoBehaviour
     {
         if (initialSpawnPoint == null)
         {
-            Debug.LogWarning("Initial Spawn Point não está definido; recarregando a cena como fallback.", this);
             HardResetLevel();
             return;
         }
@@ -165,6 +165,7 @@ public class CheckpointManager : MonoBehaviour
 
     private void HardResetLevel()
     {
+        ScoreManager.Instance?.IncrementDeathCount();
         SceneManagerLogic.Instance.RestartScene();
     }
 }
