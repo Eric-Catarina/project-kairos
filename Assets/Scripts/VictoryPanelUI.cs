@@ -18,6 +18,10 @@ public class VictoryPanelUI : MonoBehaviour
         nextButton.onClick.AddListener(HandleNextClicked);
         gameObject.SetActive(false);
     }
+    private void OnDestroy()
+    {
+        nextButton.onClick.RemoveListener(HandleNextClicked);
+    }
 
     public void ShowResults(float time, int deaths, Rank rank)
     {
