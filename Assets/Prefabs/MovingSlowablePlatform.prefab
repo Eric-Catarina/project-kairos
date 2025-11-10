@@ -79,7 +79,7 @@ GameObject:
   - component: {fileID: 6355814406696542299}
   - component: {fileID: 3906970847604097326}
   - component: {fileID: 6119467295526036011}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: FirstCube
   m_TagString: MovingPlatform
   m_Icon: {fileID: 0}
@@ -95,7 +95,7 @@ Transform:
   m_GameObject: {fileID: 7497278878774620191}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -35, y: 25.259998, z: -23.2}
+  m_LocalPosition: {x: 29.6, y: 25.259998, z: -23.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -313,7 +313,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 4508
+  m_VersionIndex: 4520
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -470,9 +470,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetA: {fileID: 2176480153855055193}
   targetB: {fileID: 2915817236938628363}
-  speed: 5
+  speed: 100
   playerInfluence: 0.69
   slowDownColor: {r: 0, g: 1, b: 1, a: 1}
+  canBeGrappledWhileMoving: 0
+  grappleableLayerName: Grappleable
+  defaultLayerName: Default
 --- !u!1 &8792128842253066858
 GameObject:
   m_ObjectHideFlags: 0
