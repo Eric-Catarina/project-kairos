@@ -1,29 +1,29 @@
-// Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
-
 using UnityEngine;
 
-/// <summary>
-/// Implementação concreta da interface ITimeSlowable para objetos com Rigidbody.
-/// Salva o estado de movimento (velocidades), torna o Rigidbody cinemático durante a lentidão
-/// e simula o movimento em 'FixedUpdate' com base na porcentagem de lentidão.
-/// Ao restaurar, reaplica o estado de movimento salvo.
-/// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
+public class SlowableRigidbody : MonoBehaviour, ITimeSlowable, IGrappleable
 {
+    [Header("Grapple Settings")]
+    [Tooltip("If checked, the object can be grappled even when moving at normal speed. If unchecked, it can only be grappled when time is slowed.")]
+    [SerializeField] private bool canBeGrappledWhileMoving = true;
+    [Tooltip("The name of the layer the object will be moved to when it becomes grappleable.")]
+    [SerializeField] private string grappleableLayerName = "Grappleable";
+    
     [Header("Visual Feedback")]
-    private Renderer objectRenderer;
-    private Color slowDownColor = Color.cyan;
+    [SerializeField] private Color slowDownColor = Color.cyan;
 
     private Rigidbody _rb;
+    private Renderer objectRenderer;
     private Color _originalColor;
 
-    // Variáveis para salvar o estado do Rigidbody
     private Vector3 _savedVelocity;
     private Vector3 _savedAngularVelocity;
 
     private bool _isSlowed = false;
-    private float _slowFactor; // Armazena o multiplicador (ex: 0.5 para 50% de lentidão)
+    private float _slowFactor;
+
+    private int _grappleableLayerIndex;
+    private int _originalLayerIndex;
 
     private void Awake()
     {
@@ -34,27 +34,29 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         {
             _originalColor = objectRenderer.material.color;
         }
+
+        _originalLayerIndex = gameObject.layer;
+        _grappleableLayerIndex = LayerMask.NameToLayer(grappleableLayerName);
+        if (_grappleableLayerIndex == -1)
+        {
+            Debug.LogError($"Layer '{grappleableLayerName}' not found. Please check your project's Layer settings.", this);
+            _grappleableLayerIndex = _originalLayerIndex;
+        }
     }
 
-    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
-    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
-    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
     private void Start()
     {
-        // Se registra no manager para receber os eventos de tempo.
         TimeManipulationManager.Instance.Register(this);
+        UpdateGrappleableLayer();
     }
 
     private void OnDisable()
     {
-        // Garante que o tempo seja restaurado se o objeto for desativado.
         if (_isSlowed)
         {
             RestoreNormalTime();
         }
         
-        // Remove o registro do manager para evitar referências nulas,
-        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
         if (TimeManipulationManager.Instance != null)
         {
             TimeManipulationManager.Instance.Unregister(this);
@@ -63,14 +65,9 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
 
     private void FixedUpdate()
     {
-        // Se o tempo não está lento, a física normal do Unity cuida de tudo.
         if (!_isSlowed) return;
-
-        // Se o slow for 100%, não fazemos nada, o objeto fica parado.
         if (_slowFactor <= 0f) return;
 
-        // Como o Rigidbody está cinemático, precisamos simular seu movimento.
-        // Usamos MovePosition e MoveRotation para respeitar a física e colisões.
         Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
         _rb.MovePosition(newPosition);
 
@@ -78,55 +75,58 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
         _rb.MoveRotation(_rb.rotation * deltaRotation);
     }
 
-    /// <summary>
-    /// Salva o estado de movimento, torna o Rigidbody cinemático e aplica o feedback visual.
-    /// </summary>
     public void SlowDown(float slowPercentage)
     {
         if (_isSlowed) return;
         _isSlowed = true;
 
-        // Salva o estado atual
         _savedVelocity = _rb.linearVelocity;
         _savedAngularVelocity = _rb.angularVelocity;
-
-        // Converte a porcentagem (0-100) para um multiplicador (1.0-0.0)
         _slowFactor = 1.0f - (slowPercentage / 100.0f);
-
-        // Torna o Rigidbody cinemático para que possamos controlar seu movimento manualmente.
         _rb.isKinematic = true;
 
-        // Feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
+        if (objectRenderer != null)
         {
             objectRenderer.material.color = slowDownColor;
         }
+        UpdateGrappleableLayer();
     }
 
-    /// <summary>
-    /// Retorna o Rigidbody ao estado dinâmico, restaura suas velocidades e o feedback visual.
-    /// </summary>
     public void RestoreNormalTime()
     {
         if (!_isSlowed) return;
         _isSlowed = false;
 
-        // Retorna o Rigidbody ao controle total da física.
         _rb.isKinematic = false;
-
-        // Restaura o estado de movimento. A física do Unity continuará a partir daqui.
         _rb.linearVelocity = _savedVelocity;
         _rb.angularVelocity = _savedAngularVelocity;
 
-        // Restaura feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
+        if (objectRenderer != null)
         {
             objectRenderer.material.color = _originalColor;
         }
+        UpdateGrappleableLayer();
     }
     
     public void SetSlowDownColor(Color newColor)
     {
         slowDownColor = newColor;
     }
+
+    private void UpdateGrappleableLayer()
+    {
+        gameObject.layer = CanBeGrappledNow() ? _grappleableLayerIndex : _originalLayerIndex;
+    }
+
+    #region IGrappleable Implementation
+    public bool CanBeGrappledNow()
+    {
+        return canBeGrappledWhileMoving || _isSlowed;
+    }
+
+    public GameObject GetGameObject()
+    {
+        return gameObject;
+    }
+    #endregion
 }

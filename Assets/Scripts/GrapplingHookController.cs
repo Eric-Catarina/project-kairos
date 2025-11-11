@@ -216,7 +216,7 @@ public class GrapplingHookController : MonoBehaviour
         
         _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
 
-        if (_predictionHit.rigidbody != null && !_predictionHit.rigidbody.isKinematic)
+        if (_predictionHit.rigidbody != null)
         {
              _grappledRigidbody = _predictionHit.rigidbody;
              _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
@@ -320,6 +320,9 @@ public class GrapplingHookController : MonoBehaviour
         {
             GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
         }
+        
+        if (_joint) _joint.connectedAnchor = GrapplePoint;
+        
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, GrapplePoint);
@@ -328,7 +331,6 @@ public class GrapplingHookController : MonoBehaviour
     private void UpdateGrappleAnchorPosition()
     {
         GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
-        if (_joint) _joint.connectedAnchor = GrapplePoint;
     }
 
     #region State & Timers
@@ -367,7 +369,6 @@ public class GrapplingHookController : MonoBehaviour
         _joint.autoConfigureConnectedAnchor = false;
         _joint.anchor = Vector3.zero;
         _joint.connectedAnchor = connectedPoint;
-        _joint.connectedBody = _grappledRigidbody; 
 
         float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
         _joint.maxDistance = distanceFromPoint * maxSpringSize;

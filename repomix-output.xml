@@ -76,7 +76,6 @@ Assets/
     CrosshairController.cs
     DashFoward.cs
     DeathFogLogic.cs
-    DeathManager.cs
     DontDestroyOnLoad.cs
     DoubleJumpResetRing.cs
     DoubleJumpUIController.cs
@@ -5298,40 +5297,6 @@ public class DashForwardInputSystem : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/DeathManager.cs">
-// Assets/Scripts/DeathManager.cs
-using UnityEngine;
-
-public class DeathManager : MonoBehaviour
-{
-    public static DeathManager Instance { get; private set; }
-
-    private int _deathCount = 0;
-    public int DeathCount => _deathCount;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject); // Se precisar persistir entre cenas
-    }
-
-    public void IncrementDeathCount()
-    {
-        _deathCount++;
-    }
-
-    public void ResetDeathCount()
-    {
-        _deathCount = 0;
-    }
-}
-</file>
-
 <file path="Assets/Scripts/DontDestroyOnLoad.cs">
 using UnityEngine;
 
@@ -5555,6 +5520,113 @@ public interface IGrappleable
     /// Retorna o GameObject associado a esta interface.
     /// </summary>
     GameObject GetGameObject();
+}
+</file>
+
+<file path="Assets/Scripts/InputStateManager.cs">
+// Assets/Scripts/InputStateManager.cs
+
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
+
+public enum InputState
+{
+    Gameplay,
+    UI,
+    PostGame 
+}
+
+public class InputStateManager : MonoBehaviour
+{
+    public static InputStateManager Instance { get; private set; }
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    public void Initialize(PlayerControls playerControls)
+    {
+        _playerControls = playerControls;
+    }
+
+    public void SwitchState(InputState newState)
+    {
+        if (_playerControls == null) return;
+
+        _playerControls.Player.Disable();
+        _playerControls.UI.Disable();
+        _playerControls.PostGame.Disable();
+
+        Debug.Log($"Switching Input State to: {newState}");
+
+        switch (newState)
+        {
+            case InputState.Gameplay:
+                // Limpa qualquer input em buffer ANTES de reativar o mapa de ação do jogador.
+                ResetAllPlayerActions();
+                _playerControls.Player.Enable();
+                SetCursorState(false);
+                break;
+
+            case InputState.UI:
+                _playerControls.UI.Enable();
+                SetCursorState(true);
+                break;
+
+            case InputState.PostGame:
+                _playerControls.UI.Enable();
+                _playerControls.PostGame.Enable();
+                SetCursorState(true);
+                break;
+        }
+    }
+
+    private void SetCursorState(bool visible)
+    {
+        Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = visible;
+    }
+    
+    private void ResetAllPlayerActions()
+    {
+        if (_playerControls == null) return;
+        
+        foreach (var action in _playerControls.Player.Get().actions)
+        {
+            action.Reset();
+        }
+        
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "MainMenu")
+        {
+            SwitchState(InputState.UI);
+        }
+        else
+        {
+            SwitchState(InputState.Gameplay);
+        }
+    }
 }
 </file>
 
@@ -7086,79 +7158,6 @@ public class PostGamePanel : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/SaveDataModels.cs">
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
-[Serializable]
-public class GameData
-{
-    public GameSettings settings = new GameSettings();
-    public List<UserProfile> profiles = new List<UserProfile>();
-    public string activeProfileId = "";
-}
-
-[Serializable]
-public class GameSettings
-{
-    public float masterVolume = 1f;
-    public float musicVolume = 1f;
-    public float sfxVolume = 1f;
-    public bool isMasterMuted = false;
-    public bool isMusicMuted = false;
-    public bool isSfxMuted = false;
-    
-    public float mouseSensitivityX = 0.5f;
-    public float mouseSensitivityY = 0.5f;
-    public bool invertMouseX = false;
-    public bool invertMouseY = false;
-    
-    public float motionBlurIntensity = 0.5f;
-    public bool checkpointsEnabled = true;
-}
-
-[Serializable]
-public class UserProfile : ISerializationCallbackReceiver
-{
-    public string profileId;
-    public string profileName;
-
-    [NonSerialized]
-    public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
-
-    [SerializeField] private List<string> _levelIds = new List<string>();
-    [SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
-
-    public void OnBeforeSerialize()
-    {
-        _levelIds.Clear();
-        _records.Clear();
-        foreach (var kvp in levelRecords)
-        {
-            _levelIds.Add(kvp.Key);
-            _records.Add(kvp.Value);
-        }
-    }
-
-    public void OnAfterDeserialize()
-    {
-        levelRecords = new Dictionary<string, LevelRecord>();
-        for (int i = 0; i < _levelIds.Count; i++)
-        {
-            levelRecords.Add(_levelIds[i], _records[i]);
-        }
-    }
-}
-
-[Serializable]
-public class LevelRecord
-{
-    public float bestTime = float.MaxValue;
-    public Rank bestRank = Rank.None;
-}
-</file>
-
 <file path="Assets/Scripts/SaveManager.cs">
 // Local: Assets/Scripts/Core/SaveManager.cs
 
@@ -7609,44 +7608,6 @@ public enum UIPanelType
 }
 </file>
 
-<file path="Assets/Scripts/VictoryPanelUI.cs">
-using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
-
-public class VictoryPanelUI : MonoBehaviour
-{
-    [Header("UI Elements")]
-    [SerializeField] private TextMeshProUGUI timeLabel;
-    [SerializeField] private TextMeshProUGUI deathsLabel;
-    [SerializeField] private TextMeshProUGUI rankLabel;
-    [SerializeField] private Button nextButton;
-
-    public event System.Action OnNextClicked;
-
-    private void Awake()
-    {
-        nextButton.onClick.AddListener(HandleNextClicked);
-        gameObject.SetActive(false);
-    }
-
-    public void ShowResults(float time, int deaths, Rank rank)
-    {
-        System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(time);
-        timeLabel.text = $" {timeSpan:mm\\:ss\\.ff}";
-
-        deathsLabel.text = deaths.ToString();
-        rankLabel.text = rank.ToString();
-    }
-
-    private void HandleNextClicked()
-    {
-        Debug.Log("VictoryPanel: Next button clicked!");
-        OnNextClicked?.Invoke();
-    }
-}
-</file>
-
 <file path="Assets/Scripts/WinLogic.cs">
 // Local: Assets/Scripts/WinLogic.cs
 
@@ -7663,6 +7624,191 @@ public class WinLogic : MonoBehaviour
         _levelFinished = true;
         
         GameFlowManager.Instance.CompleteLevel();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/GameFlowManager.cs">
+// Local: Assets/Scripts/Core/GameFlowManager.cs
+
+using System;
+using System.Collections;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public enum GameState { MainMenu, Playing, Paused, LevelFinished }
+public struct LevelCompletionData
+{
+    public float FinalTime;
+    public int Deaths;
+    public Rank FinalRank;
+}
+
+public class GameFlowManager : MonoBehaviour
+{
+    public static GameFlowManager Instance { get; private set; }
+    public GameState CurrentState { get; private set; }
+
+    public event System.Action<LevelCompletionData> OnLevelCompleted; // Mudar assinatura
+    public event Action OnGamePaused;
+    public event Action OnGameResumed;
+
+    private UIManager _uiManager;
+    private CountdownUI _countdownUI;
+    
+    private bool _isCountingDown = false;
+    private Coroutine _countdownCoroutine;
+    private bool _isSettingsPanelOpen = false;
+
+    private bool IsInGameplayScene => SceneManager.GetActiveScene().name != "MainMenu";
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnPausePressed += HandlePauseRequest;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        _isSettingsPanelOpen = false;
+        
+        if (IsInGameplayScene)
+        {
+            CurrentState = GameState.Playing;
+            Time.timeScale = 1f;
+        }
+        else
+        {
+            CurrentState = GameState.MainMenu;
+            Time.timeScale = 1f;
+        }
+    }
+
+    private void FindSceneReferences()
+    {
+        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
+        _uiManager = FindObjectOfType<UIManager>(true);
+        _countdownUI = FindObjectOfType<CountdownUI>(true);
+        if (_uiManager != null) _uiManager.OnPanelStateChanged += HandlePanelStateChanged;
+    }
+    
+    private void HandlePanelStateChanged(UIPanelType type, bool isOpen)
+    {
+        if (type == UIPanelType.Settings)
+        {
+            _isSettingsPanelOpen = isOpen;
+        }
+    }
+
+    public void HandlePauseRequest()
+    {
+        if (CurrentState == GameState.LevelFinished) return;
+
+        if (IsInGameplayScene)
+        {
+            TogglePauseState();
+        }
+        else 
+        {
+            if (_isSettingsPanelOpen)
+                _uiManager.ClosePanel(UIPanelType.Settings);
+            else
+                _uiManager.ShowPanel(UIPanelType.Settings);
+        }
+    }
+
+    public void TogglePauseState()
+    {
+        if (_isCountingDown) return;
+
+        if (CurrentState == GameState.Playing)
+            PauseGame();
+        else if (CurrentState == GameState.Paused)
+            ResumeGame();
+    }
+    
+    public void CompleteLevel()
+    {
+        if (CurrentState != GameState.Playing) return;
+        CurrentState = GameState.LevelFinished;
+        Time.timeScale = 0f;
+        InputStateManager.Instance.SwitchState(InputState.PostGame);
+        ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths);
+
+        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank };
+        OnLevelCompleted?.Invoke(data);
+    }
+
+    private void PauseGame()
+    {
+        if (CurrentState != GameState.Playing) return;
+
+        CurrentState = GameState.Paused;
+        Time.timeScale = 0f;
+        InputStateManager.Instance.SwitchState(InputState.UI);
+        _uiManager?.ShowPanel(UIPanelType.Settings);
+        OnGamePaused?.Invoke();
+    }
+
+    public void ResumeGame()
+    {
+        if (CurrentState != GameState.Paused) return;
+        
+        _uiManager?.ClosePanel(UIPanelType.Settings);
+        _countdownCoroutine = StartCoroutine(ResumeCountdown());
+    }
+
+    private IEnumerator ResumeCountdown()
+    {
+        _isCountingDown = true;
+        
+        if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
+        {
+            FinishResume();
+            yield break;
+        }
+
+        _countdownUI.panel.SetActive(true);
+        _countdownUI.text.text = "3";
+        yield return new WaitForSecondsRealtime(1f);
+        _countdownUI.text.text = "2";
+        yield return new WaitForSecondsRealtime(1f);
+        _countdownUI.text.text = "1";
+        yield return new WaitForSecondsRealtime(1f);
+        
+        FinishResume();
+    }
+
+    private void FinishResume()
+    {
+        if(_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
+        _isCountingDown = false;
+        _countdownCoroutine = null;
+        
+        CurrentState = GameState.Playing;
+        Time.timeScale = 1f;
+        InputStateManager.Instance.SwitchState(InputState.Gameplay);
+        OnGameResumed?.Invoke();
     }
 }
 </file>
@@ -7747,113 +7893,6 @@ public class GameSettingsManager : MonoBehaviour
         _settings.checkpointsEnabled = isEnabled;
         SaveManager.Instance.SaveGame();
         OnCheckpointsEnabledChanged?.Invoke(isEnabled);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/InputStateManager.cs">
-// Assets/Scripts/InputStateManager.cs
-
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.InputSystem;
-
-public enum InputState
-{
-    Gameplay,
-    UI,
-    PostGame 
-}
-
-public class InputStateManager : MonoBehaviour
-{
-    public static InputStateManager Instance { get; private set; }
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    public void Initialize(PlayerControls playerControls)
-    {
-        _playerControls = playerControls;
-    }
-
-    public void SwitchState(InputState newState)
-    {
-        if (_playerControls == null) return;
-
-        _playerControls.Player.Disable();
-        _playerControls.UI.Disable();
-        _playerControls.PostGame.Disable();
-
-        Debug.Log($"Switching Input State to: {newState}");
-
-        switch (newState)
-        {
-            case InputState.Gameplay:
-                // Limpa qualquer input em buffer ANTES de reativar o mapa de ação do jogador.
-                ResetAllPlayerActions();
-                _playerControls.Player.Enable();
-                SetCursorState(false);
-                break;
-
-            case InputState.UI:
-                _playerControls.UI.Enable();
-                SetCursorState(true);
-                break;
-
-            case InputState.PostGame:
-                _playerControls.UI.Enable();
-                _playerControls.PostGame.Enable();
-                SetCursorState(true);
-                break;
-        }
-    }
-
-    private void SetCursorState(bool visible)
-    {
-        Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
-        Cursor.visible = visible;
-    }
-    
-    private void ResetAllPlayerActions()
-    {
-        if (_playerControls == null) return;
-        
-        foreach (var action in _playerControls.Player.Get().actions)
-        {
-            action.Reset();
-        }
-        
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        if (scene.name == "MainMenu")
-        {
-            SwitchState(InputState.UI);
-        }
-        else
-        {
-            SwitchState(InputState.Gameplay);
-        }
     }
 }
 </file>
@@ -8249,71 +8288,81 @@ public class PlayerAnimationController : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/SceneManagerLogic.cs">
-// Local: Assets/Scripts/SceneManagerLogic.cs
-
+<file path="Assets/Scripts/SaveDataModels.cs">
+using System;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
-public class SceneManagerLogic : MonoBehaviour
+[Serializable]
+public class GameData
 {
-    public static SceneManagerLogic Instance { get; private set; }
+public GameSettings settings = new GameSettings();
+public List<UserProfile> profiles = new List<UserProfile>();
+public string activeProfileId = "";
+}
 
-    private void Awake()
+[Serializable]
+public class GameSettings
+{
+public float masterVolume = 1f;
+public float musicVolume = 1f;
+public float sfxVolume = 1f;
+public bool isMasterMuted = false;
+public bool isMusicMuted = false;
+public bool isSfxMuted = false;
+public float mouseSensitivityX = 0.5f;
+public float mouseSensitivityY = 0.5f;
+public bool invertMouseX = false;
+public bool invertMouseY = false;
+
+public float motionBlurIntensity = 0.5f;
+public bool checkpointsEnabled = true;
+
+}
+
+[Serializable]
+public class UserProfile : ISerializationCallbackReceiver
+{
+public string profileId;
+public string profileName;
+
+
+[NonSerialized]
+public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
+
+[SerializeField] private List<string> _levelIds = new List<string>();
+[SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
+
+public void OnBeforeSerialize()
+{
+    _levelIds.Clear();
+    _records.Clear();
+    foreach (var kvp in levelRecords)
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
+        _levelIds.Add(kvp.Key);
+        _records.Add(kvp.Value);
     }
+}
 
-    public void RestartScene()
+public void OnAfterDeserialize()
+{
+    levelRecords = new Dictionary<string, LevelRecord>();
+    for (int i = 0; i < _levelIds.Count; i++)
     {
-        Time.timeScale = 1f;
-        Scene currentScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(currentScene.name);
+        levelRecords.Add(_levelIds[i], _records[i]);
     }
+}
 
-    public void LoadNextScene()
-    {
-        Time.timeScale = 1f;
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
-        int nextSceneIndex = currentSceneIndex + 1;
+  
 
-        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
-        {
-            SceneManager.LoadScene(nextSceneIndex);
-        }
-        else
-        {
-            LoadMainMenu();
-        }
-    }
+}
 
-    public void LoadSceneByName(string sceneName)
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(sceneName);
-    }
-
-    public void QuitGame()
-    {
-        Application.Quit();
-    }
-
-    public void LoadMainMenu()
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
-    }
-
-    public void LoadSceneByBuildIndex(int buildIndex)
-    {
-        SceneManager.LoadScene(buildIndex);
-    }
+[Serializable]
+public class LevelRecord
+{
+public float bestTime = float.MaxValue;
+public Rank bestRank = Rank.None;
+public int totalDeaths = 0;
 }
 </file>
 
@@ -8412,286 +8461,6 @@ public class SettingsPanel : UIPanel
             Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
         }
     }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreManager.cs">
-// Assets/Scripts/ScoreManager.cs
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
-
-public class ScoreManager : MonoBehaviour
-{
-    public static ScoreManager Instance { get; private set; }
-
-    [Header("Configuração do Nível")]
-    [SerializeField] private LevelData currentLevelData;
-    [SerializeField] private bool startLevelOnFirstMoveInput = false;
-
-    [Header("Configurações de UI")]
-    private int leaderboardDisplayDelayMs = 750; // Ainda usado, mas removido do fluxo automático
-
-    private ScoreUIController _scoreUIController;
-    private LeaderboardUIController _leaderboardUIController;
-    private PlayerMovementController _playerMovementController;
-    private GrapplingHookController _grapplingHookController;
-
-    private float _levelTimer;
-    private bool _isTimerRunning = false;
-    private bool _levelStarted = false;
-    private int _deathCount = 0; // Contador de mortes para o nível atual
-    private bool _levelCompleted = false; // Flag para evitar processamento duplicado
-
-    public float CurrentTime => _levelTimer;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
-
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused += PauseTimer;
-            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
-        }
-
-        SubscribeToFirstInputEvents();
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
-
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
-            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
-        }
-
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindSceneReferences();
-        ResetLevelTimer();
-        ResetDeathCount();
-        _levelCompleted = false; // Resetar flag para novo nível
-        SubscribeToFirstInputEvents();
-    }
-
-    private void FindSceneReferences()
-    {
-        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
-        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
-        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
-        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
-    }
-
-    private void Update()
-    {
-        if (_isTimerRunning)
-        {
-            _levelTimer += Time.deltaTime;
-            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-        }
-    }
-
-    public void StartLevelTimer()
-    {
-        if (_levelStarted) return;
-        _levelTimer = 0f;
-        _levelStarted = true;
-        _isTimerRunning = true;
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths)
-    {
-        if (!_levelStarted)
-        {
-            finalTime = -1f;
-            finalRank = Rank.None;
-            deaths = 0;
-            return;
-        }
-        _isTimerRunning = false;
-        finalTime = _levelTimer;
-        finalRank = currentLevelData.GetRankForTime(finalTime);
-        deaths = _deathCount;
-    }
-
-    private void PauseTimer() { _isTimerRunning = false; }
-    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
-
-    public void ResetLevelTimer()
-    {
-        _levelTimer = 0f;
-        _isTimerRunning = false;
-        _levelStarted = false;
-        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-    }
-
-    public void SetCurrentTime(float newTime)
-    {
-        if (_levelStarted)
-        {
-            _levelTimer = Mathf.Max(0f, newTime);
-        }
-    }
-
-    public void AddPenalty(float penaltySeconds)
-    {
-        if (_levelStarted)
-        {
-            _levelTimer += penaltySeconds;
-        }
-    }
-
-    public Rank GetRankForTime(float time)
-    {
-        if (currentLevelData == null) return Rank.None;
-        return currentLevelData.GetRankForTime(time);
-    }
-
-    public void IncrementDeathCount()
-    {
-        _deathCount++;
-    }
-
-    private void ResetDeathCount()
-    {
-        _deathCount = 0;
-    }
-
-    private async void ProcessLevelCompletion(LevelCompletionData data)
-    {
-        if (_levelCompleted) return; // Evitar processamento duplicado
-        _levelCompleted = true;
-
-        SaveBestTime(data.FinalTime);
-
-        VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
-        if (victoryPanel != null)
-        {
-            victoryPanel.gameObject.SetActive(true);
-            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
-            victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
-            victoryPanel.OnNextClicked += () =>
-            {
-                Debug.Log("ScoreManager: OnNextClicked triggered, showing leaderboard.");
-                _leaderboardUIController?.ShowLeaderboard();
-            };
-        }
-
-        await SubmitScoreAsync(data.FinalTime);
-    }
-
-    private void SaveBestTime(float finalTime)
-    {
-        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
-        if (activeProfile == null || currentLevelData == null)
-        {
-            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
-            return;
-        }
-
-        string levelId = currentLevelData.GetFullLevelId();
-
-        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
-        {
-            if (finalTime < record.bestTime)
-            {
-                record.bestTime = finalTime;
-                record.bestRank = GetRankForTime(finalTime);
-            }
-        }
-        else
-        {
-            record = new LevelRecord
-            {
-                bestTime = finalTime,
-                bestRank = GetRankForTime(finalTime)
-            };
-            activeProfile.levelRecords.Add(levelId, record);
-        }
-
-        SaveManager.Instance.SaveGame();
-    }
-
-    private async Task<bool> SubmitScoreAsync(float finalTime)
-    {
-        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
-        {
-            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
-            return false;
-        }
-
-        var scoreEntry = new ScoreEntry(
-            PlayerProfile.Instance.CurrentProfile.profileId,
-            PlayerProfile.Instance.CurrentProfile.profileName,
-            finalTime,
-            currentLevelData.GetFullLevelId()
-        );
-
-        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
-
-        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
-        else { Debug.LogWarning("Falha ao submeter pontuação."); }
-
-        return success;
-    }
-
-    private void HandleFirstInput()
-    {
-        if (startLevelOnFirstMoveInput && !_levelStarted)
-        {
-            StartLevelTimer();
-        }
-    }
-
-    private void HandleFirstMoveInput(Vector2 moveValue)
-    {
-        if (moveValue.sqrMagnitude > 0.1f)
-        {
-            HandleFirstInput();
-        }
-    }
-
-    private void SubscribeToFirstInputEvents()
-    {
-        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
-        {
-            InputManager.Instance.OnMove += HandleFirstMoveInput;
-            _playerMovementController.OnJumped += HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
-        }
-    }
-
-    private void UnsubscribeFromFirstInputEvents()
-    {
-        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
-        {
-            InputManager.Instance.OnMove -= HandleFirstMoveInput;
-            _playerMovementController.OnJumped -= HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
-        }
-    }
-
-    public LevelData GetCurrentLevelData()
-    {
-        return currentLevelData;
-    }
-
-    public int GetDeathCount() => _deathCount;
 }
 </file>
 
@@ -8834,364 +8603,6 @@ public class RandomPrefabShooter : MonoBehaviour
     {
         Gizmos.color = Color.cyan;
         Gizmos.DrawRay(transform.position, transform.forward * 2f);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/CheckpointManager.cs">
-using UnityEngine;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine.SceneManagement;
-using System.Collections;
-
-public class CheckpointManager : MonoBehaviour
-{
-    public static CheckpointManager Instance { get; private set; }
-    
-    [Header("Configuração de Spawn")]
-    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
-    [SerializeField] private Transform initialSpawnPoint;
-
-    [Header("Configuração de Penalidade")]
-    [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
-    [SerializeField] private float penaltyPerCheckpoint = 5f;
-
-    private List<Checkpoint> _checkpointsInLevel;
-    private List<IResettable> _resettableObjects;
-    private Checkpoint _lastActivatedCheckpoint;
-    private PlayerMovementController _player;
-    private bool _areCheckpointsEnabled;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
-            InputManager.Instance.OnFullLevelReset += HardResetLevel;
-        }
-        if (GameSettingsManager.Instance != null)
-        {
-            GameSettingsManager.OnCheckpointsEnabledChanged += UpdateCheckpointSetting;
-        }
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
-            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
-        }
-        if (GameSettingsManager.Instance != null)
-        {
-            GameSettingsManager.OnCheckpointsEnabledChanged -= UpdateCheckpointSetting;
-        }
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        StartCoroutine(InitializeAfterSceneLoad());
-    }
-
-    private IEnumerator InitializeAfterSceneLoad()
-    {
-        yield return null;
-
-        _player = FindObjectOfType<PlayerMovementController>();
-        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
-        
-        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
-
-        _lastActivatedCheckpoint = null;
-        
-        if (GameSettingsManager.Instance != null)
-        {
-            _areCheckpointsEnabled = GameSettingsManager.Instance.CheckpointsEnabled;
-        }
-        else
-        {
-            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
-            _areCheckpointsEnabled = false;
-        }
-    }
-
-    private void UpdateCheckpointSetting(bool isEnabled)
-    {
-        _areCheckpointsEnabled = isEnabled;
-    }
-
-    private void HandleCheckpointActivated(Checkpoint activatedCheckpoint)
-    {
-        if (!_areCheckpointsEnabled) return;
-
-        int newIndex = _checkpointsInLevel.IndexOf(activatedCheckpoint);
-        int currentIndex = _lastActivatedCheckpoint != null ? _checkpointsInLevel.IndexOf(_lastActivatedCheckpoint) : -1;
-
-        if (newIndex > currentIndex)
-        {
-            _lastActivatedCheckpoint = activatedCheckpoint;
-        }
-    }
-    
-    public void SoftResetToCheckpoint()
-    {
-        if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
-        {
-            SoftResetToStart();
-            return;
-        }
-
-        ResetWorldState();
-        ApplyTimePenaltyAndReset();
-
-        if (_player != null)
-        {
-            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
-        }
-    }
-
-    private void ApplyTimePenaltyAndReset()
-    {
-        if (ScoreManager.Instance == null || _lastActivatedCheckpoint.ActivationTime < 0) return;
-
-        float stampedTime = _lastActivatedCheckpoint.ActivationTime;
-        ScoreManager.Instance.SetCurrentTime(stampedTime);
-        ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
-        
-        Debug.Log($"Tempo restaurado para {stampedTime:F3}s com penalidade. Novo tempo: {ScoreManager.Instance.CurrentTime:F3}s");
-    }
-
-    private void ResetWorldState()
-    {
-        foreach (var resettable in _resettableObjects)
-        {
-            resettable.ResetState();
-        }
-    }
-    
-    private void SoftResetToStart()
-    {
-        if (initialSpawnPoint == null)
-        {
-            Debug.LogWarning("Initial Spawn Point não está definido; recarregando a cena como fallback.", this);
-            HardResetLevel();
-            return;
-        }
-
-        ResetWorldState();
-        ScoreManager.Instance?.ResetLevelTimer();
-        _lastActivatedCheckpoint = null;
-
-        if (_player != null)
-        {
-            _player.ResetToPosition(initialSpawnPoint.position);
-        }
-    }
-
-    private void HardResetLevel()
-    {
-        SceneManagerLogic.Instance.RestartScene();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/GameFlowManager.cs">
-// Local: Assets/Scripts/Core/GameFlowManager.cs
-
-using System;
-using System.Collections;
-using TMPro;
-using UnityEngine;
-using UnityEngine.SceneManagement;
-
-public enum GameState { MainMenu, Playing, Paused, LevelFinished }
-public struct LevelCompletionData
-{
-    public float FinalTime;
-    public int Deaths;
-    public Rank FinalRank;
-}
-
-public class GameFlowManager : MonoBehaviour
-{
-    public static GameFlowManager Instance { get; private set; }
-    public GameState CurrentState { get; private set; }
-
-    public event System.Action<LevelCompletionData> OnLevelCompleted; // Mudar assinatura
-    public event Action OnGamePaused;
-    public event Action OnGameResumed;
-
-    private UIManager _uiManager;
-    private CountdownUI _countdownUI;
-    
-    private bool _isCountingDown = false;
-    private Coroutine _countdownCoroutine;
-    private bool _isSettingsPanelOpen = false;
-
-    private bool IsInGameplayScene => SceneManager.GetActiveScene().name != "MainMenu";
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnPausePressed += HandlePauseRequest;
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindSceneReferences();
-        _isSettingsPanelOpen = false;
-        
-        if (IsInGameplayScene)
-        {
-            CurrentState = GameState.Playing;
-            Time.timeScale = 1f;
-        }
-        else
-        {
-            CurrentState = GameState.MainMenu;
-            Time.timeScale = 1f;
-        }
-    }
-
-    private void FindSceneReferences()
-    {
-        if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
-        _uiManager = FindObjectOfType<UIManager>(true);
-        _countdownUI = FindObjectOfType<CountdownUI>(true);
-        if (_uiManager != null) _uiManager.OnPanelStateChanged += HandlePanelStateChanged;
-    }
-    
-    private void HandlePanelStateChanged(UIPanelType type, bool isOpen)
-    {
-        if (type == UIPanelType.Settings)
-        {
-            _isSettingsPanelOpen = isOpen;
-        }
-    }
-
-    public void HandlePauseRequest()
-    {
-        if (CurrentState == GameState.LevelFinished) return;
-
-        if (IsInGameplayScene)
-        {
-            TogglePauseState();
-        }
-        else 
-        {
-            if (_isSettingsPanelOpen)
-                _uiManager.ClosePanel(UIPanelType.Settings);
-            else
-                _uiManager.ShowPanel(UIPanelType.Settings);
-        }
-    }
-
-    public void TogglePauseState()
-    {
-        if (_isCountingDown) return;
-
-        if (CurrentState == GameState.Playing)
-            PauseGame();
-        else if (CurrentState == GameState.Paused)
-            ResumeGame();
-    }
-    
-    public void CompleteLevel()
-    {
-        if (CurrentState != GameState.Playing) return;
-        CurrentState = GameState.LevelFinished;
-        Time.timeScale = 0f;
-        InputStateManager.Instance.SwitchState(InputState.PostGame);
-        ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths);
-
-        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank };
-        OnLevelCompleted?.Invoke(data);
-    }
-
-    private void PauseGame()
-    {
-        if (CurrentState != GameState.Playing) return;
-
-        CurrentState = GameState.Paused;
-        Time.timeScale = 0f;
-        InputStateManager.Instance.SwitchState(InputState.UI);
-        _uiManager?.ShowPanel(UIPanelType.Settings);
-        OnGamePaused?.Invoke();
-    }
-
-    public void ResumeGame()
-    {
-        if (CurrentState != GameState.Paused) return;
-        
-        _uiManager?.ClosePanel(UIPanelType.Settings);
-        _countdownCoroutine = StartCoroutine(ResumeCountdown());
-    }
-
-    private IEnumerator ResumeCountdown()
-    {
-        _isCountingDown = true;
-        
-        if (_countdownUI == null || _countdownUI.panel == null || _countdownUI.text == null)
-        {
-            FinishResume();
-            yield break;
-        }
-
-        _countdownUI.panel.SetActive(true);
-        _countdownUI.text.text = "3";
-        yield return new WaitForSecondsRealtime(1f);
-        _countdownUI.text.text = "2";
-        yield return new WaitForSecondsRealtime(1f);
-        _countdownUI.text.text = "1";
-        yield return new WaitForSecondsRealtime(1f);
-        
-        FinishResume();
-    }
-
-    private void FinishResume()
-    {
-        if(_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
-        _isCountingDown = false;
-        _countdownCoroutine = null;
-        
-        CurrentState = GameState.Playing;
-        Time.timeScale = 1f;
-        InputStateManager.Instance.SwitchState(InputState.Gameplay);
-        OnGameResumed?.Invoke();
     }
 }
 </file>
@@ -9523,6 +8934,115 @@ public class LinePrefabRendererEffects : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/InputManager.cs">
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(InputStateManager))]
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public PlayerControls PlayerControls => _playerControls;
+
+    public event Action<Vector2> OnMove;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+    public event Action OnSlowTimeToggled;
+    public event Action OnResetToCheckpoint;
+    public event Action OnFullLevelReset;
+    public event Action OnPausePressed;
+
+#if ENABLE_CHEATS
+    public event Action OnToggleInfiniteJumps;
+    public event Action OnToggleInfiniteGrappleCooldown;
+    public event Action OnToggleInfiniteGrappleDuration;
+    public event Action OnToggleInfiniteTimeStop;
+    public event Action OnToggleAllCheats;
+#endif
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        
+        GetComponent<InputStateManager>().Initialize(_playerControls);
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Enable();
+        
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
+        _playerControls.Player.FullReset.performed += HandleFullLevelReset;
+        _playerControls.PostGame.RestartLevel.performed += HandleFullLevelReset; 
+        _playerControls.Player.Pause.performed += HandlePausePressed;
+        _playerControls.UI.Unpause.performed += HandlePausePressed;
+        
+#if ENABLE_CHEATS
+        _playerControls.Debug.Enable();
+        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
+        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
+        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
+#endif
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+        
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
+        _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
+        _playerControls.PostGame.RestartLevel.performed -= HandleFullLevelReset;
+        _playerControls.Player.Pause.performed -= HandlePausePressed;
+        _playerControls.UI.Unpause.performed -= HandlePausePressed;
+
+        _playerControls.Disable();
+    }
+    
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
+    private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
+    private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
+    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
+}
+</file>
+
 <file path="Assets/Scripts/PlayerLookController.cs">
 // Local: Assets/Scripts/PlayerLookController.cs
 
@@ -9790,6 +9310,577 @@ public class PlayerLookController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/SceneManagerLogic.cs">
+// Local: Assets/Scripts/SceneManagerLogic.cs
+
+using System;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class SceneManagerLogic : MonoBehaviour
+{
+    public static SceneManagerLogic Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    public void RestartScene()
+    {
+        Time.timeScale = 1f;
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
+    }
+
+    public void LoadNextScene()
+    {
+        Time.timeScale = 1f;
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int nextSceneIndex = currentSceneIndex + 1;
+
+        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            LoadMainMenu();
+        }
+    }
+
+    public void LoadSceneByName(string sceneName)
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
+    public void LoadMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void LoadSceneByBuildIndex(int buildIndex)
+    {
+        SceneManager.LoadScene(buildIndex);
+    }
+    public String GetCurrentLevelName()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        return currentScene.name;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreManager.cs">
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
+
+public class ScoreManager : MonoBehaviour
+{
+    public static ScoreManager Instance { get; private set; }
+
+    [Header("Configuração do Nível")]
+    [SerializeField] private LevelData currentLevelData;
+    [SerializeField] private bool startLevelOnFirstMoveInput = false;
+
+    private ScoreUIController _scoreUIController;
+    private LeaderboardUIController _leaderboardUIController;
+    private PlayerMovementController _playerMovementController;
+    private GrapplingHookController _grapplingHookController;
+
+    private float _levelTimer;
+    private bool _isTimerRunning = false;
+    private bool _levelStarted = false;
+    private int _deathCount = 0;
+    private bool _levelCompleted = false;
+
+    public float CurrentTime => _levelTimer;
+    public int DeathCount => _deathCount;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
+            GameFlowManager.Instance.OnGamePaused += PauseTimer;
+            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
+        }
+        SubscribeToFirstInputEvents();
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
+            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
+            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
+        }
+        UnsubscribeFromFirstInputEvents();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        ResetLevelTimer();
+        LoadDeathCountForLevel();
+        _levelCompleted = false;
+        SubscribeToFirstInputEvents();
+    }
+
+    private void FindSceneReferences()
+    {
+        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
+        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
+    }
+
+    private void Update()
+    {
+        if (_isTimerRunning)
+        {
+            _levelTimer += Time.deltaTime;
+            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+        }
+    }
+
+    public void StartLevelTimer()
+    {
+        if (_levelStarted) return;
+        _levelTimer = 0f;
+        _levelStarted = true;
+        _isTimerRunning = true;
+        UnsubscribeFromFirstInputEvents();
+    }
+
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths)
+    {
+        if (!_levelStarted)
+        {
+            finalTime = -1f;
+            finalRank = Rank.None;
+            deaths = _deathCount;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(finalTime);
+        deaths = _deathCount;
+    }
+
+    private void PauseTimer() { _isTimerRunning = false; }
+    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+
+    public void ResetLevelTimer()
+    {
+        _levelTimer = 0f;
+        _isTimerRunning = false;
+        _levelStarted = false;
+        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+    }
+
+    public void SetCurrentTime(float newTime)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer = Mathf.Max(0f, newTime);
+        }
+    }
+
+    public void AddPenalty(float penaltySeconds)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer += penaltySeconds;
+        }
+    }
+
+    public Rank GetRankForTime(float time)
+    {
+        if (currentLevelData == null) return Rank.None;
+        return currentLevelData.GetRankForTime(time);
+    }
+
+    public void IncrementDeathCount()
+    {
+        _deathCount++;
+    }
+
+    private void LoadDeathCountForLevel()
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            _deathCount = 0;
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            _deathCount = record.totalDeaths;
+        }
+        else
+        {
+            _deathCount = 0;
+        }
+    }
+
+    private async void ProcessLevelCompletion(LevelCompletionData data)
+    {
+        if (_levelCompleted) return;
+        _levelCompleted = true;
+
+        SaveLevelStats(data.FinalTime, data.Deaths);
+
+        VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
+        if (victoryPanel != null)
+        {
+            victoryPanel.gameObject.SetActive(true);
+            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
+            victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
+            victoryPanel.OnNextClicked += () =>
+            {
+                _leaderboardUIController?.ShowLeaderboard();
+            };
+        }
+
+        await SubmitScoreAsync(data.FinalTime);
+    }
+
+    private void SaveLevelStats(float finalTime, int totalDeathsForLevel)
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+
+        if (!activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            record = new LevelRecord();
+            activeProfile.levelRecords.Add(levelId, record);
+        }
+        
+        if (finalTime < record.bestTime)
+        {
+            record.bestTime = finalTime;
+            record.bestRank = GetRankForTime(finalTime);
+        }
+        
+        record.totalDeaths = totalDeathsForLevel;
+        SaveManager.Instance.SaveGame();
+    }
+
+    private async Task<bool> SubmitScoreAsync(float finalTime)
+    {
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
+        {
+            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
+            return false;
+        }
+
+        var scoreEntry = new ScoreEntry(
+            PlayerProfile.Instance.CurrentProfile.profileId,
+            PlayerProfile.Instance.CurrentProfile.profileName,
+            finalTime,
+            currentLevelData.GetFullLevelId()
+        );
+
+        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
+
+        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
+        else { Debug.LogWarning("Falha ao submeter pontuação."); }
+
+        return success;
+    }
+
+    private void HandleFirstInput()
+    {
+        if (startLevelOnFirstMoveInput && !_levelStarted)
+        {
+            StartLevelTimer();
+        }
+    }
+
+    private void HandleFirstMoveInput(Vector2 moveValue)
+    {
+        if (moveValue.sqrMagnitude > 0.1f)
+        {
+            HandleFirstInput();
+        }
+    }
+
+    private void SubscribeToFirstInputEvents()
+    {
+        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
+        {
+            InputManager.Instance.OnMove += HandleFirstMoveInput;
+            if (_playerMovementController != null) _playerMovementController.OnJumped += HandleFirstInput;
+            if (_grapplingHookController != null) _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+        }
+    }
+
+    private void UnsubscribeFromFirstInputEvents()
+    {
+        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
+        {
+            InputManager.Instance.OnMove -= HandleFirstMoveInput;
+            _playerMovementController.OnJumped -= HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+        }
+    }
+
+    public LevelData GetCurrentLevelData()
+    {
+        return currentLevelData;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/VictoryPanelUI.cs">
+using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
+
+public class VictoryPanelUI : MonoBehaviour
+{
+    [Header("UI Elements")]
+    [SerializeField] private TextMeshProUGUI timeLabel;
+    [SerializeField] private TextMeshProUGUI deathsLabel;
+    [SerializeField] private TextMeshProUGUI rankLabel;
+    [SerializeField] private TextMeshProUGUI levelNameLabel;
+    [SerializeField] private Button nextButton;
+
+    public event System.Action OnNextClicked;
+
+    private void Awake()
+    {
+        nextButton.onClick.AddListener(HandleNextClicked);
+        gameObject.SetActive(false);
+    }
+    private void OnDestroy()
+    {
+        nextButton.onClick.RemoveListener(HandleNextClicked);
+    }
+
+    public void ShowResults(float time, int deaths, Rank rank)
+    {
+        System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(time);
+        timeLabel.text = $" {timeSpan:mm\\:ss\\.ff}";
+
+        deathsLabel.text = deaths.ToString();
+        rankLabel.text = rank.ToString();
+        levelNameLabel.text = SceneManagerLogic.Instance.GetCurrentLevelName().ToString();
+    }
+
+    private void HandleNextClicked()
+    {
+        OnNextClicked?.Invoke();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CheckpointManager.cs">
+using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.SceneManagement;
+using System.Collections;
+
+public class CheckpointManager : MonoBehaviour
+{
+    public static CheckpointManager Instance { get; private set; }
+    
+    [Header("Configuração de Spawn")]
+    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
+    [SerializeField] private Transform initialSpawnPoint;
+
+    [Header("Configuração de Penalidade")]
+    [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
+    [SerializeField] private float penaltyPerCheckpoint = 5f;
+
+    private List<Checkpoint> _checkpointsInLevel;
+    private List<IResettable> _resettableObjects;
+    private Checkpoint _lastActivatedCheckpoint;
+    private PlayerMovementController _player;
+    private bool _areCheckpointsEnabled;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset += HardResetLevel;
+        }
+        if (GameSettingsManager.Instance != null)
+        {
+            GameSettingsManager.OnCheckpointsEnabledChanged += UpdateCheckpointSetting;
+        }
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
+        }
+        if (GameSettingsManager.Instance != null)
+        {
+            GameSettingsManager.OnCheckpointsEnabledChanged -= UpdateCheckpointSetting;
+        }
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        StartCoroutine(InitializeAfterSceneLoad());
+    }
+
+    private IEnumerator InitializeAfterSceneLoad()
+    {
+        yield return null;
+
+        _player = FindObjectOfType<PlayerMovementController>();
+        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
+        
+        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
+
+        _lastActivatedCheckpoint = null;
+        
+        if (GameSettingsManager.Instance != null)
+        {
+            _areCheckpointsEnabled = GameSettingsManager.Instance.CheckpointsEnabled;
+        }
+        else
+        {
+            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
+            _areCheckpointsEnabled = false;
+        }
+    }
+
+    private void UpdateCheckpointSetting(bool isEnabled)
+    {
+        _areCheckpointsEnabled = isEnabled;
+    }
+
+    private void HandleCheckpointActivated(Checkpoint activatedCheckpoint)
+    {
+        if (!_areCheckpointsEnabled) return;
+
+        int newIndex = _checkpointsInLevel.IndexOf(activatedCheckpoint);
+        int currentIndex = _lastActivatedCheckpoint != null ? _checkpointsInLevel.IndexOf(_lastActivatedCheckpoint) : -1;
+
+        if (newIndex > currentIndex)
+        {
+            _lastActivatedCheckpoint = activatedCheckpoint;
+        }
+    }
+    
+    public void SoftResetToCheckpoint()
+    {
+        ScoreManager.Instance?.IncrementDeathCount();
+        TimeManipulationManager.Instance?.ResetCharge();
+
+        if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
+        {
+            SoftResetToStart();
+            return;
+        }
+
+        ResetWorldState();
+        ApplyTimePenaltyAndReset();
+
+        if (_player != null)
+        {
+            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
+        }
+    }
+
+    private void ApplyTimePenaltyAndReset()
+    {
+        if (ScoreManager.Instance == null || _lastActivatedCheckpoint.ActivationTime < 0) return;
+
+        float stampedTime = _lastActivatedCheckpoint.ActivationTime;
+        ScoreManager.Instance.SetCurrentTime(stampedTime);
+        ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
+    }
+
+    private void ResetWorldState()
+    {
+        foreach (var resettable in _resettableObjects)
+        {
+            resettable.ResetState();
+        }
+    }
+    
+    private void SoftResetToStart()
+    {
+        if (initialSpawnPoint == null)
+        {
+            HardResetLevel();
+            return;
+        }
+
+        ResetWorldState();
+        ScoreManager.Instance?.ResetLevelTimer();
+        _lastActivatedCheckpoint = null;
+
+        if (_player != null)
+        {
+            _player.ResetToPosition(initialSpawnPoint.position);
+        }
+    }
+
+    private void HardResetLevel()
+    {
+        ScoreManager.Instance?.IncrementDeathCount();
+        SceneManagerLogic.Instance.RestartScene();
+    }
+}
+</file>
+
 <file path="Assets/Scripts/DeathFogLogic.cs">
 using UnityEngine;
 
@@ -9799,19 +9890,13 @@ public class DeathFogLogic : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            // Novo: Incrementar contador de mortes
-            if (ScoreManager.Instance != null)
-            {
-                ScoreManager.Instance.IncrementDeathCount();
-                Debug.Log("DeathFogLogic: Death count incremented."); 
-            }
-
             if (CheckpointManager.Instance != null)
             {
                 CheckpointManager.Instance.SoftResetToCheckpoint();
             }
             else
             {
+                ScoreManager.Instance?.IncrementDeathCount();
                 SceneManagerLogic.Instance.RestartScene();
             }
         }
@@ -9829,7 +9914,6 @@ public class GrapplingHookController : MonoBehaviour
     public event Action OnGrappleStarted;
     public event Action OnGrappleStopped;
     public event Action<Transform> OnPredictionTargetChanged;
-    // O evento OnGrappleVisualNeedsUpdate não é mais necessário
     #endregion
 
     #region Dependencies
@@ -9850,6 +9934,14 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private float maximumTimeGrappling = 3f;
     [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
     [SerializeField] private float grappleValidityCheckInterval = 0.1f;
+    #endregion
+    
+    #region Cooldown Tolerance
+    [Header("Tolerância de Cooldown")]
+    [Tooltip("Se um grapple durar menos que este tempo, o cooldown é ignorado (se a tolerância estiver ativa).")]
+    [SerializeField] private float quickReleaseThreshold = 0.1f;
+    [Tooltip("Um grapple precisa durar mais que este tempo para restaurar a tolerância de cooldown.")]
+    [SerializeField] private float longGrappleThreshold = 1.0f;
     #endregion
 
     #region Joint Settings
@@ -9886,6 +9978,9 @@ public class GrapplingHookController : MonoBehaviour
     private float _grappleTimer;
     private float _grappleInputBufferTimer;
     private float _grappleValidityCheckTimer;
+    
+    private float _grappleElapsedTime;
+    private bool _hasCooldownTolerance = true;
 
     private Vector2 _moveInput;
     private Rigidbody _grappledRigidbody;
@@ -10012,12 +10107,13 @@ public class GrapplingHookController : MonoBehaviour
     }
     private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
     private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
     #endregion
 
     #region Core Grapple Logic
     private void ExecuteGrapple()
     {
+        _grappleElapsedTime = 0f;
         OnGrappleStarted?.Invoke();
         _isGrappling = true;
         _grappleTimer = maximumTimeGrappling;
@@ -10046,17 +10142,39 @@ public class GrapplingHookController : MonoBehaviour
     public void StopGrapple()
     {
         if (!_isGrappling) return;
+
+        bool isQuickRelease = _hasCooldownTolerance && _grappleElapsedTime < quickReleaseThreshold;
+
         OnGrappleStopped?.Invoke();
         _isGrappling = false;
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
+        
         Destroy(_joint);
         _grappledRigidbody = null;
         _currentGrappleableTarget = null;
         _grappledPointOffsetLocalToTarget = Vector3.zero;
-        playerMovement.ResetDoubleJump();
+
+        if (isQuickRelease)
+        {
+            _hasCooldownTolerance = false;
+        }
+        else
+        {
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
+            {
+                _cooldownTimer = grappleCooldown;
+            }
+            playerMovement.ResetDoubleJump();
+            
+            if (!_hasCooldownTolerance && _grappleElapsedTime >= longGrappleThreshold)
+            {
+                _hasCooldownTolerance = true;
+            }
+        }
+        
         UpdateGrappleStateAndVisuals();
         if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
+
     private void ApplySwingForce()
     {
         if (!_joint) return;
@@ -10126,6 +10244,7 @@ public class GrapplingHookController : MonoBehaviour
         if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
         if (_isGrappling)
         {
+            _grappleElapsedTime += Time.deltaTime;
             bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
             if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
         }
@@ -10174,122 +10293,12 @@ public class GrapplingHookController : MonoBehaviour
         {
             if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
             {
-                Debug.Log($"Grapple solto do alvo '{_currentGrappleableTarget.GetGameObject()?.name ?? "Objeto Destruído"}' porque ele não é mais agarrável ou foi destruído.");
                 StopGrapple();
             }
             _grappleValidityCheckTimer = grappleValidityCheckInterval;
         }
     }
     #endregion
-}
-</file>
-
-<file path="Assets/Scripts/InputManager.cs">
-using System;
-using UnityEngine;
-using UnityEngine.InputSystem;
-
-[RequireComponent(typeof(InputStateManager))]
-public class InputManager : MonoBehaviour
-{
-    public static InputManager Instance { get; private set; }
-
-    public PlayerControls PlayerControls => _playerControls;
-
-    public event Action<Vector2> OnMove;
-    public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-    public event Action OnSlowTimeToggled;
-    public event Action OnResetToCheckpoint;
-    public event Action OnFullLevelReset;
-    public event Action OnPausePressed;
-
-#if ENABLE_CHEATS
-    public event Action OnToggleInfiniteJumps;
-    public event Action OnToggleInfiniteGrappleCooldown;
-    public event Action OnToggleInfiniteGrappleDuration;
-    public event Action OnToggleInfiniteTimeStop;
-    public event Action OnToggleAllCheats;
-#endif
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        _playerControls = new PlayerControls();
-        
-        GetComponent<InputStateManager>().Initialize(_playerControls);
-    }
-
-    private void OnEnable()
-    {
-        _playerControls.Enable();
-        
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-        _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
-        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
-        _playerControls.Player.FullReset.performed += HandleFullLevelReset;
-        _playerControls.PostGame.RestartLevel.performed += HandleFullLevelReset; 
-        _playerControls.Player.Pause.performed += HandlePausePressed;
-        _playerControls.UI.Unpause.performed += HandlePausePressed;
-        
-#if ENABLE_CHEATS
-        _playerControls.Debug.Enable();
-        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
-        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
-        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
-        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
-        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
-#endif
-    }
-
-    private void OnDisable()
-    {
-        if (_playerControls == null) return;
-        
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
-        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
-        _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
-        _playerControls.PostGame.RestartLevel.performed -= HandleFullLevelReset;
-        _playerControls.Player.Pause.performed -= HandlePausePressed;
-        _playerControls.UI.Unpause.performed -= HandlePausePressed;
-
-        _playerControls.Disable();
-    }
-    
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
-    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
-    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
-    private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
-    private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
-    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
 }
 </file>
 
