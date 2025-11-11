@@ -106,7 +106,6 @@ Assets/
     MouseSensitivitySlider.cs
     MovingPlatform.cs
     ObjectRotator.cs
-    PatrolMovement.cs
     PlayerAnimatorController.cs
     PlayerAudioHandler.cs
     PlayerDebugPanel.cs
@@ -284,141 +283,6 @@ public interface ITimeSlowable
     /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
     /// </summary>
     void RestoreNormalTime();
-}
-</file>
-
-<file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
-// Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Implementação concreta da interface ITimeSlowable para objetos com Rigidbody.
-/// Salva o estado de movimento (velocidades), torna o Rigidbody cinemático durante a lentidão
-/// e simula o movimento em 'FixedUpdate' com base na porcentagem de lentidão.
-/// Ao restaurar, reaplica o estado de movimento salvo.
-/// </summary>
-[RequireComponent(typeof(Rigidbody))]
-public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
-{
-    [Header("Visual Feedback")]
-    private Renderer objectRenderer;
-    private Color slowDownColor = Color.cyan;
-
-    private Rigidbody _rb;
-    private Color _originalColor;
-
-    // Variáveis para salvar o estado do Rigidbody
-    private Vector3 _savedVelocity;
-    private Vector3 _savedAngularVelocity;
-
-    private bool _isSlowed = false;
-    private float _slowFactor; // Armazena o multiplicador (ex: 0.5 para 50% de lentidão)
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        objectRenderer = GetComponent<Renderer>();
-
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            _originalColor = objectRenderer.material.color;
-        }
-    }
-
-    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
-    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
-    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
-    private void Start()
-    {
-        // Se registra no manager para receber os eventos de tempo.
-        TimeManipulationManager.Instance.Register(this);
-    }
-
-    private void OnDisable()
-    {
-        // Garante que o tempo seja restaurado se o objeto for desativado.
-        if (_isSlowed)
-        {
-            RestoreNormalTime();
-        }
-        
-        // Remove o registro do manager para evitar referências nulas,
-        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
-        if (TimeManipulationManager.Instance != null)
-        {
-            TimeManipulationManager.Instance.Unregister(this);
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        // Se o tempo não está lento, a física normal do Unity cuida de tudo.
-        if (!_isSlowed) return;
-
-        // Se o slow for 100%, não fazemos nada, o objeto fica parado.
-        if (_slowFactor <= 0f) return;
-
-        // Como o Rigidbody está cinemático, precisamos simular seu movimento.
-        // Usamos MovePosition e MoveRotation para respeitar a física e colisões.
-        Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
-        _rb.MovePosition(newPosition);
-
-        Quaternion deltaRotation = Quaternion.Euler(_savedAngularVelocity * _slowFactor * Time.fixedDeltaTime);
-        _rb.MoveRotation(_rb.rotation * deltaRotation);
-    }
-
-    /// <summary>
-    /// Salva o estado de movimento, torna o Rigidbody cinemático e aplica o feedback visual.
-    /// </summary>
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-
-        // Salva o estado atual
-        _savedVelocity = _rb.linearVelocity;
-        _savedAngularVelocity = _rb.angularVelocity;
-
-        // Converte a porcentagem (0-100) para um multiplicador (1.0-0.0)
-        _slowFactor = 1.0f - (slowPercentage / 100.0f);
-
-        // Torna o Rigidbody cinemático para que possamos controlar seu movimento manualmente.
-        _rb.isKinematic = true;
-
-        // Feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            objectRenderer.material.color = slowDownColor;
-        }
-    }
-
-    /// <summary>
-    /// Retorna o Rigidbody ao estado dinâmico, restaura suas velocidades e o feedback visual.
-    /// </summary>
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-
-        // Retorna o Rigidbody ao controle total da física.
-        _rb.isKinematic = false;
-
-        // Restaura o estado de movimento. A física do Unity continuará a partir daqui.
-        _rb.linearVelocity = _savedVelocity;
-        _rb.angularVelocity = _savedAngularVelocity;
-
-        // Restaura feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            objectRenderer.material.color = _originalColor;
-        }
-    }
-    
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
 }
 </file>
 
@@ -1133,94 +997,6 @@ public class ObjectRotator : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PatrolMovement.cs">
-// Local: Assets/Scripts/PatrolMovement.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Move um objeto com Rigidbody entre dois pontos de destino de forma contínua.
-/// Projetado para testar a mecânica de manipulação do tempo.
-/// </summary>
-[RequireComponent(typeof(Rigidbody))]
-public class PatrolMovement : MonoBehaviour
-{
-    [Header("Configurações de Patrulha")]
-    [Tooltip("O ponto de partida da patrulha.")]
-    [SerializeField] private Transform targetA;
-    [Tooltip("O ponto final da patrulha.")]
-    [SerializeField] private Transform targetB;
-    [Tooltip("A velocidade de movimento do objeto.")]
-    [SerializeField] private float speed = 5f;
-
-    [Header("Precisão")]
-    [Tooltip("A distância mínima do alvo para considerá-lo alcançado.")]
-    [SerializeField] private float reachThreshold = 0.5f;
-
-    private Rigidbody _rb;
-    private Transform _currentTarget;
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        // Garante que a gravidade não interfira na patrulha horizontal/vertical.
-        _rb.useGravity = false; 
-    }
-
-    private void Start()
-    {
-        // Valida se os alvos foram configurados para evitar erros.
-        if (targetA == null || targetB == null)
-        {
-            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
-            enabled = false; // Desativa o script se não houver alvos.
-            return;
-        }
-
-        // Define o primeiro alvo e inicia o movimento.
-        _currentTarget = targetB;
-    }
-
-    private void FixedUpdate()
-    {
-        // Ponto de integração CRÍTICO:
-        // Se o Rigidbody for cinemático, significa que o SlowableRigidbody está no controle.
-        // Portanto, este script não deve interferir no movimento para evitar conflitos.
-        if (_rb.isKinematic)
-        {
-            return;
-        }
-
-        // Calcula a direção para o alvo atual.
-        Vector3 direction = (_currentTarget.position - _rb.position).normalized;
-
-        // Aplica a velocidade na direção do alvo.
-        _rb.linearVelocity = direction * speed;
-
-        // Verifica se o objeto chegou perto o suficiente do alvo.
-        if (Vector3.Distance(_rb.position, _currentTarget.position) < reachThreshold)
-        {
-            // Troca o alvo para o outro ponto.
-            _currentTarget = (_currentTarget == targetA) ? targetB : targetA;
-        }
-    }
-
-    /// <summary>
-    /// Desenha linhas na Scene View para facilitar a visualização dos pontos de patrulha.
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-        if (targetA != null && targetB != null)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(targetA.position, targetB.position);
-            Gizmos.DrawWireSphere(targetA.position, reachThreshold);
-            Gizmos.DrawWireSphere(targetB.position, reachThreshold);
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/ShadowFollow.cs">
 using UnityEngine;
 
@@ -1578,6 +1354,22 @@ public class TimeStopUIController : MonoBehaviour
     {
         _timeStopSlider.value = normalizedCharge;
     }
+}
+</file>
+
+<file path="Assets/Scripts/TvScanController.cs">
+using UnityEngine;
+
+public class TVScanMaterialController : MonoBehaviour
+{
+	public string Unscaled = "_UnscaledTime";
+	public Material material;
+
+	void Update()
+	{
+	   material.SetFloat("_UnscaledTime", Time.unscaledTime);
+            
+	}
 }
 </file>
 
@@ -4141,6 +3933,141 @@ public class ScoreUIController : MonoBehaviour
             rankText.text = $"Rank: {rank}";
         }
     }
+}
+</file>
+
+<file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class SlowableRigidbody : MonoBehaviour, ITimeSlowable, IGrappleable
+{
+    [Header("Grapple Settings")]
+    [Tooltip("If checked, the object can be grappled even when moving at normal speed. If unchecked, it can only be grappled when time is slowed.")]
+    [SerializeField] private bool canBeGrappledWhileMoving = true;
+    [Tooltip("The name of the layer the object will be moved to when it becomes grappleable.")]
+    [SerializeField] private string grappleableLayerName = "Grappleable";
+    
+    [Header("Visual Feedback")]
+    [SerializeField] private Color slowDownColor = Color.cyan;
+
+    private Rigidbody _rb;
+    private Renderer objectRenderer;
+    private Color _originalColor;
+
+    private Vector3 _savedVelocity;
+    private Vector3 _savedAngularVelocity;
+
+    private bool _isSlowed = false;
+    private float _slowFactor;
+
+    private int _grappleableLayerIndex;
+    private int _originalLayerIndex;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        objectRenderer = GetComponent<Renderer>();
+
+        if (objectRenderer != null && objectRenderer.material != null)
+        {
+            _originalColor = objectRenderer.material.color;
+        }
+
+        _originalLayerIndex = gameObject.layer;
+        _grappleableLayerIndex = LayerMask.NameToLayer(grappleableLayerName);
+        if (_grappleableLayerIndex == -1)
+        {
+            Debug.LogError($"Layer '{grappleableLayerName}' not found. Please check your project's Layer settings.", this);
+            _grappleableLayerIndex = _originalLayerIndex;
+        }
+    }
+
+    private void Start()
+    {
+        TimeManipulationManager.Instance.Register(this);
+        UpdateGrappleableLayer();
+    }
+
+    private void OnDisable()
+    {
+        if (_isSlowed)
+        {
+            RestoreNormalTime();
+        }
+        
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (!_isSlowed) return;
+        if (_slowFactor <= 0f) return;
+
+        Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
+        _rb.MovePosition(newPosition);
+
+        Quaternion deltaRotation = Quaternion.Euler(_savedAngularVelocity * _slowFactor * Time.fixedDeltaTime);
+        _rb.MoveRotation(_rb.rotation * deltaRotation);
+    }
+
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+
+        _savedVelocity = _rb.linearVelocity;
+        _savedAngularVelocity = _rb.angularVelocity;
+        _slowFactor = 1.0f - (slowPercentage / 100.0f);
+        _rb.isKinematic = true;
+
+        if (objectRenderer != null)
+        {
+            objectRenderer.material.color = slowDownColor;
+        }
+        UpdateGrappleableLayer();
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+
+        _rb.isKinematic = false;
+        _rb.linearVelocity = _savedVelocity;
+        _rb.angularVelocity = _savedAngularVelocity;
+
+        if (objectRenderer != null)
+        {
+            objectRenderer.material.color = _originalColor;
+        }
+        UpdateGrappleableLayer();
+    }
+    
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+
+    private void UpdateGrappleableLayer()
+    {
+        gameObject.layer = CanBeGrappledNow() ? _grappleableLayerIndex : _originalLayerIndex;
+    }
+
+    #region IGrappleable Implementation
+    public bool CanBeGrappledNow()
+    {
+        return canBeGrappledWhileMoving || _isSlowed;
+    }
+
+    public GameObject GetGameObject()
+    {
+        return gameObject;
+    }
+    #endregion
 }
 </file>
 
@@ -7364,22 +7291,6 @@ public class Sound
 }
 </file>
 
-<file path="Assets/Scripts/TvScanController.cs">
-using UnityEngine;
-
-public class TVScanMaterialController : MonoBehaviour
-{
-	public string Unscaled = "_UnscaledTime";
-	public Material material;
-
-	void Update()
-	{
-	   material.SetFloat("_UnscaledTime", Time.unscaledTime);
-            
-	}
-}
-</file>
-
 <file path="Assets/Scripts/UIManager.cs">
 // Local: Assets/Scripts/UI/UIManager.cs
 
@@ -7624,6 +7535,149 @@ public class WinLogic : MonoBehaviour
         _levelFinished = true;
         
         GameFlowManager.Instance.CompleteLevel();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/BuildingShooter.cs">
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class RandomPrefabShooter : MonoBehaviour
+{
+    [Header("Prefab Settings")]
+    [Tooltip("Assign up to 5 prefabs to shoot randomly.")]
+    public GameObject[] prefabs = new GameObject[5];
+
+    [Header("Shooting Settings")]
+    [Tooltip("Time interval between each shot (seconds).")]
+    public float shootInterval = 2f;
+
+    [Tooltip("Force applied to shoot the prefab forward.")]
+    public float shootForce = 10f;
+
+    [Header("Lifetime Settings")]
+    [Tooltip("Time before each spawned prefab is destroyed (seconds).")]
+    public float prefabLifetime = 5f;
+
+    [Header("Prewarm Settings")]
+    [Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
+    public bool enablePrewarm = true;
+
+    private float shootTimer;
+    private bool _isTimeStopped;
+
+    // Nova estrutura para gerenciar objetos spawnados e seus tempos de vida restantes
+    private struct SpawnedObject
+    {
+        public GameObject obj;
+        public float remainingLifetime;
+    }
+
+    private List<SpawnedObject> spawnedObjects = new List<SpawnedObject>();
+
+    private void Start()
+    {
+        if (enablePrewarm)
+            PerformPrewarm();
+    }
+
+    private void Update()
+    {
+        _isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
+
+        if (!_isTimeStopped)
+        {
+            shootTimer += Time.deltaTime;
+            if (shootTimer >= shootInterval)
+            {
+                ShootRandomPrefab();
+                shootTimer = 0f;
+            }
+
+            // Gerenciar tempos de vida dos objetos spawnados
+            for (int i = spawnedObjects.Count - 1; i >= 0; i--)
+            {
+                SpawnedObject so = spawnedObjects[i];
+                so.remainingLifetime -= Time.deltaTime;
+                if (so.remainingLifetime <= 0f)
+                {
+                    Destroy(so.obj);
+                    spawnedObjects.RemoveAt(i);
+                }
+                else
+                {
+                    spawnedObjects[i] = so; // Atualizar na lista
+                }
+            }
+        }
+    }
+
+    private void PerformPrewarm()
+    {
+        if (prefabs == null || prefabs.Length == 0)
+            return;
+
+        int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
+        for (int i = 0; i < steps; i++)
+        {
+            float age = i * shootInterval; // seconds since it would have been fired
+            float remainingLife = prefabLifetime - age;
+
+            if (remainingLife > 0f)
+            {
+                GameObject spawned = SpawnPrefabAtTimeOffset(age);
+                // Adicionar à lista de objetos gerenciados
+                spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = remainingLife });
+            }
+        }
+    }
+
+    private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
+    {
+        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+        if (validPrefabs.Length == 0) return null;
+
+        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+
+        Rigidbody rb = spawned.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            // Simulate where it would be if fired 'timeOffset' seconds ago
+            Vector3 velocity = transform.forward * shootForce;
+            spawned.transform.position += velocity * timeOffset;
+
+            rb.linearVelocity = velocity;
+        }
+
+        return spawned;
+    }
+
+    private void ShootRandomPrefab()
+    {
+        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+        if (validPrefabs.Length == 0) return;
+
+        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+
+        Rigidbody rb = spawned.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.AddForce(transform.forward * shootForce, ForceMode.VelocityChange);
+        }
+
+        // Adicionar à lista de objetos gerenciados com tempo de vida total
+        spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = prefabLifetime });
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawRay(transform.position, transform.forward * 2f);
     }
 }
 </file>
@@ -7893,257 +7947,6 @@ public class GameSettingsManager : MonoBehaviour
         _settings.checkpointsEnabled = isEnabled;
         SaveManager.Instance.SaveGame();
         OnCheckpointsEnabledChanged?.Invoke(isEnabled);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/MovingPlatform.cs">
-using UnityEngine;
-using System;
-
-[RequireComponent(typeof(Rigidbody))]
-public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable, IGrappleable
-{
-    // O evento OnGrappabilityChanged não é mais necessário, pois o GrapplingHookController
-    // fará uma verificação ativa via IGrappleable.
-
-    [Header("Configurações de Patrulha")]
-    [SerializeField] private Transform targetA;
-    [SerializeField] private Transform targetB;
-    [Tooltip("A velocidade da plataforma em unidades por segundo.")]
-    public float speed = 3f;
-    [Tooltip("Fator de influência no movimento do jogador quando está sobre a plataforma.")]
-    public float playerInfluence = 0.69f;
-
-    [Header("Visual")]
-    [SerializeField] private Color slowDownColor = Color.cyan;
-
-    [Header("Configurações de Grapple")]
-    [Tooltip("Se marcado, a plataforma pode ser agarrada (grapple) mesmo quando está se movendo normalmente. Se desmarcado, só pode ser agarrada com o tempo parado.")]
-    [SerializeField] private bool canBeGrappledWhileMoving = true;
-    [Tooltip("Nome da camada para a qual a plataforma será movida quando puder ser agarrada. Certifique-se de que o GrapplingHookController possa interagir com esta camada.")]
-    [SerializeField] private string grappleableLayerName = "Grappleable";
-    [Tooltip("Nome da camada original da plataforma, para onde ela retorna quando não pode ser agarrada. Será detectada automaticamente se deixado vazio.")]
-    [SerializeField] private string defaultLayerName = ""; // Preenche automaticamente
-
-    private Rigidbody _rb;
-    private Renderer _renderer;
-    private Color _originalColor;
-
-    // --- NOVA ARQUITETURA DE MOVIMENTO ---
-    private Vector3 _startPoint;
-    private Vector3 _endPoint;
-    private float _journeyLength;
-    private float _journeyTravelled;
-    private float _originalSpeed; // Para salvar a velocidade durante o slow-motion
-
-    // --- ESTADO ---
-    private bool _isSlowed = false;
-    private Vector3 _initialPosition; // Para IResettable
-    private int _originalLayer; // Armazena a camada inicial do objeto
-    private int _grappleableLayerIndex;
-    private int _nonGrappleableLayerIndex; // Usaremos a camada original como a "não-grappable" se a checkbox estiver desmarcada
-
-    // private bool _currentGrappabilityState; // Não é mais necessário rastrear aqui, a interface lida com isso.
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        _renderer = GetComponent<Renderer>();
-        if (_renderer != null) _originalColor = _renderer.material.color;
-
-        _rb.useGravity = false;
-        _rb.freezeRotation = true;
-        
-        _rb.isKinematic = true; 
-        
-        _initialPosition = transform.position;
-
-        // Armazena a camada original e resolve os índices de camada
-        _originalLayer = gameObject.layer;
-        _grappleableLayerIndex = LayerMask.NameToLayer(grappleableLayerName);
-
-        // Se o nome da camada padrão não for especificado, usamos a camada original
-        if (string.IsNullOrEmpty(defaultLayerName))
-        {
-            _nonGrappleableLayerIndex = _originalLayer;
-        }
-        else
-        {
-            _nonGrappleableLayerIndex = LayerMask.NameToLayer(defaultLayerName);
-        }
-
-        if (_grappleableLayerIndex == -1)
-        {
-            Debug.LogError($"Camada 'Grappleable' ({grappleableLayerName}) não encontrada para MovingPlatform em {gameObject.name}. Verifique as configurações de Layer do projeto.", this);
-            _grappleableLayerIndex = _originalLayer; 
-        }
-        if (_nonGrappleableLayerIndex == -1)
-        {
-            Debug.LogError($"Camada 'Não-Grappleable' ({defaultLayerName}) não encontrada para MovingPlatform em {gameObject.name}. Usando a camada original.", this);
-            _nonGrappleableLayerIndex = _originalLayer;
-        }
-    }
-
-    private void Start()
-    {
-        if (targetA == null || targetB == null)
-        {
-            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
-            enabled = false;
-            return;
-        }
-
-        InitializeJourney();
-        _originalSpeed = speed;
-
-        TimeManipulationManager.Instance.Register(this);
-        UpdateGrappleableLayer(); // Define o estado inicial da camada
-    }
-
-    private void OnDisable()
-    {
-        if (_isSlowed) RestoreNormalTime();
-        if (TimeManipulationManager.Instance != null)
-        {
-            TimeManipulationManager.Instance.Unregister(this);
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        UpdateMovement();
-    }
-
-    /// <summary>
-    /// Lógica principal de movimento. Calcula a posição exata da plataforma
-    /// ao longo do trajeto com base no tempo e na velocidade, evitando o problema de "overshooting".
-    /// </summary>
-    private void UpdateMovement()
-    {
-        if (_journeyLength <= 0) return;
-
-        _journeyTravelled += speed * Time.fixedDeltaTime;
-
-        if (_journeyTravelled >= _journeyLength)
-        {
-            float overshoot = _journeyTravelled - _journeyLength;
-            SwapEndpoints();
-            _journeyTravelled = overshoot;
-        }
-
-        float fractionOfJourney = _journeyTravelled / _journeyLength;
-
-        Vector3 newPosition = Vector3.Lerp(_startPoint, _endPoint, fractionOfJourney);
-        _rb.MovePosition(newPosition);
-    }
-    
-    /// <summary>
-    /// Configura ou reconfigura o estado inicial do trajeto da plataforma.
-    /// </summary>
-    private void InitializeJourney()
-    {
-        transform.position = _initialPosition; // Garante que a plataforma comece na posição certa
-        _startPoint = targetA.position;
-        _endPoint = targetB.position;
-        _journeyLength = Vector3.Distance(_startPoint, _endPoint);
-        _journeyTravelled = 0f;
-    }
-    
-    /// <summary>
-    /// Inverte os pontos de início e fim para fazer a plataforma voltar.
-    /// </summary>
-    private void SwapEndpoints()
-    {
-        Vector3 temp = _startPoint;
-        _startPoint = _endPoint;
-        _endPoint = temp;
-    }
-
-    #region ITimeSlowable Implementation
-
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-
-        float slowFactor = 1.0f - (slowPercentage / 100.0f);
-        speed = _originalSpeed * slowFactor;
-
-        if (_renderer != null) _renderer.material.color = slowDownColor;
-        UpdateGrappleableLayer(); // Atualiza a camada quando o tempo é lento
-    }
-
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-
-        speed = _originalSpeed;
-
-        if (_renderer != null) _renderer.material.color = _originalColor;
-        UpdateGrappleableLayer(); // Atualiza a camada quando o tempo volta ao normal
-    }
-
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
-    
-    #endregion
-
-    #region IResettable Implementation
-    
-    public void ResetState()
-    {
-        InitializeJourney();
-        RestoreNormalTime();
-        UpdateGrappleableLayer(); // Garante que a camada seja redefinida corretamente
-    }
-    
-    #endregion
-
-    /// <summary>
-    /// Controla dinamicamente a camada do GameObject para permitir ou impedir o grapple.
-    /// </summary>
-    private void UpdateGrappleableLayer()
-    {
-        // A camada é definida com base na checkbox e no estado de lentidão.
-        // O método CanBeGrappledNow() será o ponto de verificação para o GrapplingHookController.
-        if (CanBeGrappledNow())
-        {
-            gameObject.layer = _grappleableLayerIndex;
-        }
-        else
-        {
-            gameObject.layer = _nonGrappleableLayerIndex;
-        }
-    }
-
-    #region IGrappleable Implementation
-    public bool CanBeGrappledNow()
-    {
-        // A plataforma é agarrável se:
-        // 1. A checkbox permite agarrar enquanto ela se move, OU
-        // 2. O tempo está lento.
-        return canBeGrappledWhileMoving || _isSlowed;
-    }
-
-    public GameObject GetGameObject()
-    {
-        return gameObject;
-    }
-    #endregion
-
-    private void OnDrawGizmos()
-    {
-        if (targetA != null && targetB != null)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(targetA.position, targetB.position);
-            Gizmos.DrawWireSphere(targetA.position, 0.5f);
-            Gizmos.DrawWireSphere(targetB.position, 0.5f);
-        }
     }
 }
 </file>
@@ -8460,149 +8263,6 @@ public class SettingsPanel : UIPanel
         {
             Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
         }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/BuildingShooter.cs">
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
-public class RandomPrefabShooter : MonoBehaviour
-{
-    [Header("Prefab Settings")]
-    [Tooltip("Assign up to 5 prefabs to shoot randomly.")]
-    public GameObject[] prefabs = new GameObject[5];
-
-    [Header("Shooting Settings")]
-    [Tooltip("Time interval between each shot (seconds).")]
-    public float shootInterval = 2f;
-
-    [Tooltip("Force applied to shoot the prefab forward.")]
-    public float shootForce = 10f;
-
-    [Header("Lifetime Settings")]
-    [Tooltip("Time before each spawned prefab is destroyed (seconds).")]
-    public float prefabLifetime = 5f;
-
-    [Header("Prewarm Settings")]
-    [Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
-    public bool enablePrewarm = true;
-
-    private float shootTimer;
-    private bool _isTimeStopped;
-
-    // Nova estrutura para gerenciar objetos spawnados e seus tempos de vida restantes
-    private struct SpawnedObject
-    {
-        public GameObject obj;
-        public float remainingLifetime;
-    }
-
-    private List<SpawnedObject> spawnedObjects = new List<SpawnedObject>();
-
-    private void Start()
-    {
-        if (enablePrewarm)
-            PerformPrewarm();
-    }
-
-    private void Update()
-    {
-        _isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
-
-        if (!_isTimeStopped)
-        {
-            shootTimer += Time.deltaTime;
-            if (shootTimer >= shootInterval)
-            {
-                ShootRandomPrefab();
-                shootTimer = 0f;
-            }
-
-            // Gerenciar tempos de vida dos objetos spawnados
-            for (int i = spawnedObjects.Count - 1; i >= 0; i--)
-            {
-                SpawnedObject so = spawnedObjects[i];
-                so.remainingLifetime -= Time.deltaTime;
-                if (so.remainingLifetime <= 0f)
-                {
-                    Destroy(so.obj);
-                    spawnedObjects.RemoveAt(i);
-                }
-                else
-                {
-                    spawnedObjects[i] = so; // Atualizar na lista
-                }
-            }
-        }
-    }
-
-    private void PerformPrewarm()
-    {
-        if (prefabs == null || prefabs.Length == 0)
-            return;
-
-        int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
-        for (int i = 0; i < steps; i++)
-        {
-            float age = i * shootInterval; // seconds since it would have been fired
-            float remainingLife = prefabLifetime - age;
-
-            if (remainingLife > 0f)
-            {
-                GameObject spawned = SpawnPrefabAtTimeOffset(age);
-                // Adicionar à lista de objetos gerenciados
-                spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = remainingLife });
-            }
-        }
-    }
-
-    private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
-    {
-        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
-        if (validPrefabs.Length == 0) return null;
-
-        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
-        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
-
-        Rigidbody rb = spawned.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            // Simulate where it would be if fired 'timeOffset' seconds ago
-            Vector3 velocity = transform.forward * shootForce;
-            spawned.transform.position += velocity * timeOffset;
-
-            rb.linearVelocity = velocity;
-        }
-
-        return spawned;
-    }
-
-    private void ShootRandomPrefab()
-    {
-        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
-        if (validPrefabs.Length == 0) return;
-
-        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
-        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
-
-        Rigidbody rb = spawned.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.AddForce(transform.forward * shootForce, ForceMode.VelocityChange);
-        }
-
-        // Adicionar à lista de objetos gerenciados com tempo de vida total
-        spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = prefabLifetime });
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawRay(transform.position, transform.forward * 2f);
     }
 }
 </file>
@@ -9043,6 +8703,165 @@ public class InputManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/MovingPlatform.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable, IGrappleable
+{
+    [Header("Configurações de Patrulha")]
+    [SerializeField] private Transform targetA;
+    [SerializeField] private Transform targetB;
+    [Tooltip("A velocidade da plataforma em unidades por segundo.")]
+    public float speed = 3f;
+    [Tooltip("Fator de influência no movimento do jogador quando está sobre a plataforma.")]
+    public float playerInfluence = 0.69f;
+
+    [Header("Grapple & Visuals")]
+    [SerializeField] private bool canBeGrappledWhileMoving = true;
+    [SerializeField] private Color slowDownColor = Color.cyan;
+
+    private Rigidbody _rb;
+    private Renderer _renderer;
+    private Color _originalColor;
+
+    private Vector3 _startPoint;
+    private Vector3 _endPoint;
+    private float _journeyLength;
+    private float _journeyTravelled;
+
+    private bool _isSlowed = false;
+    private Vector3 _initialPosition;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        _renderer = GetComponent<Renderer>();
+        if (_renderer != null) _originalColor = _renderer.material.color;
+
+        _rb.useGravity = false;
+        _rb.freezeRotation = true;
+        _rb.isKinematic = true;
+
+        _initialPosition = transform.position;
+    }
+
+    private void Start()
+    {
+        if (targetA == null || targetB == null)
+        {
+            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
+            enabled = false;
+            return;
+        }
+        InitializeJourney();
+        TimeManipulationManager.Instance.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (!_isSlowed)
+        {
+            UpdateMovement();
+        }
+    }
+
+    private void UpdateMovement()
+    {
+        if (_journeyLength <= 0) return;
+
+        _journeyTravelled += speed * Time.fixedDeltaTime;
+
+        if (_journeyTravelled >= _journeyLength)
+        {
+            float overshoot = _journeyTravelled - _journeyLength;
+            SwapEndpoints();
+            _journeyTravelled = overshoot;
+        }
+
+        float fractionOfJourney = Mathf.Clamp01(_journeyTravelled / _journeyLength);
+        Vector3 newPosition = Vector3.Lerp(_startPoint, _endPoint, fractionOfJourney);
+        _rb.MovePosition(newPosition);
+    }
+
+    private void InitializeJourney()
+    {
+        transform.position = _initialPosition;
+        _startPoint = targetA.position;
+        _endPoint = targetB.position;
+        _journeyLength = Vector3.Distance(_startPoint, _endPoint);
+        _journeyTravelled = 0f;
+    }
+
+    private void SwapEndpoints()
+    {
+        Vector3 temp = _startPoint;
+        _startPoint = _endPoint;
+        _endPoint = temp;
+    }
+
+    #region ITimeSlowable Implementation
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+        if (_renderer != null) _renderer.material.color = slowDownColor;
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+        if (_renderer != null) _renderer.material.color = _originalColor;
+    }
+
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+    #endregion
+
+    #region IResettable Implementation
+    public void ResetState()
+    {
+        InitializeJourney();
+        RestoreNormalTime();
+    }
+    #endregion
+
+    #region IGrappleable Implementation
+    public bool CanBeGrappledNow()
+    {
+        return canBeGrappledWhileMoving || _isSlowed;
+    }
+
+    public GameObject GetGameObject()
+    {
+        return gameObject;
+    }
+    #endregion
+
+    private void OnDrawGizmos()
+    {
+        if (targetA != null && targetB != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(targetA.position, targetB.position);
+            Gizmos.DrawWireSphere(targetA.position, 0.5f);
+            Gizmos.DrawWireSphere(targetB.position, 0.5f);
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/PlayerLookController.cs">
 // Local: Assets/Scripts/PlayerLookController.cs
 
@@ -9280,6 +9099,8 @@ public class PlayerLookController : MonoBehaviour
         if (horizontalVelocity.sqrMagnitude > 0.1f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(horizontalVelocity.normalized);
+            Quaternion rotationDiferenceBetweenTargetAndCurrent = Quaternion.Inverse(playerModel.rotation) * targetRotation;
+            Debug.Log(rotationDiferenceBetweenTargetAndCurrent.eulerAngles);
             playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
         }
     }
@@ -9904,404 +9725,6 @@ public class DeathFogLogic : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/GrapplingHookController.cs">
-using UnityEngine;
-using System;
-
-public class GrapplingHookController : MonoBehaviour
-{
-    #region Events
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleStopped;
-    public event Action<Transform> OnPredictionTargetChanged;
-    #endregion
-
-    #region Dependencies
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovement;
-    [SerializeField] private Transform grappleTip;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private GameObject predictionPointPrefab;
-    #endregion
-
-    #region Grapple Settings
-    [Header("Configurações do Gancho")]
-    [SerializeField] private float maxGrappleDistance = 50f;
-    [SerializeField] private float grappleCooldown = 1f;
-    [SerializeField] private LayerMask grappleableLayer;
-    [SerializeField] private bool canDoMultipleGrapple = false;
-    [SerializeField] private float maximumTimeGrappling = 3f;
-    [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
-    [SerializeField] private float grappleValidityCheckInterval = 0.1f;
-    #endregion
-    
-    #region Cooldown Tolerance
-    [Header("Tolerância de Cooldown")]
-    [Tooltip("Se um grapple durar menos que este tempo, o cooldown é ignorado (se a tolerância estiver ativa).")]
-    [SerializeField] private float quickReleaseThreshold = 0.1f;
-    [Tooltip("Um grapple precisa durar mais que este tempo para restaurar a tolerância de cooldown.")]
-    [SerializeField] private float longGrappleThreshold = 1.0f;
-    #endregion
-
-    #region Joint Settings
-    [Header("Configurações da Junta (Puxão)")]
-    [SerializeField] private float springForce = 8f;
-    [SerializeField] private float damper = 7f;
-    [SerializeField] private float massScale = 4.5f;
-    [SerializeField] private float minSpringSize = .1f;
-    [SerializeField] private float maxSpringSize = .8f;
-    #endregion
-
-    #region Swing Settings
-    [Header("Configurações do Pêndulo")]
-    [SerializeField] private float swingForce = 50f;
-    #endregion
-
-    #region Input Buffer
-    [Header("Buffer de Input")]
-    [SerializeField] private float grappleInputBufferTime = 0.5f;
-    #endregion
-
-    #region State
-    public bool IsGrappling => _isGrappling;
-    public float grappleDistance { get; private set; }
-    public Vector3 GrapplePoint { get; private set; }
-
-    private bool _isGrappling = false;
-    private bool _hasGrappleAvailable = true;
-    private bool _hasValidGrappleTarget;
-    private bool _isInputBuffered;
-    private bool _wasPredictionTargetValidLastFrame = false;
-
-    private float _cooldownTimer;
-    private float _grappleTimer;
-    private float _grappleInputBufferTimer;
-    private float _grappleValidityCheckTimer;
-    
-    private float _grappleElapsedTime;
-    private bool _hasCooldownTolerance = true;
-
-    private Vector2 _moveInput;
-    private Rigidbody _grappledRigidbody;
-    private IGrappleable _currentGrappleableTarget;
-    private SpringJoint _joint;
-    private GameObject _predictionPointInstance;
-    private RaycastHit _predictionHit;
-    
-    private Vector3 _grappledPointOffsetLocalToTarget; 
-    #endregion
-
-    #region Unity Lifecycle
-    private void Awake()
-    {
-        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
-        _hasGrappleAvailable = true;
-
-        if (predictionPointPrefab != null)
-        {
-            _predictionPointInstance = Instantiate(predictionPointPrefab);
-            _predictionPointInstance.SetActive(false);
-        }
-        
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
-        InputManager.Instance.OnMove += SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
-
-        if (_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-            _wasPredictionTargetValidLastFrame = false;
-        }
-        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
-        
-        if (_isGrappling)
-        {
-            StopGrapple();
-        }
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
-    }
-
-    private void Update()
-    {
-        HandleTimers();
-        HandleInputBuffer();
-        UpdateGrappleStateAndVisuals();
-        CheckGrappleValidity();
-    }
-
-    private void LateUpdate() 
-    { 
-        if (_isGrappling) 
-        {
-            DrawRope(); 
-        }
-    }
-    private void FixedUpdate() { ApplySwingForce(); }
-    #endregion
-
-    #region Prediction & State Broadcasting
-    private void UpdateGrappleStateAndVisuals()
-    {
-        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
-        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-
-        UpdatePredictionPointVisual(isPredictionReady);
-        BroadcastPredictionStateChange(isPredictionReady);
-    }
-
-    private void UpdatePredictionPointVisual(bool show)
-    {
-        if (_predictionPointInstance == null) return;
-
-        if (show && !_predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(true);
-        }
-        else if (!show && _predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(false);
-        }
-
-        if (show)
-        {
-            _predictionPointInstance.transform.position = _predictionHit.point;
-        }
-    }
-
-    private void BroadcastPredictionStateChange(bool isReady)
-    {
-        if (isReady && !_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
-        }
-        else if (!isReady && _wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-        }
-        _wasPredictionTargetValidLastFrame = isReady;
-    }
-    #endregion
-
-    #region Input & Event Handlers
-    private void SetMoveInput(Vector2 input) => _moveInput = input;
-    private void OnGrappleInputStarted()
-    {
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
-    }
-    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
-    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
-    #endregion
-
-    #region Core Grapple Logic
-    private void ExecuteGrapple()
-    {
-        _grappleElapsedTime = 0f;
-        OnGrappleStarted?.Invoke();
-        _isGrappling = true;
-        _grappleTimer = maximumTimeGrappling;
-        ClearInputBuffer();
-        grappleDistance = _predictionHit.distance;
-        GrapplePoint = _predictionHit.point;
-        
-        _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
-
-        if (_predictionHit.rigidbody != null && !_predictionHit.rigidbody.isKinematic)
-        {
-             _grappledRigidbody = _predictionHit.rigidbody;
-             _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
-        }
-        else
-        {
-            _grappledRigidbody = null;
-            _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
-        }
-
-        CreateAndConfigureJoint(GrapplePoint);
-        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
-        UpdateGrappleStateAndVisuals();
-    }
-
-    public void StopGrapple()
-    {
-        if (!_isGrappling) return;
-
-        bool isQuickRelease = _hasCooldownTolerance && _grappleElapsedTime < quickReleaseThreshold;
-
-        OnGrappleStopped?.Invoke();
-        _isGrappling = false;
-        
-        Destroy(_joint);
-        _grappledRigidbody = null;
-        _currentGrappleableTarget = null;
-        _grappledPointOffsetLocalToTarget = Vector3.zero;
-
-        if (isQuickRelease)
-        {
-            _hasCooldownTolerance = false;
-        }
-        else
-        {
-            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
-            {
-                _cooldownTimer = grappleCooldown;
-            }
-            playerMovement.ResetDoubleJump();
-            
-            if (!_hasCooldownTolerance && _grappleElapsedTime >= longGrappleThreshold)
-            {
-                _hasCooldownTolerance = true;
-            }
-        }
-        
-        UpdateGrappleStateAndVisuals();
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
-    }
-
-    private void ApplySwingForce()
-    {
-        if (!_joint) return;
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
-        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
-    }
-    #endregion
-    private bool FindValidGrappleTarget(out RaycastHit hit)
-    {
-        return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
-               TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
-    }
-
-    private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
-    {
-        bool didHit;
-        if (sphereRadius > 0)
-        {
-            didHit = Physics.SphereCast(origin, sphereRadius, direction, out hit, maxGrappleDistance, grappleableLayer);
-        }
-        else
-        {
-            didHit = Physics.Raycast(origin, direction, out hit, maxGrappleDistance, grappleableLayer);
-        }
-
-        if (didHit)
-        {
-            IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
-
-            if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
-                (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void DrawRope()
-    {
-        if (!_joint) return;
-        
-        if (_grappledRigidbody != null) 
-        {
-            UpdateGrappleAnchorPosition();
-        }
-        else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
-        {
-            GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
-        }
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, GrapplePoint);
-    }
-    
-    private void UpdateGrappleAnchorPosition()
-    {
-        GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
-        if (_joint) _joint.connectedAnchor = GrapplePoint;
-    }
-
-    #region State & Timers
-    private void HandleTimers()
-    {
-        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
-        if (_isGrappling)
-        {
-            _grappleElapsedTime += Time.deltaTime;
-            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
-            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
-        }
-        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
-    }
-
-    private void HandleInputBuffer()
-    {
-        if (!_isInputBuffered) return;
-        _grappleInputBufferTimer -= Time.deltaTime;
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
-    }
-    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
-    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
-    private bool CanCurrentlyAttemptGrapple()
-    {
-        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
-        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
-    }
-    #endregion
-
-    #region Utility
-    private void CreateAndConfigureJoint(Vector3 connectedPoint)
-    {
-        _joint = gameObject.AddComponent<SpringJoint>();
-        _joint.autoConfigureConnectedAnchor = false;
-        _joint.anchor = Vector3.zero;
-        _joint.connectedAnchor = connectedPoint;
-        _joint.connectedBody = _grappledRigidbody; 
-
-        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
-        _joint.maxDistance = distanceFromPoint * maxSpringSize;
-        _joint.minDistance = distanceFromPoint * minSpringSize;
-        _joint.spring = springForce;
-        _joint.damper = damper;
-        _joint.massScale = massScale;
-    }
-
-    private void CheckGrappleValidity()
-    {
-        if (!_isGrappling || _currentGrappleableTarget == null) return;
-
-        _grappleValidityCheckTimer -= Time.deltaTime;
-        if (_grappleValidityCheckTimer <= 0f)
-        {
-            if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
-            {
-                StopGrapple();
-            }
-            _grappleValidityCheckTimer = grappleValidityCheckInterval;
-        }
-    }
-    #endregion
-}
-</file>
-
 <file path="Assets/Scripts/PlayerMovementController.cs">
 using System;
 using System.Collections;
@@ -10757,6 +10180,405 @@ public class PlayerMovementController : MonoBehaviour
         
         _resetCoroutine = null;
     }
+}
+</file>
+
+<file path="Assets/Scripts/GrapplingHookController.cs">
+using UnityEngine;
+using System;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    #region Events
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleStopped;
+    public event Action<Transform> OnPredictionTargetChanged;
+    #endregion
+
+    #region Dependencies
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovement;
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+    #endregion
+
+    #region Grapple Settings
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleableLayer;
+    [SerializeField] private bool canDoMultipleGrapple = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
+    [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
+    [SerializeField] private float grappleValidityCheckInterval = 0.1f;
+    #endregion
+    
+    #region Cooldown Tolerance
+    [Header("Tolerância de Cooldown")]
+    [Tooltip("Se um grapple durar menos que este tempo, o cooldown é ignorado (se a tolerância estiver ativa).")]
+    [SerializeField] private float quickReleaseThreshold = 0.1f;
+    [Tooltip("Um grapple precisa durar mais que este tempo para restaurar a tolerância de cooldown.")]
+    [SerializeField] private float longGrappleThreshold = 1.0f;
+    #endregion
+
+    #region Joint Settings
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+    [SerializeField] private float maxSpringSize = .8f;
+    #endregion
+
+    #region Swing Settings
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+    #endregion
+
+    #region Input Buffer
+    [Header("Buffer de Input")]
+    [SerializeField] private float grappleInputBufferTime = 0.5f;
+    #endregion
+
+    #region State
+    public bool IsGrappling => _isGrappling;
+    public float grappleDistance { get; private set; }
+    public Vector3 GrapplePoint { get; private set; }
+
+    private bool _isGrappling = false;
+    private bool _hasGrappleAvailable = true;
+    private bool _hasValidGrappleTarget;
+    private bool _isInputBuffered;
+    private bool _wasPredictionTargetValidLastFrame = false;
+
+    private float _cooldownTimer;
+    private float _grappleTimer;
+    private float _grappleInputBufferTimer;
+    private float _grappleValidityCheckTimer;
+    
+    private float _grappleElapsedTime;
+    private bool _hasCooldownTolerance = true;
+
+    private Vector2 _moveInput;
+    private Rigidbody _grappledRigidbody;
+    private IGrappleable _currentGrappleableTarget;
+    private SpringJoint _joint;
+    private GameObject _predictionPointInstance;
+    private RaycastHit _predictionHit;
+    
+    private Vector3 _grappledPointOffsetLocalToTarget; 
+    #endregion
+
+    #region Unity Lifecycle
+    private void Awake()
+    {
+        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
+        _hasGrappleAvailable = true;
+
+        if (predictionPointPrefab != null)
+        {
+            _predictionPointInstance = Instantiate(predictionPointPrefab);
+            _predictionPointInstance.SetActive(false);
+        }
+        
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
+        InputManager.Instance.OnMove += SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
+
+        if (_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+            _wasPredictionTargetValidLastFrame = false;
+        }
+        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
+        
+        if (_isGrappling)
+        {
+            StopGrapple();
+        }
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void Update()
+    {
+        HandleTimers();
+        HandleInputBuffer();
+        UpdateGrappleStateAndVisuals();
+        CheckGrappleValidity();
+    }
+
+    private void LateUpdate() 
+    { 
+        if (_isGrappling) 
+        {
+            DrawRope(); 
+        }
+    }
+    private void FixedUpdate() { ApplySwingForce(); }
+    #endregion
+
+    #region Prediction & State Broadcasting
+    private void UpdateGrappleStateAndVisuals()
+    {
+        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
+        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
+
+        UpdatePredictionPointVisual(isPredictionReady);
+        BroadcastPredictionStateChange(isPredictionReady);
+    }
+
+    private void UpdatePredictionPointVisual(bool show)
+    {
+        if (_predictionPointInstance == null) return;
+
+        if (show && !_predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(true);
+        }
+        else if (!show && _predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(false);
+        }
+
+        if (show)
+        {
+            _predictionPointInstance.transform.position = _predictionHit.point;
+        }
+    }
+
+    private void BroadcastPredictionStateChange(bool isReady)
+    {
+        if (isReady && !_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
+        }
+        else if (!isReady && _wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+        }
+        _wasPredictionTargetValidLastFrame = isReady;
+    }
+    #endregion
+
+    #region Input & Event Handlers
+    private void SetMoveInput(Vector2 input) => _moveInput = input;
+    private void OnGrappleInputStarted()
+    {
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
+    }
+    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
+    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
+    #endregion
+
+    #region Core Grapple Logic
+    private void ExecuteGrapple()
+    {
+        _grappleElapsedTime = 0f;
+        OnGrappleStarted?.Invoke();
+        _isGrappling = true;
+        _grappleTimer = maximumTimeGrappling;
+        ClearInputBuffer();
+        grappleDistance = _predictionHit.distance;
+        GrapplePoint = _predictionHit.point;
+        
+        _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
+
+        if (_predictionHit.rigidbody != null)
+        {
+             _grappledRigidbody = _predictionHit.rigidbody;
+             _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
+        }
+        else
+        {
+            _grappledRigidbody = null;
+            _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
+        }
+
+        CreateAndConfigureJoint(GrapplePoint);
+        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
+        UpdateGrappleStateAndVisuals();
+    }
+
+    public void StopGrapple()
+    {
+        if (!_isGrappling) return;
+
+        bool isQuickRelease = _hasCooldownTolerance && _grappleElapsedTime < quickReleaseThreshold;
+
+        OnGrappleStopped?.Invoke();
+        _isGrappling = false;
+        
+        Destroy(_joint);
+        _grappledRigidbody = null;
+        _currentGrappleableTarget = null;
+        _grappledPointOffsetLocalToTarget = Vector3.zero;
+
+        if (isQuickRelease)
+        {
+            _hasCooldownTolerance = false;
+        }
+        else
+        {
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
+            {
+                _cooldownTimer = grappleCooldown;
+            }
+            playerMovement.ResetDoubleJump();
+            
+            if (!_hasCooldownTolerance && _grappleElapsedTime >= longGrappleThreshold)
+            {
+                _hasCooldownTolerance = true;
+            }
+        }
+        
+        UpdateGrappleStateAndVisuals();
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void ApplySwingForce()
+    {
+        if (!_joint) return;
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
+    }
+    #endregion
+    private bool FindValidGrappleTarget(out RaycastHit hit)
+    {
+        return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
+               TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
+    }
+
+    private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
+    {
+        bool didHit;
+        if (sphereRadius > 0)
+        {
+            didHit = Physics.SphereCast(origin, sphereRadius, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+        else
+        {
+            didHit = Physics.Raycast(origin, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+
+        if (didHit)
+        {
+            IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
+
+            if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
+                (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void DrawRope()
+    {
+        if (!_joint) return;
+        
+        if (_grappledRigidbody != null) 
+        {
+            UpdateGrappleAnchorPosition();
+        }
+        else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
+        {
+            GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+        }
+        
+        if (_joint) _joint.connectedAnchor = GrapplePoint;
+        
+        lineRenderer.positionCount = 2;
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, GrapplePoint);
+    }
+    
+    private void UpdateGrappleAnchorPosition()
+    {
+        GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+    }
+
+    #region State & Timers
+    private void HandleTimers()
+    {
+        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
+        if (_isGrappling)
+        {
+            _grappleElapsedTime += Time.deltaTime;
+            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
+            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
+        }
+        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
+    }
+
+    private void HandleInputBuffer()
+    {
+        if (!_isInputBuffered) return;
+        _grappleInputBufferTimer -= Time.deltaTime;
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
+    }
+    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
+    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
+    private bool CanCurrentlyAttemptGrapple()
+    {
+        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
+        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
+    }
+    #endregion
+
+    #region Utility
+    private void CreateAndConfigureJoint(Vector3 connectedPoint)
+    {
+        _joint = gameObject.AddComponent<SpringJoint>();
+        _joint.autoConfigureConnectedAnchor = false;
+        _joint.anchor = Vector3.zero;
+        _joint.connectedAnchor = connectedPoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
+        _joint.maxDistance = distanceFromPoint * maxSpringSize;
+        _joint.minDistance = distanceFromPoint * minSpringSize;
+        _joint.spring = springForce;
+        _joint.damper = damper;
+        _joint.massScale = massScale;
+    }
+
+    private void CheckGrappleValidity()
+    {
+        if (!_isGrappling || _currentGrappleableTarget == null) return;
+
+        _grappleValidityCheckTimer -= Time.deltaTime;
+        if (_grappleValidityCheckTimer <= 0f)
+        {
+            if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
+            {
+                StopGrapple();
+            }
+            _grappleValidityCheckTimer = grappleValidityCheckInterval;
+        }
+    }
+    #endregion
 }
 </file>
 
