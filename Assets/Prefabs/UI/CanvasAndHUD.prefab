@@ -12917,7 +12917,6 @@ GameObject:
   - component: {fileID: 185876725154357462}
   - component: {fileID: 7109868266056827168}
   - component: {fileID: 1042823508533644157}
-  - component: {fileID: 944728122073723770}
   m_Layer: 5
   m_Name: VictoryPainel
   m_TagString: Untagged
@@ -12962,6 +12961,7 @@ MonoBehaviour:
   timeLabel: {fileID: 7596240044996276590}
   deathsLabel: {fileID: 5062149381298621946}
   rankLabel: {fileID: 7347994066372386363}
+  levelNameLabel: {fileID: 7418228219442606015}
   nextButton: {fileID: 651522547372421513}
 --- !u!222 &4416390195097735867
 CanvasRenderer:
@@ -13043,21 +13043,6 @@ MonoBehaviour:
   OnReverseComplete:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &944728122073723770
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7425233173421720333}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd93dfb4c84dad77aa6c9e1d33a296fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  restartButton: {fileID: 0}
-  mainMenuButton: {fileID: 0}
-  nextLevelButton: {fileID: 0}
 --- !u!1 &7508099202652119299
 GameObject:
   m_ObjectHideFlags: 0

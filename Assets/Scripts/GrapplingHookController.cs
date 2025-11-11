@@ -1,5 +1,3 @@
-// Assets/Scripts/GrapplingHookController.cs
-
 using UnityEngine;
 using System;
 
@@ -8,7 +6,7 @@ public class GrapplingHookController : MonoBehaviour
     #region Events
     public event Action OnGrappleStarted;
     public event Action OnGrappleStopped;
-    public event Action<Transform> OnPredictionTargetChanged; // NOVO EVENTO
+    public event Action<Transform> OnPredictionTargetChanged;
     #endregion
 
     #region Dependencies
@@ -27,6 +25,16 @@ public class GrapplingHookController : MonoBehaviour
     [SerializeField] private LayerMask grappleableLayer;
     [SerializeField] private bool canDoMultipleGrapple = false;
     [SerializeField] private float maximumTimeGrappling = 3f;
+    [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
+    [SerializeField] private float grappleValidityCheckInterval = 0.1f;
+    #endregion
+    
+    #region Cooldown Tolerance
+    [Header("Tolerância de Cooldown")]
+    [Tooltip("Se um grapple durar menos que este tempo, o cooldown é ignorado (se a tolerância estiver ativa).")]
+    [SerializeField] private float quickReleaseThreshold = 0.1f;
+    [Tooltip("Um grapple precisa durar mais que este tempo para restaurar a tolerância de cooldown.")]
+    [SerializeField] private float longGrappleThreshold = 1.0f;
     #endregion
 
     #region Joint Settings
@@ -62,14 +70,19 @@ public class GrapplingHookController : MonoBehaviour
     private float _cooldownTimer;
     private float _grappleTimer;
     private float _grappleInputBufferTimer;
+    private float _grappleValidityCheckTimer;
+    
+    private float _grappleElapsedTime;
+    private bool _hasCooldownTolerance = true;
 
     private Vector2 _moveInput;
-    private Vector3 _grappledPointLocalOffset;
     private Rigidbody _grappledRigidbody;
-
+    private IGrappleable _currentGrappleableTarget;
     private SpringJoint _joint;
     private GameObject _predictionPointInstance;
     private RaycastHit _predictionHit;
+    
+    private Vector3 _grappledPointOffsetLocalToTarget; 
     #endregion
 
     #region Unity Lifecycle
@@ -83,6 +96,8 @@ public class GrapplingHookController : MonoBehaviour
             _predictionPointInstance = Instantiate(predictionPointPrefab);
             _predictionPointInstance.SetActive(false);
         }
+        
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
 
     private void OnEnable()
@@ -107,6 +122,12 @@ public class GrapplingHookController : MonoBehaviour
             _wasPredictionTargetValidLastFrame = false;
         }
         if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
+        
+        if (_isGrappling)
+        {
+            StopGrapple();
+        }
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
 
     private void Update()
@@ -114,9 +135,16 @@ public class GrapplingHookController : MonoBehaviour
         HandleTimers();
         HandleInputBuffer();
         UpdateGrappleStateAndVisuals();
+        CheckGrappleValidity();
     }
 
-    private void LateUpdate() { DrawRope(); }
+    private void LateUpdate() 
+    { 
+        if (_isGrappling) 
+        {
+            DrawRope(); 
+        }
+    }
     private void FixedUpdate() { ApplySwingForce(); }
     #endregion
 
@@ -172,20 +200,33 @@ public class GrapplingHookController : MonoBehaviour
     }
     private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
     private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
     #endregion
 
     #region Core Grapple Logic
     private void ExecuteGrapple()
     {
+        _grappleElapsedTime = 0f;
         OnGrappleStarted?.Invoke();
         _isGrappling = true;
         _grappleTimer = maximumTimeGrappling;
         ClearInputBuffer();
         grappleDistance = _predictionHit.distance;
         GrapplePoint = _predictionHit.point;
-        _grappledRigidbody = _predictionHit.rigidbody;
-        if (_grappledRigidbody != null) { _grappledPointLocalOffset = _predictionHit.transform.InverseTransformPoint(GrapplePoint); }
+        
+        _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
+
+        if (_predictionHit.rigidbody != null && !_predictionHit.rigidbody.isKinematic)
+        {
+             _grappledRigidbody = _predictionHit.rigidbody;
+             _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
+        }
+        else
+        {
+            _grappledRigidbody = null;
+            _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
+        }
+
         CreateAndConfigureJoint(GrapplePoint);
         if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
         UpdateGrappleStateAndVisuals();
@@ -194,15 +235,39 @@ public class GrapplingHookController : MonoBehaviour
     public void StopGrapple()
     {
         if (!_isGrappling) return;
+
+        bool isQuickRelease = _hasCooldownTolerance && _grappleElapsedTime < quickReleaseThreshold;
+
         OnGrappleStopped?.Invoke();
         _isGrappling = false;
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
-        lineRenderer.positionCount = 0;
+        
         Destroy(_joint);
         _grappledRigidbody = null;
-        playerMovement.ResetDoubleJump();
+        _currentGrappleableTarget = null;
+        _grappledPointOffsetLocalToTarget = Vector3.zero;
+
+        if (isQuickRelease)
+        {
+            _hasCooldownTolerance = false;
+        }
+        else
+        {
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
+            {
+                _cooldownTimer = grappleCooldown;
+            }
+            playerMovement.ResetDoubleJump();
+            
+            if (!_hasCooldownTolerance && _grappleElapsedTime >= longGrappleThreshold)
+            {
+                _hasCooldownTolerance = true;
+            }
+        }
+        
         UpdateGrappleStateAndVisuals();
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
     }
+
     private void ApplySwingForce()
     {
         if (!_joint) return;
@@ -214,31 +279,65 @@ public class GrapplingHookController : MonoBehaviour
     #endregion
     private bool FindValidGrappleTarget(out RaycastHit hit)
     {
-        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer)) { return true; }
-        return Physics.SphereCast(playerMovement.Rb.transform.position, 3f, cameraTransform.forward, out hit, maxGrappleDistance, grappleableLayer);
+        return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
+               TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
     }
+
+    private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
+    {
+        bool didHit;
+        if (sphereRadius > 0)
+        {
+            didHit = Physics.SphereCast(origin, sphereRadius, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+        else
+        {
+            didHit = Physics.Raycast(origin, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+
+        if (didHit)
+        {
+            IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
+
+            if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
+                (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void DrawRope()
     {
         if (!_joint) return;
-        UpdateGrappleAnchorPosition();
+        
+        if (_grappledRigidbody != null) 
+        {
+            UpdateGrappleAnchorPosition();
+        }
+        else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
+        {
+            GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+        }
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, grappleTip.position);
         lineRenderer.SetPosition(1, GrapplePoint);
     }
+    
     private void UpdateGrappleAnchorPosition()
     {
-        if (_grappledRigidbody != null)
-        {
-            GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointLocalOffset);
-            if (_joint) _joint.connectedAnchor = GrapplePoint;
-        }
+        GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+        if (_joint) _joint.connectedAnchor = GrapplePoint;
     }
+
     #region State & Timers
     private void HandleTimers()
     {
         if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
         if (_isGrappling)
         {
+            _grappleElapsedTime += Time.deltaTime;
             bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
             if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
         }
@@ -268,12 +367,29 @@ public class GrapplingHookController : MonoBehaviour
         _joint.autoConfigureConnectedAnchor = false;
         _joint.anchor = Vector3.zero;
         _joint.connectedAnchor = connectedPoint;
+        _joint.connectedBody = _grappledRigidbody; 
+
         float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
         _joint.maxDistance = distanceFromPoint * maxSpringSize;
         _joint.minDistance = distanceFromPoint * minSpringSize;
         _joint.spring = springForce;
         _joint.damper = damper;
         _joint.massScale = massScale;
+    }
+
+    private void CheckGrappleValidity()
+    {
+        if (!_isGrappling || _currentGrappleableTarget == null) return;
+
+        _grappleValidityCheckTimer -= Time.deltaTime;
+        if (_grappleValidityCheckTimer <= 0f)
+        {
+            if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
+            {
+                StopGrapple();
+            }
+            _grappleValidityCheckTimer = grappleValidityCheckInterval;
+        }
     }
     #endregion
 }

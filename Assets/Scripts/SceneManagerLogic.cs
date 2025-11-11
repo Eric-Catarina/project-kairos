@@ -1,5 +1,6 @@
 // Local: Assets/Scripts/SceneManagerLogic.cs
 
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -61,5 +62,10 @@ public class SceneManagerLogic : MonoBehaviour
     public void LoadSceneByBuildIndex(int buildIndex)
     {
         SceneManager.LoadScene(buildIndex);
+    }
+    public String GetCurrentLevelName()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        return currentScene.name;
     }
 }
