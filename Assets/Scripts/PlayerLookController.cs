@@ -234,6 +234,7 @@ public class PlayerLookController : MonoBehaviour
         if (horizontalVelocity.sqrMagnitude > 0.1f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(horizontalVelocity.normalized);
+            Quaternion rotationDiferenceBetweenTargetAndCurrent = Quaternion.Inverse(playerModel.rotation) * targetRotation;
             playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
         }
     }

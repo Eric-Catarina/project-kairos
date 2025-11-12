@@ -14,6 +14,7 @@ public class PlayerMovementController : MonoBehaviour
     public event Action OnDoubleJumpGained;
     public event Action OnDoubleJumpUsed;
     public event Action<float> OnHorizontalVelocityChanged;
+    public event Action OnShocked;
     #endregion
 
     #region State
@@ -435,10 +436,6 @@ public class PlayerMovementController : MonoBehaviour
 
         yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
 
-        // transform.position = position;
-        // transform.rotation = rotation;
-        // orientation.rotation = rotation;
-
         yield return new WaitForFixedUpdate();
         _rigidbody.isKinematic = false;
         
@@ -451,5 +448,10 @@ public class PlayerMovementController : MonoBehaviour
         ResetDoubleJump();
         
         _resetCoroutine = null;
+    }
+    
+    public void TriggerShockEffect()
+    {
+        OnShocked?.Invoke();
     }
 }

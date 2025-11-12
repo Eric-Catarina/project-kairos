@@ -76,7 +76,6 @@ Assets/
     CrosshairController.cs
     DashFoward.cs
     DeathFogLogic.cs
-    DeathManager.cs
     DontDestroyOnLoad.cs
     DoubleJumpResetRing.cs
     DoubleJumpUIController.cs
@@ -107,7 +106,6 @@ Assets/
     MouseSensitivitySlider.cs
     MovingPlatform.cs
     ObjectRotator.cs
-    PatrolMovement.cs
     PlayerAnimatorController.cs
     PlayerAudioHandler.cs
     PlayerDebugPanel.cs
@@ -285,141 +283,6 @@ public interface ITimeSlowable
     /// Restaura a velocidade e o comportamento normais do objeto a partir do estado salvo.
     /// </summary>
     void RestoreNormalTime();
-}
-</file>
-
-<file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
-// Local: Assets/Scripts/TimeManipulation/SlowableRigidbody.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Implementação concreta da interface ITimeSlowable para objetos com Rigidbody.
-/// Salva o estado de movimento (velocidades), torna o Rigidbody cinemático durante a lentidão
-/// e simula o movimento em 'FixedUpdate' com base na porcentagem de lentidão.
-/// Ao restaurar, reaplica o estado de movimento salvo.
-/// </summary>
-[RequireComponent(typeof(Rigidbody))]
-public class SlowableRigidbody : MonoBehaviour, ITimeSlowable
-{
-    [Header("Visual Feedback")]
-    private Renderer objectRenderer;
-    private Color slowDownColor = Color.cyan;
-
-    private Rigidbody _rb;
-    private Color _originalColor;
-
-    // Variáveis para salvar o estado do Rigidbody
-    private Vector3 _savedVelocity;
-    private Vector3 _savedAngularVelocity;
-
-    private bool _isSlowed = false;
-    private float _slowFactor; // Armazena o multiplicador (ex: 0.5 para 50% de lentidão)
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        objectRenderer = GetComponent<Renderer>();
-
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            _originalColor = objectRenderer.material.color;
-        }
-    }
-
-    // ALTERAÇÃO: A lógica de registro foi movida para o método Start().
-    // O método Start() é chamado depois de TODOS os métodos Awake() terem sido concluídos.
-    // Isso garante que TimeManipulationManager.Instance já estará inicializado.
-    private void Start()
-    {
-        // Se registra no manager para receber os eventos de tempo.
-        TimeManipulationManager.Instance.Register(this);
-    }
-
-    private void OnDisable()
-    {
-        // Garante que o tempo seja restaurado se o objeto for desativado.
-        if (_isSlowed)
-        {
-            RestoreNormalTime();
-        }
-        
-        // Remove o registro do manager para evitar referências nulas,
-        // verificando se a instância ainda existe (pode ser destruída antes na saída do jogo).
-        if (TimeManipulationManager.Instance != null)
-        {
-            TimeManipulationManager.Instance.Unregister(this);
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        // Se o tempo não está lento, a física normal do Unity cuida de tudo.
-        if (!_isSlowed) return;
-
-        // Se o slow for 100%, não fazemos nada, o objeto fica parado.
-        if (_slowFactor <= 0f) return;
-
-        // Como o Rigidbody está cinemático, precisamos simular seu movimento.
-        // Usamos MovePosition e MoveRotation para respeitar a física e colisões.
-        Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
-        _rb.MovePosition(newPosition);
-
-        Quaternion deltaRotation = Quaternion.Euler(_savedAngularVelocity * _slowFactor * Time.fixedDeltaTime);
-        _rb.MoveRotation(_rb.rotation * deltaRotation);
-    }
-
-    /// <summary>
-    /// Salva o estado de movimento, torna o Rigidbody cinemático e aplica o feedback visual.
-    /// </summary>
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-
-        // Salva o estado atual
-        _savedVelocity = _rb.linearVelocity;
-        _savedAngularVelocity = _rb.angularVelocity;
-
-        // Converte a porcentagem (0-100) para um multiplicador (1.0-0.0)
-        _slowFactor = 1.0f - (slowPercentage / 100.0f);
-
-        // Torna o Rigidbody cinemático para que possamos controlar seu movimento manualmente.
-        _rb.isKinematic = true;
-
-        // Feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            objectRenderer.material.color = slowDownColor;
-        }
-    }
-
-    /// <summary>
-    /// Retorna o Rigidbody ao estado dinâmico, restaura suas velocidades e o feedback visual.
-    /// </summary>
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-
-        // Retorna o Rigidbody ao controle total da física.
-        _rb.isKinematic = false;
-
-        // Restaura o estado de movimento. A física do Unity continuará a partir daqui.
-        _rb.linearVelocity = _savedVelocity;
-        _rb.angularVelocity = _savedAngularVelocity;
-
-        // Restaura feedback visual
-        if (objectRenderer != null && objectRenderer.material != null)
-        {
-            objectRenderer.material.color = _originalColor;
-        }
-    }
-    
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
 }
 </file>
 
@@ -1134,94 +997,6 @@ public class ObjectRotator : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/PatrolMovement.cs">
-// Local: Assets/Scripts/PatrolMovement.cs
-
-using UnityEngine;
-
-/// <summary>
-/// Move um objeto com Rigidbody entre dois pontos de destino de forma contínua.
-/// Projetado para testar a mecânica de manipulação do tempo.
-/// </summary>
-[RequireComponent(typeof(Rigidbody))]
-public class PatrolMovement : MonoBehaviour
-{
-    [Header("Configurações de Patrulha")]
-    [Tooltip("O ponto de partida da patrulha.")]
-    [SerializeField] private Transform targetA;
-    [Tooltip("O ponto final da patrulha.")]
-    [SerializeField] private Transform targetB;
-    [Tooltip("A velocidade de movimento do objeto.")]
-    [SerializeField] private float speed = 5f;
-
-    [Header("Precisão")]
-    [Tooltip("A distância mínima do alvo para considerá-lo alcançado.")]
-    [SerializeField] private float reachThreshold = 0.5f;
-
-    private Rigidbody _rb;
-    private Transform _currentTarget;
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        // Garante que a gravidade não interfira na patrulha horizontal/vertical.
-        _rb.useGravity = false; 
-    }
-
-    private void Start()
-    {
-        // Valida se os alvos foram configurados para evitar erros.
-        if (targetA == null || targetB == null)
-        {
-            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
-            enabled = false; // Desativa o script se não houver alvos.
-            return;
-        }
-
-        // Define o primeiro alvo e inicia o movimento.
-        _currentTarget = targetB;
-    }
-
-    private void FixedUpdate()
-    {
-        // Ponto de integração CRÍTICO:
-        // Se o Rigidbody for cinemático, significa que o SlowableRigidbody está no controle.
-        // Portanto, este script não deve interferir no movimento para evitar conflitos.
-        if (_rb.isKinematic)
-        {
-            return;
-        }
-
-        // Calcula a direção para o alvo atual.
-        Vector3 direction = (_currentTarget.position - _rb.position).normalized;
-
-        // Aplica a velocidade na direção do alvo.
-        _rb.linearVelocity = direction * speed;
-
-        // Verifica se o objeto chegou perto o suficiente do alvo.
-        if (Vector3.Distance(_rb.position, _currentTarget.position) < reachThreshold)
-        {
-            // Troca o alvo para o outro ponto.
-            _currentTarget = (_currentTarget == targetA) ? targetB : targetA;
-        }
-    }
-
-    /// <summary>
-    /// Desenha linhas na Scene View para facilitar a visualização dos pontos de patrulha.
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-        if (targetA != null && targetB != null)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(targetA.position, targetB.position);
-            Gizmos.DrawWireSphere(targetA.position, reachThreshold);
-            Gizmos.DrawWireSphere(targetB.position, reachThreshold);
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/ShadowFollow.cs">
 using UnityEngine;
 
@@ -1579,6 +1354,22 @@ public class TimeStopUIController : MonoBehaviour
     {
         _timeStopSlider.value = normalizedCharge;
     }
+}
+</file>
+
+<file path="Assets/Scripts/TvScanController.cs">
+using UnityEngine;
+
+public class TVScanMaterialController : MonoBehaviour
+{
+	public string Unscaled = "_UnscaledTime";
+	public Material material;
+
+	void Update()
+	{
+	   material.SetFloat("_UnscaledTime", Time.unscaledTime);
+            
+	}
 }
 </file>
 
@@ -4145,6 +3936,141 @@ public class ScoreUIController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/TimeManipulation/SlowableRigidbody.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class SlowableRigidbody : MonoBehaviour, ITimeSlowable, IGrappleable
+{
+    [Header("Grapple Settings")]
+    [Tooltip("If checked, the object can be grappled even when moving at normal speed. If unchecked, it can only be grappled when time is slowed.")]
+    [SerializeField] private bool canBeGrappledWhileMoving = true;
+    [Tooltip("The name of the layer the object will be moved to when it becomes grappleable.")]
+    [SerializeField] private string grappleableLayerName = "Grappleable";
+    
+    [Header("Visual Feedback")]
+    [SerializeField] private Color slowDownColor = Color.cyan;
+
+    private Rigidbody _rb;
+    private Renderer objectRenderer;
+    private Color _originalColor;
+
+    private Vector3 _savedVelocity;
+    private Vector3 _savedAngularVelocity;
+
+    private bool _isSlowed = false;
+    private float _slowFactor;
+
+    private int _grappleableLayerIndex;
+    private int _originalLayerIndex;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        objectRenderer = GetComponent<Renderer>();
+
+        if (objectRenderer != null && objectRenderer.material != null)
+        {
+            _originalColor = objectRenderer.material.color;
+        }
+
+        _originalLayerIndex = gameObject.layer;
+        _grappleableLayerIndex = LayerMask.NameToLayer(grappleableLayerName);
+        if (_grappleableLayerIndex == -1)
+        {
+            Debug.LogError($"Layer '{grappleableLayerName}' not found. Please check your project's Layer settings.", this);
+            _grappleableLayerIndex = _originalLayerIndex;
+        }
+    }
+
+    private void Start()
+    {
+        TimeManipulationManager.Instance.Register(this);
+        UpdateGrappleableLayer();
+    }
+
+    private void OnDisable()
+    {
+        if (_isSlowed)
+        {
+            RestoreNormalTime();
+        }
+        
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (!_isSlowed) return;
+        if (_slowFactor <= 0f) return;
+
+        Vector3 newPosition = _rb.position + (_savedVelocity * _slowFactor * Time.fixedDeltaTime);
+        _rb.MovePosition(newPosition);
+
+        Quaternion deltaRotation = Quaternion.Euler(_savedAngularVelocity * _slowFactor * Time.fixedDeltaTime);
+        _rb.MoveRotation(_rb.rotation * deltaRotation);
+    }
+
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+
+        _savedVelocity = _rb.linearVelocity;
+        _savedAngularVelocity = _rb.angularVelocity;
+        _slowFactor = 1.0f - (slowPercentage / 100.0f);
+        _rb.isKinematic = true;
+
+        if (objectRenderer != null)
+        {
+            objectRenderer.material.color = slowDownColor;
+        }
+        UpdateGrappleableLayer();
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+
+        _rb.isKinematic = false;
+        _rb.linearVelocity = _savedVelocity;
+        _rb.angularVelocity = _savedAngularVelocity;
+
+        if (objectRenderer != null)
+        {
+            objectRenderer.material.color = _originalColor;
+        }
+        UpdateGrappleableLayer();
+    }
+    
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+
+    private void UpdateGrappleableLayer()
+    {
+        gameObject.layer = CanBeGrappledNow() ? _grappleableLayerIndex : _originalLayerIndex;
+    }
+
+    #region IGrappleable Implementation
+    public bool CanBeGrappledNow()
+    {
+        return canBeGrappledWhileMoving || _isSlowed;
+    }
+
+    public GameObject GetGameObject()
+    {
+        return gameObject;
+    }
+    #endregion
+}
+</file>
+
 <file path="Assets/Scripts/TimeManipulation/TimeManipulationManager.cs">
 // Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
 
@@ -5298,40 +5224,6 @@ public class DashForwardInputSystem : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/DeathManager.cs">
-// Assets/Scripts/DeathManager.cs
-using UnityEngine;
-
-public class DeathManager : MonoBehaviour
-{
-    public static DeathManager Instance { get; private set; }
-
-    private int _deathCount = 0;
-    public int DeathCount => _deathCount;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject); // Se precisar persistir entre cenas
-    }
-
-    public void IncrementDeathCount()
-    {
-        _deathCount++;
-    }
-
-    public void ResetDeathCount()
-    {
-        _deathCount = 0;
-    }
-}
-</file>
-
 <file path="Assets/Scripts/DontDestroyOnLoad.cs">
 using UnityEngine;
 
@@ -5555,6 +5447,113 @@ public interface IGrappleable
     /// Retorna o GameObject associado a esta interface.
     /// </summary>
     GameObject GetGameObject();
+}
+</file>
+
+<file path="Assets/Scripts/InputStateManager.cs">
+// Assets/Scripts/InputStateManager.cs
+
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
+
+public enum InputState
+{
+    Gameplay,
+    UI,
+    PostGame 
+}
+
+public class InputStateManager : MonoBehaviour
+{
+    public static InputStateManager Instance { get; private set; }
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    public void Initialize(PlayerControls playerControls)
+    {
+        _playerControls = playerControls;
+    }
+
+    public void SwitchState(InputState newState)
+    {
+        if (_playerControls == null) return;
+
+        _playerControls.Player.Disable();
+        _playerControls.UI.Disable();
+        _playerControls.PostGame.Disable();
+
+        Debug.Log($"Switching Input State to: {newState}");
+
+        switch (newState)
+        {
+            case InputState.Gameplay:
+                // Limpa qualquer input em buffer ANTES de reativar o mapa de ação do jogador.
+                ResetAllPlayerActions();
+                _playerControls.Player.Enable();
+                SetCursorState(false);
+                break;
+
+            case InputState.UI:
+                _playerControls.UI.Enable();
+                SetCursorState(true);
+                break;
+
+            case InputState.PostGame:
+                _playerControls.UI.Enable();
+                _playerControls.PostGame.Enable();
+                SetCursorState(true);
+                break;
+        }
+    }
+
+    private void SetCursorState(bool visible)
+    {
+        Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = visible;
+    }
+    
+    private void ResetAllPlayerActions()
+    {
+        if (_playerControls == null) return;
+        
+        foreach (var action in _playerControls.Player.Get().actions)
+        {
+            action.Reset();
+        }
+        
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "MainMenu")
+        {
+            SwitchState(InputState.UI);
+        }
+        else
+        {
+            SwitchState(InputState.Gameplay);
+        }
+    }
 }
 </file>
 
@@ -7086,79 +7085,6 @@ public class PostGamePanel : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/SaveDataModels.cs">
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
-[Serializable]
-public class GameData
-{
-    public GameSettings settings = new GameSettings();
-    public List<UserProfile> profiles = new List<UserProfile>();
-    public string activeProfileId = "";
-}
-
-[Serializable]
-public class GameSettings
-{
-    public float masterVolume = 1f;
-    public float musicVolume = 1f;
-    public float sfxVolume = 1f;
-    public bool isMasterMuted = false;
-    public bool isMusicMuted = false;
-    public bool isSfxMuted = false;
-    
-    public float mouseSensitivityX = 0.5f;
-    public float mouseSensitivityY = 0.5f;
-    public bool invertMouseX = false;
-    public bool invertMouseY = false;
-    
-    public float motionBlurIntensity = 0.5f;
-    public bool checkpointsEnabled = true;
-}
-
-[Serializable]
-public class UserProfile : ISerializationCallbackReceiver
-{
-    public string profileId;
-    public string profileName;
-
-    [NonSerialized]
-    public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
-
-    [SerializeField] private List<string> _levelIds = new List<string>();
-    [SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
-
-    public void OnBeforeSerialize()
-    {
-        _levelIds.Clear();
-        _records.Clear();
-        foreach (var kvp in levelRecords)
-        {
-            _levelIds.Add(kvp.Key);
-            _records.Add(kvp.Value);
-        }
-    }
-
-    public void OnAfterDeserialize()
-    {
-        levelRecords = new Dictionary<string, LevelRecord>();
-        for (int i = 0; i < _levelIds.Count; i++)
-        {
-            levelRecords.Add(_levelIds[i], _records[i]);
-        }
-    }
-}
-
-[Serializable]
-public class LevelRecord
-{
-    public float bestTime = float.MaxValue;
-    public Rank bestRank = Rank.None;
-}
-</file>
-
 <file path="Assets/Scripts/SaveManager.cs">
 // Local: Assets/Scripts/Core/SaveManager.cs
 
@@ -7362,22 +7288,6 @@ public class Sound
 {
     public string name;
     public AudioClip clip;
-}
-</file>
-
-<file path="Assets/Scripts/TvScanController.cs">
-using UnityEngine;
-
-public class TVScanMaterialController : MonoBehaviour
-{
-	public string Unscaled = "_UnscaledTime";
-	public Material material;
-
-	void Update()
-	{
-	   material.SetFloat("_UnscaledTime", Time.unscaledTime);
-            
-	}
 }
 </file>
 
@@ -7609,44 +7519,6 @@ public enum UIPanelType
 }
 </file>
 
-<file path="Assets/Scripts/VictoryPanelUI.cs">
-using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
-
-public class VictoryPanelUI : MonoBehaviour
-{
-    [Header("UI Elements")]
-    [SerializeField] private TextMeshProUGUI timeLabel;
-    [SerializeField] private TextMeshProUGUI deathsLabel;
-    [SerializeField] private TextMeshProUGUI rankLabel;
-    [SerializeField] private Button nextButton;
-
-    public event System.Action OnNextClicked;
-
-    private void Awake()
-    {
-        nextButton.onClick.AddListener(HandleNextClicked);
-        gameObject.SetActive(false);
-    }
-
-    public void ShowResults(float time, int deaths, Rank rank)
-    {
-        System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(time);
-        timeLabel.text = $" {timeSpan:mm\\:ss\\.ff}";
-
-        deathsLabel.text = deaths.ToString();
-        rankLabel.text = rank.ToString();
-    }
-
-    private void HandleNextClicked()
-    {
-        Debug.Log("VictoryPanel: Next button clicked!");
-        OnNextClicked?.Invoke();
-    }
-}
-</file>
-
 <file path="Assets/Scripts/WinLogic.cs">
 // Local: Assets/Scripts/WinLogic.cs
 
@@ -7664,1034 +7536,6 @@ public class WinLogic : MonoBehaviour
         
         GameFlowManager.Instance.CompleteLevel();
     }
-}
-</file>
-
-<file path="Assets/Scripts/GameSettingsManager.cs">
-using System;
-using UnityEngine;
-
-public class GameSettingsManager : MonoBehaviour
-{
-    public static GameSettingsManager Instance { get; private set; }
-
-    public static event Action<float> OnMouseSensitivityXChanged;
-    public static event Action<float> OnMouseSensitivityYChanged;
-    public static event Action<bool> OnInvertXChanged;
-    public static event Action<bool> OnInvertYChanged;
-    public static event Action<bool> OnCheckpointsEnabledChanged;
-
-    private GameSettings _settings;
-
-    public float MouseSensitivityX => _settings.mouseSensitivityX;
-    public float MouseSensitivityY => _settings.mouseSensitivityY;
-    public bool InvertMouseX => _settings.invertMouseX;
-    public bool InvertMouseY => _settings.invertMouseY;
-    public float MotionBlurIntensity => _settings.motionBlurIntensity;
-    public bool CheckpointsEnabled => _settings.checkpointsEnabled;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void Start()
-    {
-        _settings = SaveManager.Instance.GetSettings();
-    }
-
-    public void SetMouseSensitivityX(float normalizedValue)
-    {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        _settings.mouseSensitivityX = clampedValue;
-        SaveManager.Instance.SaveGame();
-        OnMouseSensitivityXChanged?.Invoke(clampedValue);
-    }
-    
-    public void SetMouseSensitivityY(float normalizedValue)
-    {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        _settings.mouseSensitivityY = clampedValue;
-        SaveManager.Instance.SaveGame();
-        OnMouseSensitivityYChanged?.Invoke(clampedValue);
-    }
-
-    public void SetInvertX(bool isInverted)
-    {
-        _settings.invertMouseX = isInverted;
-        SaveManager.Instance.SaveGame();
-        OnInvertXChanged?.Invoke(isInverted);
-    }
-
-    public void SetInvertY(bool isInverted)
-    {
-        _settings.invertMouseY = isInverted;
-        SaveManager.Instance.SaveGame();
-        OnInvertYChanged?.Invoke(isInverted);
-    }
-    
-    public void SetMotionBlur(float normalizedValue)
-    {
-        _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
-        SaveManager.Instance.SaveGame();
-    }
-    
-    public void SetCheckpointsEnabled(bool isEnabled)
-    {
-        _settings.checkpointsEnabled = isEnabled;
-        SaveManager.Instance.SaveGame();
-        OnCheckpointsEnabledChanged?.Invoke(isEnabled);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/InputStateManager.cs">
-// Assets/Scripts/InputStateManager.cs
-
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.InputSystem;
-
-public enum InputState
-{
-    Gameplay,
-    UI,
-    PostGame 
-}
-
-public class InputStateManager : MonoBehaviour
-{
-    public static InputStateManager Instance { get; private set; }
-
-    private PlayerControls _playerControls;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    public void Initialize(PlayerControls playerControls)
-    {
-        _playerControls = playerControls;
-    }
-
-    public void SwitchState(InputState newState)
-    {
-        if (_playerControls == null) return;
-
-        _playerControls.Player.Disable();
-        _playerControls.UI.Disable();
-        _playerControls.PostGame.Disable();
-
-        Debug.Log($"Switching Input State to: {newState}");
-
-        switch (newState)
-        {
-            case InputState.Gameplay:
-                // Limpa qualquer input em buffer ANTES de reativar o mapa de ação do jogador.
-                ResetAllPlayerActions();
-                _playerControls.Player.Enable();
-                SetCursorState(false);
-                break;
-
-            case InputState.UI:
-                _playerControls.UI.Enable();
-                SetCursorState(true);
-                break;
-
-            case InputState.PostGame:
-                _playerControls.UI.Enable();
-                _playerControls.PostGame.Enable();
-                SetCursorState(true);
-                break;
-        }
-    }
-
-    private void SetCursorState(bool visible)
-    {
-        Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
-        Cursor.visible = visible;
-    }
-    
-    private void ResetAllPlayerActions()
-    {
-        if (_playerControls == null) return;
-        
-        foreach (var action in _playerControls.Player.Get().actions)
-        {
-            action.Reset();
-        }
-        
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        if (scene.name == "MainMenu")
-        {
-            SwitchState(InputState.UI);
-        }
-        else
-        {
-            SwitchState(InputState.Gameplay);
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/MovingPlatform.cs">
-using UnityEngine;
-using System;
-
-[RequireComponent(typeof(Rigidbody))]
-public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable, IGrappleable
-{
-    // O evento OnGrappabilityChanged não é mais necessário, pois o GrapplingHookController
-    // fará uma verificação ativa via IGrappleable.
-
-    [Header("Configurações de Patrulha")]
-    [SerializeField] private Transform targetA;
-    [SerializeField] private Transform targetB;
-    [Tooltip("A velocidade da plataforma em unidades por segundo.")]
-    public float speed = 3f;
-    [Tooltip("Fator de influência no movimento do jogador quando está sobre a plataforma.")]
-    public float playerInfluence = 0.69f;
-
-    [Header("Visual")]
-    [SerializeField] private Color slowDownColor = Color.cyan;
-
-    [Header("Configurações de Grapple")]
-    [Tooltip("Se marcado, a plataforma pode ser agarrada (grapple) mesmo quando está se movendo normalmente. Se desmarcado, só pode ser agarrada com o tempo parado.")]
-    [SerializeField] private bool canBeGrappledWhileMoving = true;
-    [Tooltip("Nome da camada para a qual a plataforma será movida quando puder ser agarrada. Certifique-se de que o GrapplingHookController possa interagir com esta camada.")]
-    [SerializeField] private string grappleableLayerName = "Grappleable";
-    [Tooltip("Nome da camada original da plataforma, para onde ela retorna quando não pode ser agarrada. Será detectada automaticamente se deixado vazio.")]
-    [SerializeField] private string defaultLayerName = ""; // Preenche automaticamente
-
-    private Rigidbody _rb;
-    private Renderer _renderer;
-    private Color _originalColor;
-
-    // --- NOVA ARQUITETURA DE MOVIMENTO ---
-    private Vector3 _startPoint;
-    private Vector3 _endPoint;
-    private float _journeyLength;
-    private float _journeyTravelled;
-    private float _originalSpeed; // Para salvar a velocidade durante o slow-motion
-
-    // --- ESTADO ---
-    private bool _isSlowed = false;
-    private Vector3 _initialPosition; // Para IResettable
-    private int _originalLayer; // Armazena a camada inicial do objeto
-    private int _grappleableLayerIndex;
-    private int _nonGrappleableLayerIndex; // Usaremos a camada original como a "não-grappable" se a checkbox estiver desmarcada
-
-    // private bool _currentGrappabilityState; // Não é mais necessário rastrear aqui, a interface lida com isso.
-
-    private void Awake()
-    {
-        _rb = GetComponent<Rigidbody>();
-        _renderer = GetComponent<Renderer>();
-        if (_renderer != null) _originalColor = _renderer.material.color;
-
-        _rb.useGravity = false;
-        _rb.freezeRotation = true;
-        
-        _rb.isKinematic = true; 
-        
-        _initialPosition = transform.position;
-
-        // Armazena a camada original e resolve os índices de camada
-        _originalLayer = gameObject.layer;
-        _grappleableLayerIndex = LayerMask.NameToLayer(grappleableLayerName);
-
-        // Se o nome da camada padrão não for especificado, usamos a camada original
-        if (string.IsNullOrEmpty(defaultLayerName))
-        {
-            _nonGrappleableLayerIndex = _originalLayer;
-        }
-        else
-        {
-            _nonGrappleableLayerIndex = LayerMask.NameToLayer(defaultLayerName);
-        }
-
-        if (_grappleableLayerIndex == -1)
-        {
-            Debug.LogError($"Camada 'Grappleable' ({grappleableLayerName}) não encontrada para MovingPlatform em {gameObject.name}. Verifique as configurações de Layer do projeto.", this);
-            _grappleableLayerIndex = _originalLayer; 
-        }
-        if (_nonGrappleableLayerIndex == -1)
-        {
-            Debug.LogError($"Camada 'Não-Grappleable' ({defaultLayerName}) não encontrada para MovingPlatform em {gameObject.name}. Usando a camada original.", this);
-            _nonGrappleableLayerIndex = _originalLayer;
-        }
-    }
-
-    private void Start()
-    {
-        if (targetA == null || targetB == null)
-        {
-            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
-            enabled = false;
-            return;
-        }
-
-        InitializeJourney();
-        _originalSpeed = speed;
-
-        TimeManipulationManager.Instance.Register(this);
-        UpdateGrappleableLayer(); // Define o estado inicial da camada
-    }
-
-    private void OnDisable()
-    {
-        if (_isSlowed) RestoreNormalTime();
-        if (TimeManipulationManager.Instance != null)
-        {
-            TimeManipulationManager.Instance.Unregister(this);
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        UpdateMovement();
-    }
-
-    /// <summary>
-    /// Lógica principal de movimento. Calcula a posição exata da plataforma
-    /// ao longo do trajeto com base no tempo e na velocidade, evitando o problema de "overshooting".
-    /// </summary>
-    private void UpdateMovement()
-    {
-        if (_journeyLength <= 0) return;
-
-        _journeyTravelled += speed * Time.fixedDeltaTime;
-
-        if (_journeyTravelled >= _journeyLength)
-        {
-            float overshoot = _journeyTravelled - _journeyLength;
-            SwapEndpoints();
-            _journeyTravelled = overshoot;
-        }
-
-        float fractionOfJourney = _journeyTravelled / _journeyLength;
-
-        Vector3 newPosition = Vector3.Lerp(_startPoint, _endPoint, fractionOfJourney);
-        _rb.MovePosition(newPosition);
-    }
-    
-    /// <summary>
-    /// Configura ou reconfigura o estado inicial do trajeto da plataforma.
-    /// </summary>
-    private void InitializeJourney()
-    {
-        transform.position = _initialPosition; // Garante que a plataforma comece na posição certa
-        _startPoint = targetA.position;
-        _endPoint = targetB.position;
-        _journeyLength = Vector3.Distance(_startPoint, _endPoint);
-        _journeyTravelled = 0f;
-    }
-    
-    /// <summary>
-    /// Inverte os pontos de início e fim para fazer a plataforma voltar.
-    /// </summary>
-    private void SwapEndpoints()
-    {
-        Vector3 temp = _startPoint;
-        _startPoint = _endPoint;
-        _endPoint = temp;
-    }
-
-    #region ITimeSlowable Implementation
-
-    public void SlowDown(float slowPercentage)
-    {
-        if (_isSlowed) return;
-        _isSlowed = true;
-
-        float slowFactor = 1.0f - (slowPercentage / 100.0f);
-        speed = _originalSpeed * slowFactor;
-
-        if (_renderer != null) _renderer.material.color = slowDownColor;
-        UpdateGrappleableLayer(); // Atualiza a camada quando o tempo é lento
-    }
-
-    public void RestoreNormalTime()
-    {
-        if (!_isSlowed) return;
-        _isSlowed = false;
-
-        speed = _originalSpeed;
-
-        if (_renderer != null) _renderer.material.color = _originalColor;
-        UpdateGrappleableLayer(); // Atualiza a camada quando o tempo volta ao normal
-    }
-
-    public void SetSlowDownColor(Color newColor)
-    {
-        slowDownColor = newColor;
-    }
-    
-    #endregion
-
-    #region IResettable Implementation
-    
-    public void ResetState()
-    {
-        InitializeJourney();
-        RestoreNormalTime();
-        UpdateGrappleableLayer(); // Garante que a camada seja redefinida corretamente
-    }
-    
-    #endregion
-
-    /// <summary>
-    /// Controla dinamicamente a camada do GameObject para permitir ou impedir o grapple.
-    /// </summary>
-    private void UpdateGrappleableLayer()
-    {
-        // A camada é definida com base na checkbox e no estado de lentidão.
-        // O método CanBeGrappledNow() será o ponto de verificação para o GrapplingHookController.
-        if (CanBeGrappledNow())
-        {
-            gameObject.layer = _grappleableLayerIndex;
-        }
-        else
-        {
-            gameObject.layer = _nonGrappleableLayerIndex;
-        }
-    }
-
-    #region IGrappleable Implementation
-    public bool CanBeGrappledNow()
-    {
-        // A plataforma é agarrável se:
-        // 1. A checkbox permite agarrar enquanto ela se move, OU
-        // 2. O tempo está lento.
-        return canBeGrappledWhileMoving || _isSlowed;
-    }
-
-    public GameObject GetGameObject()
-    {
-        return gameObject;
-    }
-    #endregion
-
-    private void OnDrawGizmos()
-    {
-        if (targetA != null && targetB != null)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(targetA.position, targetB.position);
-            Gizmos.DrawWireSphere(targetA.position, 0.5f);
-            Gizmos.DrawWireSphere(targetB.position, 0.5f);
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerAnimatorController.cs">
-// Local: Assets/Scripts/PlayerAnimationController.cs
-
-using UnityEngine;
-using System; // Adicionado para Action (embora não seja usado diretamente aqui, é bom para consistência)
-
-[RequireComponent(typeof(Animator))]
-public class PlayerAnimationController : MonoBehaviour
-{
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovementController;
-    [SerializeField] private GrapplingHookController grapplingHookController;
-
-    private Animator _animator;
-
-    // Hashes existentes
-    private readonly int _hashHorizontalSpeed = Animator.StringToHash("HorizontalSpeed");
-    private readonly int _hashIsGrounded = Animator.StringToHash("IsGrounded");
-    private readonly int _hashJump = Animator.StringToHash("JumpTrigger");
-
-    // Hashes do gancho
-    private readonly int _hashGrappleStart = Animator.StringToHash("GrappleStartTrigger");
-    private readonly int _hashGrappleStop = Animator.StringToHash("GrappleStopTrigger");
-    private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling");
-
-    // NOVO Hash para o Double Jump
-    private readonly int _hashDoubleJump = Animator.StringToHash("DoubleJumpTrigger");
-
-
-    private void Awake()
-    {
-        _animator = GetComponent<Animator>();
-    }
-
-    private void OnEnable()
-    {
-        // Checagem existente
-        if (playerMovementController == null)
-        {
-            Debug.LogError("PlayerMovementController não está atribuído no PlayerAnimationController.");
-            enabled = false;
-            return;
-        }
-
-        // Checagem para o gancho
-        if (grapplingHookController == null)
-        {
-            Debug.LogWarning("GrapplingHookController não está atribuído. Animações de gancho não funcionarão.");
-        }
-
-        // Inscrições existentes
-        playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
-        playerMovementController.OnJumped += HandleJump;
-        playerMovementController.OnGroundLanded += HandleLand;
-        playerMovementController.OnLeftGround += HandleLeftGround;
-
-        // NOVO: Inscrição para o Double Jump
-        playerMovementController.OnDoubleJumpUsed += HandleDoubleJump;
-
-        // Inscrições do gancho
-        if (grapplingHookController != null)
-        {
-            grapplingHookController.OnGrappleStarted += HandleGrappleStarted;
-            grapplingHookController.OnGrappleStopped += HandleGrappleStopped;
-        }
-    }
-
-    private void OnDisable()
-    {
-        // Desinscrições existentes
-        if (playerMovementController != null)
-        {
-            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
-            playerMovementController.OnJumped -= HandleJump;
-            playerMovementController.OnGroundLanded -= HandleLand;
-            playerMovementController.OnLeftGround -= HandleLeftGround;
-
-            // NOVO: Desinscrição para o Double Jump
-            playerMovementController.OnDoubleJumpUsed -= HandleDoubleJump;
-        }
-
-        // Desinscrições do gancho
-        if (grapplingHookController != null)
-        {
-            grapplingHookController.OnGrappleStarted -= HandleGrappleStarted;
-            grapplingHookController.OnGrappleStopped -= HandleGrappleStopped;
-        }
-
-        // Garante que o estado seja resetado se este script for desabilitado
-        if (_animator != null && _animator.isInitialized)
-        {
-            _animator.SetBool(_hashIsGrappling, false);
-        }
-    }
-
-    // Handlers existentes
-    private void HandleVelocityChanged(float horizontalSpeed)
-    {
-        _animator.SetFloat(_hashHorizontalSpeed, horizontalSpeed);
-    }
-
-    private void HandleJump()
-    {
-        _animator.SetBool(_hashIsGrounded, false);
-        _animator.SetTrigger(_hashJump);
-    }
-
-    private void HandleLand()
-    {
-        _animator.SetBool(_hashIsGrounded, true);
-    }
-
-    private void HandleLeftGround()
-    {
-        _animator.SetBool(_hashIsGrounded, false);
-    }
-
-    // NOVO Handler para o Double Jump
-    private void HandleDoubleJump()
-    {
-        // Não reseta IsGrounded aqui, pois o jogador já estava no ar.
-        _animator.SetTrigger(_hashDoubleJump);
-    }
-
-
-    // Handlers do gancho 
-    private void HandleGrappleStarted()
-    {
-        _animator.SetTrigger(_hashGrappleStart);
-        _animator.SetBool(_hashIsGrappling, true);
-    }
-
-    private void HandleGrappleStopped()
-    {
-        _animator.SetTrigger(_hashGrappleStop);
-        _animator.SetBool(_hashIsGrappling, false);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/SceneManagerLogic.cs">
-// Local: Assets/Scripts/SceneManagerLogic.cs
-
-using UnityEngine;
-using UnityEngine.SceneManagement;
-
-public class SceneManagerLogic : MonoBehaviour
-{
-    public static SceneManagerLogic Instance { get; private set; }
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    public void RestartScene()
-    {
-        Time.timeScale = 1f;
-        Scene currentScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(currentScene.name);
-    }
-
-    public void LoadNextScene()
-    {
-        Time.timeScale = 1f;
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
-        int nextSceneIndex = currentSceneIndex + 1;
-
-        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
-        {
-            SceneManager.LoadScene(nextSceneIndex);
-        }
-        else
-        {
-            LoadMainMenu();
-        }
-    }
-
-    public void LoadSceneByName(string sceneName)
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(sceneName);
-    }
-
-    public void QuitGame()
-    {
-        Application.Quit();
-    }
-
-    public void LoadMainMenu()
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
-    }
-
-    public void LoadSceneByBuildIndex(int buildIndex)
-    {
-        SceneManager.LoadScene(buildIndex);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/SettingsPanel.cs">
-using UnityEngine;
-using UnityEngine.UI;
-
-public class SettingsPanel : UIPanel
-{
-    [Header("Referências Internas")]
-    [SerializeField] private Button backButton;
-    [Header("Referências Sliders")]
-    [SerializeField] private Slider masterSlider;
-    [SerializeField] private Slider musicSlider;
-    [SerializeField] private Slider sfxSlider;
-    [Header("Referências Toggles")]
-    [SerializeField] private Toggle masterToggle;
-    [SerializeField] private Toggle musicToggle;
-    [SerializeField] private Toggle sfxToggle;
-    [SerializeField] private Toggle checkpointsToggle; // Adicione este campo
-
-    private void Awake()
-    {
-        SetupButtonListeners();
-        SetupVolumeListeners();
-        SetupToggleListeners();
-    }
-
-    private void OnEnable()
-    {
-        LoadToggleStates();
-    }
-
-    private void LoadToggleStates()
-    {
-        if (GameSettingsManager.Instance != null && checkpointsToggle != null)
-        {
-            checkpointsToggle.isOn = GameSettingsManager.Instance.CheckpointsEnabled;
-        }
-    }
-
-    private void SetupVolumeListeners()
-    {
-        if (AudioManager.instance == null)
-        {
-            Debug.LogError("AudioManager.instance não foi encontrado. Os sliders de volume não funcionarão.");
-            return;
-        }
-
-        masterSlider?.onValueChanged.RemoveAllListeners();
-        musicSlider?.onValueChanged.RemoveAllListeners();
-        sfxSlider?.onValueChanged.RemoveAllListeners();
-
-        masterSlider?.onValueChanged.AddListener(AudioManager.instance.MasterVolume);
-        musicSlider?.onValueChanged.AddListener(AudioManager.instance.MusicVolume);
-        sfxSlider?.onValueChanged.AddListener(AudioManager.instance.SFXVolume);
-    }
-
-    private void SetupToggleListeners()
-    {
-        if (AudioManager.instance != null)
-        {
-            masterToggle?.onValueChanged.RemoveAllListeners();
-            musicToggle?.onValueChanged.RemoveAllListeners();
-            sfxToggle?.onValueChanged.RemoveAllListeners();
-
-            masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
-            musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
-            sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
-        }
-
-        if (GameSettingsManager.Instance != null)
-        {
-            checkpointsToggle?.onValueChanged.RemoveAllListeners();
-            checkpointsToggle?.onValueChanged.AddListener(GameSettingsManager.Instance.SetCheckpointsEnabled);
-        }
-    }
-
-    private void SetupButtonListeners()
-    {
-        backButton?.onClick.RemoveAllListeners();
-
-        if (UIManager.Instance != null)
-        {
-            if (PanelType == UIPanelType.Settings)
-            {
-                backButton?.onClick.AddListener(UIManager.Instance.CloseSettingsPanel);
-            }
-            else
-            {
-                backButton?.onClick.AddListener(UIManager.Instance.CloseLevelSelectPanel);
-            }
-        }
-        else
-        {
-            Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreManager.cs">
-// Assets/Scripts/ScoreManager.cs
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
-
-public class ScoreManager : MonoBehaviour
-{
-    public static ScoreManager Instance { get; private set; }
-
-    [Header("Configuração do Nível")]
-    [SerializeField] private LevelData currentLevelData;
-    [SerializeField] private bool startLevelOnFirstMoveInput = false;
-
-    [Header("Configurações de UI")]
-    private int leaderboardDisplayDelayMs = 750; // Ainda usado, mas removido do fluxo automático
-
-    private ScoreUIController _scoreUIController;
-    private LeaderboardUIController _leaderboardUIController;
-    private PlayerMovementController _playerMovementController;
-    private GrapplingHookController _grapplingHookController;
-
-    private float _levelTimer;
-    private bool _isTimerRunning = false;
-    private bool _levelStarted = false;
-    private int _deathCount = 0; // Contador de mortes para o nível atual
-    private bool _levelCompleted = false; // Flag para evitar processamento duplicado
-
-    public float CurrentTime => _levelTimer;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
-
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused += PauseTimer;
-            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
-        }
-
-        SubscribeToFirstInputEvents();
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
-
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
-            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
-        }
-
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindSceneReferences();
-        ResetLevelTimer();
-        ResetDeathCount();
-        _levelCompleted = false; // Resetar flag para novo nível
-        SubscribeToFirstInputEvents();
-    }
-
-    private void FindSceneReferences()
-    {
-        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
-        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
-        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
-        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
-    }
-
-    private void Update()
-    {
-        if (_isTimerRunning)
-        {
-            _levelTimer += Time.deltaTime;
-            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-        }
-    }
-
-    public void StartLevelTimer()
-    {
-        if (_levelStarted) return;
-        _levelTimer = 0f;
-        _levelStarted = true;
-        _isTimerRunning = true;
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths)
-    {
-        if (!_levelStarted)
-        {
-            finalTime = -1f;
-            finalRank = Rank.None;
-            deaths = 0;
-            return;
-        }
-        _isTimerRunning = false;
-        finalTime = _levelTimer;
-        finalRank = currentLevelData.GetRankForTime(finalTime);
-        deaths = _deathCount;
-    }
-
-    private void PauseTimer() { _isTimerRunning = false; }
-    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
-
-    public void ResetLevelTimer()
-    {
-        _levelTimer = 0f;
-        _isTimerRunning = false;
-        _levelStarted = false;
-        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-    }
-
-    public void SetCurrentTime(float newTime)
-    {
-        if (_levelStarted)
-        {
-            _levelTimer = Mathf.Max(0f, newTime);
-        }
-    }
-
-    public void AddPenalty(float penaltySeconds)
-    {
-        if (_levelStarted)
-        {
-            _levelTimer += penaltySeconds;
-        }
-    }
-
-    public Rank GetRankForTime(float time)
-    {
-        if (currentLevelData == null) return Rank.None;
-        return currentLevelData.GetRankForTime(time);
-    }
-
-    public void IncrementDeathCount()
-    {
-        _deathCount++;
-    }
-
-    private void ResetDeathCount()
-    {
-        _deathCount = 0;
-    }
-
-    private async void ProcessLevelCompletion(LevelCompletionData data)
-    {
-        if (_levelCompleted) return; // Evitar processamento duplicado
-        _levelCompleted = true;
-
-        SaveBestTime(data.FinalTime);
-
-        VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
-        if (victoryPanel != null)
-        {
-            victoryPanel.gameObject.SetActive(true);
-            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
-            victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
-            victoryPanel.OnNextClicked += () =>
-            {
-                Debug.Log("ScoreManager: OnNextClicked triggered, showing leaderboard.");
-                _leaderboardUIController?.ShowLeaderboard();
-            };
-        }
-
-        await SubmitScoreAsync(data.FinalTime);
-    }
-
-    private void SaveBestTime(float finalTime)
-    {
-        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
-        if (activeProfile == null || currentLevelData == null)
-        {
-            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
-            return;
-        }
-
-        string levelId = currentLevelData.GetFullLevelId();
-
-        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
-        {
-            if (finalTime < record.bestTime)
-            {
-                record.bestTime = finalTime;
-                record.bestRank = GetRankForTime(finalTime);
-            }
-        }
-        else
-        {
-            record = new LevelRecord
-            {
-                bestTime = finalTime,
-                bestRank = GetRankForTime(finalTime)
-            };
-            activeProfile.levelRecords.Add(levelId, record);
-        }
-
-        SaveManager.Instance.SaveGame();
-    }
-
-    private async Task<bool> SubmitScoreAsync(float finalTime)
-    {
-        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
-        {
-            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
-            return false;
-        }
-
-        var scoreEntry = new ScoreEntry(
-            PlayerProfile.Instance.CurrentProfile.profileId,
-            PlayerProfile.Instance.CurrentProfile.profileName,
-            finalTime,
-            currentLevelData.GetFullLevelId()
-        );
-
-        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
-
-        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
-        else { Debug.LogWarning("Falha ao submeter pontuação."); }
-
-        return success;
-    }
-
-    private void HandleFirstInput()
-    {
-        if (startLevelOnFirstMoveInput && !_levelStarted)
-        {
-            StartLevelTimer();
-        }
-    }
-
-    private void HandleFirstMoveInput(Vector2 moveValue)
-    {
-        if (moveValue.sqrMagnitude > 0.1f)
-        {
-            HandleFirstInput();
-        }
-    }
-
-    private void SubscribeToFirstInputEvents()
-    {
-        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
-        {
-            InputManager.Instance.OnMove += HandleFirstMoveInput;
-            _playerMovementController.OnJumped += HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted += HandleFirstInput;
-        }
-    }
-
-    private void UnsubscribeFromFirstInputEvents()
-    {
-        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
-        {
-            InputManager.Instance.OnMove -= HandleFirstMoveInput;
-            _playerMovementController.OnJumped -= HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
-        }
-    }
-
-    public LevelData GetCurrentLevelData()
-    {
-        return currentLevelData;
-    }
-
-    public int GetDeathCount() => _deathCount;
 }
 </file>
 
@@ -8834,179 +7678,6 @@ public class RandomPrefabShooter : MonoBehaviour
     {
         Gizmos.color = Color.cyan;
         Gizmos.DrawRay(transform.position, transform.forward * 2f);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/CheckpointManager.cs">
-using UnityEngine;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine.SceneManagement;
-using System.Collections;
-
-public class CheckpointManager : MonoBehaviour
-{
-    public static CheckpointManager Instance { get; private set; }
-    
-    [Header("Configuração de Spawn")]
-    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
-    [SerializeField] private Transform initialSpawnPoint;
-
-    [Header("Configuração de Penalidade")]
-    [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
-    [SerializeField] private float penaltyPerCheckpoint = 5f;
-
-    private List<Checkpoint> _checkpointsInLevel;
-    private List<IResettable> _resettableObjects;
-    private Checkpoint _lastActivatedCheckpoint;
-    private PlayerMovementController _player;
-    private bool _areCheckpointsEnabled;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
-            InputManager.Instance.OnFullLevelReset += HardResetLevel;
-        }
-        if (GameSettingsManager.Instance != null)
-        {
-            GameSettingsManager.OnCheckpointsEnabledChanged += UpdateCheckpointSetting;
-        }
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
-            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
-        }
-        if (GameSettingsManager.Instance != null)
-        {
-            GameSettingsManager.OnCheckpointsEnabledChanged -= UpdateCheckpointSetting;
-        }
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        StartCoroutine(InitializeAfterSceneLoad());
-    }
-
-    private IEnumerator InitializeAfterSceneLoad()
-    {
-        yield return null;
-
-        _player = FindObjectOfType<PlayerMovementController>();
-        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
-        
-        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
-
-        _lastActivatedCheckpoint = null;
-        
-        if (GameSettingsManager.Instance != null)
-        {
-            _areCheckpointsEnabled = GameSettingsManager.Instance.CheckpointsEnabled;
-        }
-        else
-        {
-            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
-            _areCheckpointsEnabled = false;
-        }
-    }
-
-    private void UpdateCheckpointSetting(bool isEnabled)
-    {
-        _areCheckpointsEnabled = isEnabled;
-    }
-
-    private void HandleCheckpointActivated(Checkpoint activatedCheckpoint)
-    {
-        if (!_areCheckpointsEnabled) return;
-
-        int newIndex = _checkpointsInLevel.IndexOf(activatedCheckpoint);
-        int currentIndex = _lastActivatedCheckpoint != null ? _checkpointsInLevel.IndexOf(_lastActivatedCheckpoint) : -1;
-
-        if (newIndex > currentIndex)
-        {
-            _lastActivatedCheckpoint = activatedCheckpoint;
-        }
-    }
-    
-    public void SoftResetToCheckpoint()
-    {
-        if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
-        {
-            SoftResetToStart();
-            return;
-        }
-
-        ResetWorldState();
-        ApplyTimePenaltyAndReset();
-
-        if (_player != null)
-        {
-            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
-        }
-    }
-
-    private void ApplyTimePenaltyAndReset()
-    {
-        if (ScoreManager.Instance == null || _lastActivatedCheckpoint.ActivationTime < 0) return;
-
-        float stampedTime = _lastActivatedCheckpoint.ActivationTime;
-        ScoreManager.Instance.SetCurrentTime(stampedTime);
-        ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
-        
-        Debug.Log($"Tempo restaurado para {stampedTime:F3}s com penalidade. Novo tempo: {ScoreManager.Instance.CurrentTime:F3}s");
-    }
-
-    private void ResetWorldState()
-    {
-        foreach (var resettable in _resettableObjects)
-        {
-            resettable.ResetState();
-        }
-    }
-    
-    private void SoftResetToStart()
-    {
-        if (initialSpawnPoint == null)
-        {
-            Debug.LogWarning("Initial Spawn Point não está definido; recarregando a cena como fallback.", this);
-            HardResetLevel();
-            return;
-        }
-
-        ResetWorldState();
-        ScoreManager.Instance?.ResetLevelTimer();
-        _lastActivatedCheckpoint = null;
-
-        if (_player != null)
-        {
-            _player.ResetToPosition(initialSpawnPoint.position);
-        }
-    }
-
-    private void HardResetLevel()
-    {
-        SceneManagerLogic.Instance.RestartScene();
     }
 }
 </file>
@@ -9192,6 +7863,406 @@ public class GameFlowManager : MonoBehaviour
         Time.timeScale = 1f;
         InputStateManager.Instance.SwitchState(InputState.Gameplay);
         OnGameResumed?.Invoke();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/GameSettingsManager.cs">
+using System;
+using UnityEngine;
+
+public class GameSettingsManager : MonoBehaviour
+{
+    public static GameSettingsManager Instance { get; private set; }
+
+    public static event Action<float> OnMouseSensitivityXChanged;
+    public static event Action<float> OnMouseSensitivityYChanged;
+    public static event Action<bool> OnInvertXChanged;
+    public static event Action<bool> OnInvertYChanged;
+    public static event Action<bool> OnCheckpointsEnabledChanged;
+
+    private GameSettings _settings;
+
+    public float MouseSensitivityX => _settings.mouseSensitivityX;
+    public float MouseSensitivityY => _settings.mouseSensitivityY;
+    public bool InvertMouseX => _settings.invertMouseX;
+    public bool InvertMouseY => _settings.invertMouseY;
+    public float MotionBlurIntensity => _settings.motionBlurIntensity;
+    public bool CheckpointsEnabled => _settings.checkpointsEnabled;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void Start()
+    {
+        _settings = SaveManager.Instance.GetSettings();
+    }
+
+    public void SetMouseSensitivityX(float normalizedValue)
+    {
+        float clampedValue = Mathf.Clamp01(normalizedValue);
+        _settings.mouseSensitivityX = clampedValue;
+        SaveManager.Instance.SaveGame();
+        OnMouseSensitivityXChanged?.Invoke(clampedValue);
+    }
+    
+    public void SetMouseSensitivityY(float normalizedValue)
+    {
+        float clampedValue = Mathf.Clamp01(normalizedValue);
+        _settings.mouseSensitivityY = clampedValue;
+        SaveManager.Instance.SaveGame();
+        OnMouseSensitivityYChanged?.Invoke(clampedValue);
+    }
+
+    public void SetInvertX(bool isInverted)
+    {
+        _settings.invertMouseX = isInverted;
+        SaveManager.Instance.SaveGame();
+        OnInvertXChanged?.Invoke(isInverted);
+    }
+
+    public void SetInvertY(bool isInverted)
+    {
+        _settings.invertMouseY = isInverted;
+        SaveManager.Instance.SaveGame();
+        OnInvertYChanged?.Invoke(isInverted);
+    }
+    
+    public void SetMotionBlur(float normalizedValue)
+    {
+        _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
+        SaveManager.Instance.SaveGame();
+    }
+    
+    public void SetCheckpointsEnabled(bool isEnabled)
+    {
+        _settings.checkpointsEnabled = isEnabled;
+        SaveManager.Instance.SaveGame();
+        OnCheckpointsEnabledChanged?.Invoke(isEnabled);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerAnimatorController.cs">
+// Local: Assets/Scripts/PlayerAnimationController.cs
+
+using UnityEngine;
+using System; // Adicionado para Action (embora não seja usado diretamente aqui, é bom para consistência)
+
+[RequireComponent(typeof(Animator))]
+public class PlayerAnimationController : MonoBehaviour
+{
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovementController;
+    [SerializeField] private GrapplingHookController grapplingHookController;
+
+    private Animator _animator;
+
+    // Hashes existentes
+    private readonly int _hashHorizontalSpeed = Animator.StringToHash("HorizontalSpeed");
+    private readonly int _hashIsGrounded = Animator.StringToHash("IsGrounded");
+    private readonly int _hashJump = Animator.StringToHash("JumpTrigger");
+
+    // Hashes do gancho
+    private readonly int _hashGrappleStart = Animator.StringToHash("GrappleStartTrigger");
+    private readonly int _hashGrappleStop = Animator.StringToHash("GrappleStopTrigger");
+    private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling");
+
+    // NOVO Hash para o Double Jump
+    private readonly int _hashDoubleJump = Animator.StringToHash("DoubleJumpTrigger");
+
+
+    private void Awake()
+    {
+        _animator = GetComponent<Animator>();
+    }
+
+    private void OnEnable()
+    {
+        // Checagem existente
+        if (playerMovementController == null)
+        {
+            Debug.LogError("PlayerMovementController não está atribuído no PlayerAnimationController.");
+            enabled = false;
+            return;
+        }
+
+        // Checagem para o gancho
+        if (grapplingHookController == null)
+        {
+            Debug.LogWarning("GrapplingHookController não está atribuído. Animações de gancho não funcionarão.");
+        }
+
+        // Inscrições existentes
+        playerMovementController.OnHorizontalVelocityChanged += HandleVelocityChanged;
+        playerMovementController.OnJumped += HandleJump;
+        playerMovementController.OnGroundLanded += HandleLand;
+        playerMovementController.OnLeftGround += HandleLeftGround;
+
+        // NOVO: Inscrição para o Double Jump
+        playerMovementController.OnDoubleJumpUsed += HandleDoubleJump;
+
+        // Inscrições do gancho
+        if (grapplingHookController != null)
+        {
+            grapplingHookController.OnGrappleStarted += HandleGrappleStarted;
+            grapplingHookController.OnGrappleStopped += HandleGrappleStopped;
+        }
+    }
+
+    private void OnDisable()
+    {
+        // Desinscrições existentes
+        if (playerMovementController != null)
+        {
+            playerMovementController.OnHorizontalVelocityChanged -= HandleVelocityChanged;
+            playerMovementController.OnJumped -= HandleJump;
+            playerMovementController.OnGroundLanded -= HandleLand;
+            playerMovementController.OnLeftGround -= HandleLeftGround;
+
+            // NOVO: Desinscrição para o Double Jump
+            playerMovementController.OnDoubleJumpUsed -= HandleDoubleJump;
+        }
+
+        // Desinscrições do gancho
+        if (grapplingHookController != null)
+        {
+            grapplingHookController.OnGrappleStarted -= HandleGrappleStarted;
+            grapplingHookController.OnGrappleStopped -= HandleGrappleStopped;
+        }
+
+        // Garante que o estado seja resetado se este script for desabilitado
+        if (_animator != null && _animator.isInitialized)
+        {
+            _animator.SetBool(_hashIsGrappling, false);
+        }
+    }
+
+    // Handlers existentes
+    private void HandleVelocityChanged(float horizontalSpeed)
+    {
+        _animator.SetFloat(_hashHorizontalSpeed, horizontalSpeed);
+    }
+
+    private void HandleJump()
+    {
+        _animator.SetBool(_hashIsGrounded, false);
+        _animator.SetTrigger(_hashJump);
+    }
+
+    private void HandleLand()
+    {
+        _animator.SetBool(_hashIsGrounded, true);
+    }
+
+    private void HandleLeftGround()
+    {
+        _animator.SetBool(_hashIsGrounded, false);
+    }
+
+    // NOVO Handler para o Double Jump
+    private void HandleDoubleJump()
+    {
+        // Não reseta IsGrounded aqui, pois o jogador já estava no ar.
+        _animator.SetTrigger(_hashDoubleJump);
+    }
+
+
+    // Handlers do gancho 
+    private void HandleGrappleStarted()
+    {
+        _animator.SetTrigger(_hashGrappleStart);
+        _animator.SetBool(_hashIsGrappling, true);
+    }
+
+    private void HandleGrappleStopped()
+    {
+        _animator.SetTrigger(_hashGrappleStop);
+        _animator.SetBool(_hashIsGrappling, false);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/SaveDataModels.cs">
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+[Serializable]
+public class GameData
+{
+public GameSettings settings = new GameSettings();
+public List<UserProfile> profiles = new List<UserProfile>();
+public string activeProfileId = "";
+}
+
+[Serializable]
+public class GameSettings
+{
+public float masterVolume = 1f;
+public float musicVolume = 1f;
+public float sfxVolume = 1f;
+public bool isMasterMuted = false;
+public bool isMusicMuted = false;
+public bool isSfxMuted = false;
+public float mouseSensitivityX = 0.5f;
+public float mouseSensitivityY = 0.5f;
+public bool invertMouseX = false;
+public bool invertMouseY = false;
+
+public float motionBlurIntensity = 0.5f;
+public bool checkpointsEnabled = true;
+
+}
+
+[Serializable]
+public class UserProfile : ISerializationCallbackReceiver
+{
+public string profileId;
+public string profileName;
+
+
+[NonSerialized]
+public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
+
+[SerializeField] private List<string> _levelIds = new List<string>();
+[SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
+
+public void OnBeforeSerialize()
+{
+    _levelIds.Clear();
+    _records.Clear();
+    foreach (var kvp in levelRecords)
+    {
+        _levelIds.Add(kvp.Key);
+        _records.Add(kvp.Value);
+    }
+}
+
+public void OnAfterDeserialize()
+{
+    levelRecords = new Dictionary<string, LevelRecord>();
+    for (int i = 0; i < _levelIds.Count; i++)
+    {
+        levelRecords.Add(_levelIds[i], _records[i]);
+    }
+}
+
+  
+
+}
+
+[Serializable]
+public class LevelRecord
+{
+public float bestTime = float.MaxValue;
+public Rank bestRank = Rank.None;
+public int totalDeaths = 0;
+}
+</file>
+
+<file path="Assets/Scripts/SettingsPanel.cs">
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SettingsPanel : UIPanel
+{
+    [Header("Referências Internas")]
+    [SerializeField] private Button backButton;
+    [Header("Referências Sliders")]
+    [SerializeField] private Slider masterSlider;
+    [SerializeField] private Slider musicSlider;
+    [SerializeField] private Slider sfxSlider;
+    [Header("Referências Toggles")]
+    [SerializeField] private Toggle masterToggle;
+    [SerializeField] private Toggle musicToggle;
+    [SerializeField] private Toggle sfxToggle;
+    [SerializeField] private Toggle checkpointsToggle; // Adicione este campo
+
+    private void Awake()
+    {
+        SetupButtonListeners();
+        SetupVolumeListeners();
+        SetupToggleListeners();
+    }
+
+    private void OnEnable()
+    {
+        LoadToggleStates();
+    }
+
+    private void LoadToggleStates()
+    {
+        if (GameSettingsManager.Instance != null && checkpointsToggle != null)
+        {
+            checkpointsToggle.isOn = GameSettingsManager.Instance.CheckpointsEnabled;
+        }
+    }
+
+    private void SetupVolumeListeners()
+    {
+        if (AudioManager.instance == null)
+        {
+            Debug.LogError("AudioManager.instance não foi encontrado. Os sliders de volume não funcionarão.");
+            return;
+        }
+
+        masterSlider?.onValueChanged.RemoveAllListeners();
+        musicSlider?.onValueChanged.RemoveAllListeners();
+        sfxSlider?.onValueChanged.RemoveAllListeners();
+
+        masterSlider?.onValueChanged.AddListener(AudioManager.instance.MasterVolume);
+        musicSlider?.onValueChanged.AddListener(AudioManager.instance.MusicVolume);
+        sfxSlider?.onValueChanged.AddListener(AudioManager.instance.SFXVolume);
+    }
+
+    private void SetupToggleListeners()
+    {
+        if (AudioManager.instance != null)
+        {
+            masterToggle?.onValueChanged.RemoveAllListeners();
+            musicToggle?.onValueChanged.RemoveAllListeners();
+            sfxToggle?.onValueChanged.RemoveAllListeners();
+
+            masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
+            musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
+            sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
+        }
+
+        if (GameSettingsManager.Instance != null)
+        {
+            checkpointsToggle?.onValueChanged.RemoveAllListeners();
+            checkpointsToggle?.onValueChanged.AddListener(GameSettingsManager.Instance.SetCheckpointsEnabled);
+        }
+    }
+
+    private void SetupButtonListeners()
+    {
+        backButton?.onClick.RemoveAllListeners();
+
+        if (UIManager.Instance != null)
+        {
+            if (PanelType == UIPanelType.Settings)
+            {
+                backButton?.onClick.AddListener(UIManager.Instance.CloseSettingsPanel);
+            }
+            else
+            {
+                backButton?.onClick.AddListener(UIManager.Instance.CloseLevelSelectPanel);
+            }
+        }
+        else
+        {
+            Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
+        }
     }
 }
 </file>
@@ -9523,6 +8594,274 @@ public class LinePrefabRendererEffects : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/InputManager.cs">
+using System;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(InputStateManager))]
+public class InputManager : MonoBehaviour
+{
+    public static InputManager Instance { get; private set; }
+
+    public PlayerControls PlayerControls => _playerControls;
+
+    public event Action<Vector2> OnMove;
+    public event Action OnJumpPerformed;
+    public event Action OnJumpCanceled;
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleCanceled;
+    public event Action OnSlowTimeToggled;
+    public event Action OnResetToCheckpoint;
+    public event Action OnFullLevelReset;
+    public event Action OnPausePressed;
+
+#if ENABLE_CHEATS
+    public event Action OnToggleInfiniteJumps;
+    public event Action OnToggleInfiniteGrappleCooldown;
+    public event Action OnToggleInfiniteGrappleDuration;
+    public event Action OnToggleInfiniteTimeStop;
+    public event Action OnToggleAllCheats;
+#endif
+
+    private PlayerControls _playerControls;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _playerControls = new PlayerControls();
+        
+        GetComponent<InputStateManager>().Initialize(_playerControls);
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Enable();
+        
+        _playerControls.Player.Move.performed += HandleMove;
+        _playerControls.Player.Move.canceled += HandleMove;
+        _playerControls.Player.Jump.performed += HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
+        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
+        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
+        _playerControls.Player.FullReset.performed += HandleFullLevelReset;
+        _playerControls.PostGame.RestartLevel.performed += HandleFullLevelReset; 
+        _playerControls.Player.Pause.performed += HandlePausePressed;
+        _playerControls.UI.Unpause.performed += HandlePausePressed;
+        
+#if ENABLE_CHEATS
+        _playerControls.Debug.Enable();
+        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
+        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
+        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
+        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
+#endif
+    }
+
+    private void OnDisable()
+    {
+        if (_playerControls == null) return;
+        
+        _playerControls.Player.Move.performed -= HandleMove;
+        _playerControls.Player.Move.canceled -= HandleMove;
+        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
+        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
+        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
+        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
+        _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
+        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
+        _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
+        _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
+        _playerControls.PostGame.RestartLevel.performed -= HandleFullLevelReset;
+        _playerControls.Player.Pause.performed -= HandlePausePressed;
+        _playerControls.UI.Unpause.performed -= HandlePausePressed;
+
+        _playerControls.Disable();
+    }
+    
+    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
+    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
+    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
+    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
+    private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
+    private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
+    private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
+    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
+}
+</file>
+
+<file path="Assets/Scripts/MovingPlatform.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class MovingPlatform : MonoBehaviour, ITimeSlowable, IResettable, IGrappleable
+{
+    [Header("Configurações de Patrulha")]
+    [SerializeField] private Transform targetA;
+    [SerializeField] private Transform targetB;
+    [Tooltip("A velocidade da plataforma em unidades por segundo.")]
+    public float speed = 3f;
+    [Tooltip("Fator de influência no movimento do jogador quando está sobre a plataforma.")]
+    public float playerInfluence = 0.69f;
+
+    [Header("Grapple & Visuals")]
+    [SerializeField] private bool canBeGrappledWhileMoving = true;
+    [SerializeField] private Color slowDownColor = Color.cyan;
+
+    private Rigidbody _rb;
+    private Renderer _renderer;
+    private Color _originalColor;
+
+    private Vector3 _startPoint;
+    private Vector3 _endPoint;
+    private float _journeyLength;
+    private float _journeyTravelled;
+
+    private bool _isSlowed = false;
+    private Vector3 _initialPosition;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        _renderer = GetComponent<Renderer>();
+        if (_renderer != null) _originalColor = _renderer.material.color;
+
+        _rb.useGravity = false;
+        _rb.freezeRotation = true;
+        _rb.isKinematic = true;
+
+        _initialPosition = transform.position;
+    }
+
+    private void Start()
+    {
+        if (targetA == null || targetB == null)
+        {
+            Debug.LogError("Os alvos de patrulha (Target A e Target B) não foram configurados!", this);
+            enabled = false;
+            return;
+        }
+        InitializeJourney();
+        TimeManipulationManager.Instance.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        if (TimeManipulationManager.Instance != null)
+        {
+            TimeManipulationManager.Instance.Unregister(this);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (!_isSlowed)
+        {
+            UpdateMovement();
+        }
+    }
+
+    private void UpdateMovement()
+    {
+        if (_journeyLength <= 0) return;
+
+        _journeyTravelled += speed * Time.fixedDeltaTime;
+
+        if (_journeyTravelled >= _journeyLength)
+        {
+            float overshoot = _journeyTravelled - _journeyLength;
+            SwapEndpoints();
+            _journeyTravelled = overshoot;
+        }
+
+        float fractionOfJourney = Mathf.Clamp01(_journeyTravelled / _journeyLength);
+        Vector3 newPosition = Vector3.Lerp(_startPoint, _endPoint, fractionOfJourney);
+        _rb.MovePosition(newPosition);
+    }
+
+    private void InitializeJourney()
+    {
+        transform.position = _initialPosition;
+        _startPoint = targetA.position;
+        _endPoint = targetB.position;
+        _journeyLength = Vector3.Distance(_startPoint, _endPoint);
+        _journeyTravelled = 0f;
+    }
+
+    private void SwapEndpoints()
+    {
+        Vector3 temp = _startPoint;
+        _startPoint = _endPoint;
+        _endPoint = temp;
+    }
+
+    #region ITimeSlowable Implementation
+    public void SlowDown(float slowPercentage)
+    {
+        if (_isSlowed) return;
+        _isSlowed = true;
+        if (_renderer != null) _renderer.material.color = slowDownColor;
+    }
+
+    public void RestoreNormalTime()
+    {
+        if (!_isSlowed) return;
+        _isSlowed = false;
+        if (_renderer != null) _renderer.material.color = _originalColor;
+    }
+
+    public void SetSlowDownColor(Color newColor)
+    {
+        slowDownColor = newColor;
+    }
+    #endregion
+
+    #region IResettable Implementation
+    public void ResetState()
+    {
+        InitializeJourney();
+        RestoreNormalTime();
+    }
+    #endregion
+
+    #region IGrappleable Implementation
+    public bool CanBeGrappledNow()
+    {
+        return canBeGrappledWhileMoving || _isSlowed;
+    }
+
+    public GameObject GetGameObject()
+    {
+        return gameObject;
+    }
+    #endregion
+
+    private void OnDrawGizmos()
+    {
+        if (targetA != null && targetB != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(targetA.position, targetB.position);
+            Gizmos.DrawWireSphere(targetA.position, 0.5f);
+            Gizmos.DrawWireSphere(targetB.position, 0.5f);
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/PlayerLookController.cs">
 // Local: Assets/Scripts/PlayerLookController.cs
 
@@ -9760,6 +9099,8 @@ public class PlayerLookController : MonoBehaviour
         if (horizontalVelocity.sqrMagnitude > 0.1f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(horizontalVelocity.normalized);
+            Quaternion rotationDiferenceBetweenTargetAndCurrent = Quaternion.Inverse(playerModel.rotation) * targetRotation;
+            Debug.Log(rotationDiferenceBetweenTargetAndCurrent.eulerAngles);
             playerModel.rotation = Quaternion.Slerp(playerModel.rotation, targetRotation, playerRotationSpeed * Time.deltaTime);
         }
     }
@@ -9790,431 +9131,16 @@ public class PlayerLookController : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/DeathFogLogic.cs">
-using UnityEngine;
+<file path="Assets/Scripts/SceneManagerLogic.cs">
+// Local: Assets/Scripts/SceneManagerLogic.cs
 
-public class DeathFogLogic : MonoBehaviour
-{
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            // Novo: Incrementar contador de mortes
-            if (ScoreManager.Instance != null)
-            {
-                ScoreManager.Instance.IncrementDeathCount();
-                Debug.Log("DeathFogLogic: Death count incremented."); 
-            }
-
-            if (CheckpointManager.Instance != null)
-            {
-                CheckpointManager.Instance.SoftResetToCheckpoint();
-            }
-            else
-            {
-                SceneManagerLogic.Instance.RestartScene();
-            }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/GrapplingHookController.cs">
-using UnityEngine;
-using System;
-
-public class GrapplingHookController : MonoBehaviour
-{
-    #region Events
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleStopped;
-    public event Action<Transform> OnPredictionTargetChanged;
-    // O evento OnGrappleVisualNeedsUpdate não é mais necessário
-    #endregion
-
-    #region Dependencies
-    [Header("Referências")]
-    [SerializeField] private PlayerMovementController playerMovement;
-    [SerializeField] private Transform grappleTip;
-    [SerializeField] private Transform cameraTransform;
-    [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private GameObject predictionPointPrefab;
-    #endregion
-
-    #region Grapple Settings
-    [Header("Configurações do Gancho")]
-    [SerializeField] private float maxGrappleDistance = 50f;
-    [SerializeField] private float grappleCooldown = 1f;
-    [SerializeField] private LayerMask grappleableLayer;
-    [SerializeField] private bool canDoMultipleGrapple = false;
-    [SerializeField] private float maximumTimeGrappling = 3f;
-    [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
-    [SerializeField] private float grappleValidityCheckInterval = 0.1f;
-    #endregion
-
-    #region Joint Settings
-    [Header("Configurações da Junta (Puxão)")]
-    [SerializeField] private float springForce = 8f;
-    [SerializeField] private float damper = 7f;
-    [SerializeField] private float massScale = 4.5f;
-    [SerializeField] private float minSpringSize = .1f;
-    [SerializeField] private float maxSpringSize = .8f;
-    #endregion
-
-    #region Swing Settings
-    [Header("Configurações do Pêndulo")]
-    [SerializeField] private float swingForce = 50f;
-    #endregion
-
-    #region Input Buffer
-    [Header("Buffer de Input")]
-    [SerializeField] private float grappleInputBufferTime = 0.5f;
-    #endregion
-
-    #region State
-    public bool IsGrappling => _isGrappling;
-    public float grappleDistance { get; private set; }
-    public Vector3 GrapplePoint { get; private set; }
-
-    private bool _isGrappling = false;
-    private bool _hasGrappleAvailable = true;
-    private bool _hasValidGrappleTarget;
-    private bool _isInputBuffered;
-    private bool _wasPredictionTargetValidLastFrame = false;
-
-    private float _cooldownTimer;
-    private float _grappleTimer;
-    private float _grappleInputBufferTimer;
-    private float _grappleValidityCheckTimer;
-
-    private Vector2 _moveInput;
-    private Rigidbody _grappledRigidbody;
-    private IGrappleable _currentGrappleableTarget;
-    private SpringJoint _joint;
-    private GameObject _predictionPointInstance;
-    private RaycastHit _predictionHit;
-    
-    private Vector3 _grappledPointOffsetLocalToTarget; 
-    #endregion
-
-    #region Unity Lifecycle
-    private void Awake()
-    {
-        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
-        _hasGrappleAvailable = true;
-
-        if (predictionPointPrefab != null)
-        {
-            _predictionPointInstance = Instantiate(predictionPointPrefab);
-            _predictionPointInstance.SetActive(false);
-        }
-        
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
-        InputManager.Instance.OnMove += SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
-        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
-
-        if (_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-            _wasPredictionTargetValidLastFrame = false;
-        }
-        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
-        
-        if (_isGrappling)
-        {
-            StopGrapple();
-        }
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
-    }
-
-    private void Update()
-    {
-        HandleTimers();
-        HandleInputBuffer();
-        UpdateGrappleStateAndVisuals();
-        CheckGrappleValidity();
-    }
-
-    private void LateUpdate() 
-    { 
-        if (_isGrappling) 
-        {
-            DrawRope(); 
-        }
-    }
-    private void FixedUpdate() { ApplySwingForce(); }
-    #endregion
-
-    #region Prediction & State Broadcasting
-    private void UpdateGrappleStateAndVisuals()
-    {
-        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
-        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
-
-        UpdatePredictionPointVisual(isPredictionReady);
-        BroadcastPredictionStateChange(isPredictionReady);
-    }
-
-    private void UpdatePredictionPointVisual(bool show)
-    {
-        if (_predictionPointInstance == null) return;
-
-        if (show && !_predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(true);
-        }
-        else if (!show && _predictionPointInstance.activeSelf)
-        {
-            _predictionPointInstance.SetActive(false);
-        }
-
-        if (show)
-        {
-            _predictionPointInstance.transform.position = _predictionHit.point;
-        }
-    }
-
-    private void BroadcastPredictionStateChange(bool isReady)
-    {
-        if (isReady && !_wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
-        }
-        else if (!isReady && _wasPredictionTargetValidLastFrame)
-        {
-            OnPredictionTargetChanged?.Invoke(null);
-        }
-        _wasPredictionTargetValidLastFrame = isReady;
-    }
-    #endregion
-
-    #region Input & Event Handlers
-    private void SetMoveInput(Vector2 input) => _moveInput = input;
-    private void OnGrappleInputStarted()
-    {
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
-    }
-    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
-    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
-    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; }
-    #endregion
-
-    #region Core Grapple Logic
-    private void ExecuteGrapple()
-    {
-        OnGrappleStarted?.Invoke();
-        _isGrappling = true;
-        _grappleTimer = maximumTimeGrappling;
-        ClearInputBuffer();
-        grappleDistance = _predictionHit.distance;
-        GrapplePoint = _predictionHit.point;
-        
-        _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
-
-        if (_predictionHit.rigidbody != null && !_predictionHit.rigidbody.isKinematic)
-        {
-             _grappledRigidbody = _predictionHit.rigidbody;
-             _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
-        }
-        else
-        {
-            _grappledRigidbody = null;
-            _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
-        }
-
-        CreateAndConfigureJoint(GrapplePoint);
-        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
-        UpdateGrappleStateAndVisuals();
-    }
-
-    public void StopGrapple()
-    {
-        if (!_isGrappling) return;
-        OnGrappleStopped?.Invoke();
-        _isGrappling = false;
-        if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive) { _cooldownTimer = grappleCooldown; }
-        Destroy(_joint);
-        _grappledRigidbody = null;
-        _currentGrappleableTarget = null;
-        _grappledPointOffsetLocalToTarget = Vector3.zero;
-        playerMovement.ResetDoubleJump();
-        UpdateGrappleStateAndVisuals();
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
-    }
-    private void ApplySwingForce()
-    {
-        if (!_joint) return;
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
-        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
-    }
-    #endregion
-    private bool FindValidGrappleTarget(out RaycastHit hit)
-    {
-        return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
-               TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
-    }
-
-    private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
-    {
-        bool didHit;
-        if (sphereRadius > 0)
-        {
-            didHit = Physics.SphereCast(origin, sphereRadius, direction, out hit, maxGrappleDistance, grappleableLayer);
-        }
-        else
-        {
-            didHit = Physics.Raycast(origin, direction, out hit, maxGrappleDistance, grappleableLayer);
-        }
-
-        if (didHit)
-        {
-            IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
-
-            if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
-                (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void DrawRope()
-    {
-        if (!_joint) return;
-        
-        if (_grappledRigidbody != null) 
-        {
-            UpdateGrappleAnchorPosition();
-        }
-        else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
-        {
-            GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
-        }
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPosition(0, grappleTip.position);
-        lineRenderer.SetPosition(1, GrapplePoint);
-    }
-    
-    private void UpdateGrappleAnchorPosition()
-    {
-        GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
-        if (_joint) _joint.connectedAnchor = GrapplePoint;
-    }
-
-    #region State & Timers
-    private void HandleTimers()
-    {
-        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
-        if (_isGrappling)
-        {
-            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
-            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
-        }
-        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
-    }
-
-    private void HandleInputBuffer()
-    {
-        if (!_isInputBuffered) return;
-        _grappleInputBufferTimer -= Time.deltaTime;
-        if (CanStartGrapple()) { ExecuteGrapple(); }
-        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
-    }
-    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
-    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
-    private bool CanCurrentlyAttemptGrapple()
-    {
-        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
-        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
-    }
-    #endregion
-
-    #region Utility
-    private void CreateAndConfigureJoint(Vector3 connectedPoint)
-    {
-        _joint = gameObject.AddComponent<SpringJoint>();
-        _joint.autoConfigureConnectedAnchor = false;
-        _joint.anchor = Vector3.zero;
-        _joint.connectedAnchor = connectedPoint;
-        _joint.connectedBody = _grappledRigidbody; 
-
-        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
-        _joint.maxDistance = distanceFromPoint * maxSpringSize;
-        _joint.minDistance = distanceFromPoint * minSpringSize;
-        _joint.spring = springForce;
-        _joint.damper = damper;
-        _joint.massScale = massScale;
-    }
-
-    private void CheckGrappleValidity()
-    {
-        if (!_isGrappling || _currentGrappleableTarget == null) return;
-
-        _grappleValidityCheckTimer -= Time.deltaTime;
-        if (_grappleValidityCheckTimer <= 0f)
-        {
-            if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
-            {
-                Debug.Log($"Grapple solto do alvo '{_currentGrappleableTarget.GetGameObject()?.name ?? "Objeto Destruído"}' porque ele não é mais agarrável ou foi destruído.");
-                StopGrapple();
-            }
-            _grappleValidityCheckTimer = grappleValidityCheckInterval;
-        }
-    }
-    #endregion
-}
-</file>
-
-<file path="Assets/Scripts/InputManager.cs">
 using System;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
-[RequireComponent(typeof(InputStateManager))]
-public class InputManager : MonoBehaviour
+public class SceneManagerLogic : MonoBehaviour
 {
-    public static InputManager Instance { get; private set; }
-
-    public PlayerControls PlayerControls => _playerControls;
-
-    public event Action<Vector2> OnMove;
-    public event Action OnJumpPerformed;
-    public event Action OnJumpCanceled;
-    public event Action OnGrappleStarted;
-    public event Action OnGrappleCanceled;
-    public event Action OnSlowTimeToggled;
-    public event Action OnResetToCheckpoint;
-    public event Action OnFullLevelReset;
-    public event Action OnPausePressed;
-
-#if ENABLE_CHEATS
-    public event Action OnToggleInfiniteJumps;
-    public event Action OnToggleInfiniteGrappleCooldown;
-    public event Action OnToggleInfiniteGrappleDuration;
-    public event Action OnToggleInfiniteTimeStop;
-    public event Action OnToggleAllCheats;
-#endif
-
-    private PlayerControls _playerControls;
+    public static SceneManagerLogic Instance { get; private set; }
 
     private void Awake()
     {
@@ -10225,71 +9151,577 @@ public class InputManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+    }
 
-        _playerControls = new PlayerControls();
-        
-        GetComponent<InputStateManager>().Initialize(_playerControls);
+    public void RestartScene()
+    {
+        Time.timeScale = 1f;
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
+    }
+
+    public void LoadNextScene()
+    {
+        Time.timeScale = 1f;
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int nextSceneIndex = currentSceneIndex + 1;
+
+        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            LoadMainMenu();
+        }
+    }
+
+    public void LoadSceneByName(string sceneName)
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
+    public void LoadMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void LoadSceneByBuildIndex(int buildIndex)
+    {
+        SceneManager.LoadScene(buildIndex);
+    }
+    public String GetCurrentLevelName()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        return currentScene.name;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreManager.cs">
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
+
+public class ScoreManager : MonoBehaviour
+{
+    public static ScoreManager Instance { get; private set; }
+
+    [Header("Configuração do Nível")]
+    [SerializeField] private LevelData currentLevelData;
+    [SerializeField] private bool startLevelOnFirstMoveInput = false;
+
+    private ScoreUIController _scoreUIController;
+    private LeaderboardUIController _leaderboardUIController;
+    private PlayerMovementController _playerMovementController;
+    private GrapplingHookController _grapplingHookController;
+
+    private float _levelTimer;
+    private bool _isTimerRunning = false;
+    private bool _levelStarted = false;
+    private int _deathCount = 0;
+    private bool _levelCompleted = false;
+
+    public float CurrentTime => _levelTimer;
+    public int DeathCount => _deathCount;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
     }
 
     private void OnEnable()
     {
-        _playerControls.Enable();
-        
-        _playerControls.Player.Move.performed += HandleMove;
-        _playerControls.Player.Move.canceled += HandleMove;
-        _playerControls.Player.Jump.performed += HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled += HandleJumpCanceled;
-        _playerControls.Player.Grapple.performed += HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
-        _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
-        _playerControls.Player.FullReset.performed += HandleFullLevelReset;
-        _playerControls.PostGame.RestartLevel.performed += HandleFullLevelReset; 
-        _playerControls.Player.Pause.performed += HandlePausePressed;
-        _playerControls.UI.Unpause.performed += HandlePausePressed;
-        
-#if ENABLE_CHEATS
-        _playerControls.Debug.Enable();
-        _playerControls.Debug.ToggleInfiniteJumps.performed += ctx => OnToggleInfiniteJumps?.Invoke();
-        _playerControls.Debug.ToggleInfiniteGrappleCooldown.performed += ctx => OnToggleInfiniteGrappleCooldown?.Invoke();
-        _playerControls.Debug.ToggleInfiniteGrappleDuration.performed += ctx => OnToggleInfiniteGrappleDuration?.Invoke();
-        _playerControls.Debug.ToggleInfiniteTimeStop.performed += ctx => OnToggleInfiniteTimeStop?.Invoke();
-        _playerControls.Debug.ToggleAllCheats.performed += ctx => OnToggleAllCheats?.Invoke();
-#endif
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
+            GameFlowManager.Instance.OnGamePaused += PauseTimer;
+            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
+        }
+        SubscribeToFirstInputEvents();
     }
 
     private void OnDisable()
     {
-        if (_playerControls == null) return;
-        
-        _playerControls.Player.Move.performed -= HandleMove;
-        _playerControls.Player.Move.canceled -= HandleMove;
-        _playerControls.Player.Jump.performed -= HandleJumpPerformed;
-        _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
-        _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
-        _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
-        _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
-        _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
-        _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
-        _playerControls.PostGame.RestartLevel.performed -= HandleFullLevelReset;
-        _playerControls.Player.Pause.performed -= HandlePausePressed;
-        _playerControls.UI.Unpause.performed -= HandlePausePressed;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
+            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
+            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
+        }
+        UnsubscribeFromFirstInputEvents();
+    }
 
-        _playerControls.Disable();
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        ResetLevelTimer();
+        LoadDeathCountForLevel();
+        _levelCompleted = false;
+        SubscribeToFirstInputEvents();
+    }
+
+    private void FindSceneReferences()
+    {
+        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
+        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
+    }
+
+    private void Update()
+    {
+        if (_isTimerRunning)
+        {
+            _levelTimer += Time.deltaTime;
+            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+        }
+    }
+
+    public void StartLevelTimer()
+    {
+        if (_levelStarted) return;
+        _levelTimer = 0f;
+        _levelStarted = true;
+        _isTimerRunning = true;
+        UnsubscribeFromFirstInputEvents();
+    }
+
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths)
+    {
+        if (!_levelStarted)
+        {
+            finalTime = -1f;
+            finalRank = Rank.None;
+            deaths = _deathCount;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(finalTime);
+        deaths = _deathCount;
+    }
+
+    private void PauseTimer() { _isTimerRunning = false; }
+    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+
+    public void ResetLevelTimer()
+    {
+        _levelTimer = 0f;
+        _isTimerRunning = false;
+        _levelStarted = false;
+        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+    }
+
+    public void SetCurrentTime(float newTime)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer = Mathf.Max(0f, newTime);
+        }
+    }
+
+    public void AddPenalty(float penaltySeconds)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer += penaltySeconds;
+        }
+    }
+
+    public Rank GetRankForTime(float time)
+    {
+        if (currentLevelData == null) return Rank.None;
+        return currentLevelData.GetRankForTime(time);
+    }
+
+    public void IncrementDeathCount()
+    {
+        _deathCount++;
+    }
+
+    private void LoadDeathCountForLevel()
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            _deathCount = 0;
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            _deathCount = record.totalDeaths;
+        }
+        else
+        {
+            _deathCount = 0;
+        }
+    }
+
+    private async void ProcessLevelCompletion(LevelCompletionData data)
+    {
+        if (_levelCompleted) return;
+        _levelCompleted = true;
+
+        SaveLevelStats(data.FinalTime, data.Deaths);
+
+        VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
+        if (victoryPanel != null)
+        {
+            victoryPanel.gameObject.SetActive(true);
+            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
+            victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
+            victoryPanel.OnNextClicked += () =>
+            {
+                _leaderboardUIController?.ShowLeaderboard();
+            };
+        }
+
+        await SubmitScoreAsync(data.FinalTime);
+    }
+
+    private void SaveLevelStats(float finalTime, int totalDeathsForLevel)
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
+            return;
+        }
+
+        string levelId = currentLevelData.GetFullLevelId();
+
+        if (!activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
+        {
+            record = new LevelRecord();
+            activeProfile.levelRecords.Add(levelId, record);
+        }
+        
+        if (finalTime < record.bestTime)
+        {
+            record.bestTime = finalTime;
+            record.bestRank = GetRankForTime(finalTime);
+        }
+        
+        record.totalDeaths = totalDeathsForLevel;
+        SaveManager.Instance.SaveGame();
+    }
+
+    private async Task<bool> SubmitScoreAsync(float finalTime)
+    {
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
+        {
+            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
+            return false;
+        }
+
+        var scoreEntry = new ScoreEntry(
+            PlayerProfile.Instance.CurrentProfile.profileId,
+            PlayerProfile.Instance.CurrentProfile.profileName,
+            finalTime,
+            currentLevelData.GetFullLevelId()
+        );
+
+        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
+
+        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
+        else { Debug.LogWarning("Falha ao submeter pontuação."); }
+
+        return success;
+    }
+
+    private void HandleFirstInput()
+    {
+        if (startLevelOnFirstMoveInput && !_levelStarted)
+        {
+            StartLevelTimer();
+        }
+    }
+
+    private void HandleFirstMoveInput(Vector2 moveValue)
+    {
+        if (moveValue.sqrMagnitude > 0.1f)
+        {
+            HandleFirstInput();
+        }
+    }
+
+    private void SubscribeToFirstInputEvents()
+    {
+        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
+        {
+            InputManager.Instance.OnMove += HandleFirstMoveInput;
+            if (_playerMovementController != null) _playerMovementController.OnJumped += HandleFirstInput;
+            if (_grapplingHookController != null) _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+        }
+    }
+
+    private void UnsubscribeFromFirstInputEvents()
+    {
+        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
+        {
+            InputManager.Instance.OnMove -= HandleFirstMoveInput;
+            _playerMovementController.OnJumped -= HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+        }
+    }
+
+    public LevelData GetCurrentLevelData()
+    {
+        return currentLevelData;
+    }
+}
+</file>
+
+<file path="Assets/Scripts/VictoryPanelUI.cs">
+using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
+
+public class VictoryPanelUI : MonoBehaviour
+{
+    [Header("UI Elements")]
+    [SerializeField] private TextMeshProUGUI timeLabel;
+    [SerializeField] private TextMeshProUGUI deathsLabel;
+    [SerializeField] private TextMeshProUGUI rankLabel;
+    [SerializeField] private TextMeshProUGUI levelNameLabel;
+    [SerializeField] private Button nextButton;
+
+    public event System.Action OnNextClicked;
+
+    private void Awake()
+    {
+        nextButton.onClick.AddListener(HandleNextClicked);
+        gameObject.SetActive(false);
+    }
+    private void OnDestroy()
+    {
+        nextButton.onClick.RemoveListener(HandleNextClicked);
+    }
+
+    public void ShowResults(float time, int deaths, Rank rank)
+    {
+        System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(time);
+        timeLabel.text = $" {timeSpan:mm\\:ss\\.ff}";
+
+        deathsLabel.text = deaths.ToString();
+        rankLabel.text = rank.ToString();
+        levelNameLabel.text = SceneManagerLogic.Instance.GetCurrentLevelName().ToString();
+    }
+
+    private void HandleNextClicked()
+    {
+        OnNextClicked?.Invoke();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/CheckpointManager.cs">
+using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.SceneManagement;
+using System.Collections;
+
+public class CheckpointManager : MonoBehaviour
+{
+    public static CheckpointManager Instance { get; private set; }
+    
+    [Header("Configuração de Spawn")]
+    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
+    [SerializeField] private Transform initialSpawnPoint;
+
+    [Header("Configuração de Penalidade")]
+    [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
+    [SerializeField] private float penaltyPerCheckpoint = 5f;
+
+    private List<Checkpoint> _checkpointsInLevel;
+    private List<IResettable> _resettableObjects;
+    private Checkpoint _lastActivatedCheckpoint;
+    private PlayerMovementController _player;
+    private bool _areCheckpointsEnabled;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset += HardResetLevel;
+        }
+        if (GameSettingsManager.Instance != null)
+        {
+            GameSettingsManager.OnCheckpointsEnabledChanged += UpdateCheckpointSetting;
+        }
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
+        }
+        if (GameSettingsManager.Instance != null)
+        {
+            GameSettingsManager.OnCheckpointsEnabledChanged -= UpdateCheckpointSetting;
+        }
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        StartCoroutine(InitializeAfterSceneLoad());
+    }
+
+    private IEnumerator InitializeAfterSceneLoad()
+    {
+        yield return null;
+
+        _player = FindObjectOfType<PlayerMovementController>();
+        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
+        
+        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
+
+        _lastActivatedCheckpoint = null;
+        
+        if (GameSettingsManager.Instance != null)
+        {
+            _areCheckpointsEnabled = GameSettingsManager.Instance.CheckpointsEnabled;
+        }
+        else
+        {
+            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
+            _areCheckpointsEnabled = false;
+        }
+    }
+
+    private void UpdateCheckpointSetting(bool isEnabled)
+    {
+        _areCheckpointsEnabled = isEnabled;
+    }
+
+    private void HandleCheckpointActivated(Checkpoint activatedCheckpoint)
+    {
+        if (!_areCheckpointsEnabled) return;
+
+        int newIndex = _checkpointsInLevel.IndexOf(activatedCheckpoint);
+        int currentIndex = _lastActivatedCheckpoint != null ? _checkpointsInLevel.IndexOf(_lastActivatedCheckpoint) : -1;
+
+        if (newIndex > currentIndex)
+        {
+            _lastActivatedCheckpoint = activatedCheckpoint;
+        }
     }
     
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
-    private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
-    private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
-    private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
-    private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
-    private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
-    private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
-    private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();
+    public void SoftResetToCheckpoint()
+    {
+        ScoreManager.Instance?.IncrementDeathCount();
+        TimeManipulationManager.Instance?.ResetCharge();
+
+        if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
+        {
+            SoftResetToStart();
+            return;
+        }
+
+        ResetWorldState();
+        ApplyTimePenaltyAndReset();
+
+        if (_player != null)
+        {
+            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
+        }
+    }
+
+    private void ApplyTimePenaltyAndReset()
+    {
+        if (ScoreManager.Instance == null || _lastActivatedCheckpoint.ActivationTime < 0) return;
+
+        float stampedTime = _lastActivatedCheckpoint.ActivationTime;
+        ScoreManager.Instance.SetCurrentTime(stampedTime);
+        ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
+    }
+
+    private void ResetWorldState()
+    {
+        foreach (var resettable in _resettableObjects)
+        {
+            resettable.ResetState();
+        }
+    }
+    
+    private void SoftResetToStart()
+    {
+        if (initialSpawnPoint == null)
+        {
+            HardResetLevel();
+            return;
+        }
+
+        ResetWorldState();
+        ScoreManager.Instance?.ResetLevelTimer();
+        _lastActivatedCheckpoint = null;
+
+        if (_player != null)
+        {
+            _player.ResetToPosition(initialSpawnPoint.position);
+        }
+    }
+
+    private void HardResetLevel()
+    {
+        ScoreManager.Instance?.IncrementDeathCount();
+        SceneManagerLogic.Instance.RestartScene();
+    }
+}
+</file>
+
+<file path="Assets/Scripts/DeathFogLogic.cs">
+using UnityEngine;
+
+public class DeathFogLogic : MonoBehaviour
+{
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            if (CheckpointManager.Instance != null)
+            {
+                CheckpointManager.Instance.SoftResetToCheckpoint();
+            }
+            else
+            {
+                ScoreManager.Instance?.IncrementDeathCount();
+                SceneManagerLogic.Instance.RestartScene();
+            }
+        }
+    }
 }
 </file>
 
@@ -10748,6 +10180,405 @@ public class PlayerMovementController : MonoBehaviour
         
         _resetCoroutine = null;
     }
+}
+</file>
+
+<file path="Assets/Scripts/GrapplingHookController.cs">
+using UnityEngine;
+using System;
+
+public class GrapplingHookController : MonoBehaviour
+{
+    #region Events
+    public event Action OnGrappleStarted;
+    public event Action OnGrappleStopped;
+    public event Action<Transform> OnPredictionTargetChanged;
+    #endregion
+
+    #region Dependencies
+    [Header("Referências")]
+    [SerializeField] private PlayerMovementController playerMovement;
+    [SerializeField] private Transform grappleTip;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private GameObject predictionPointPrefab;
+    #endregion
+
+    #region Grapple Settings
+    [Header("Configurações do Gancho")]
+    [SerializeField] private float maxGrappleDistance = 50f;
+    [SerializeField] private float grappleCooldown = 1f;
+    [SerializeField] private LayerMask grappleableLayer;
+    [SerializeField] private bool canDoMultipleGrapple = false;
+    [SerializeField] private float maximumTimeGrappling = 3f;
+    [Tooltip("Frequência de verificação da validade do grapple com objetos IGrappleable.")]
+    [SerializeField] private float grappleValidityCheckInterval = 0.1f;
+    #endregion
+    
+    #region Cooldown Tolerance
+    [Header("Tolerância de Cooldown")]
+    [Tooltip("Se um grapple durar menos que este tempo, o cooldown é ignorado (se a tolerância estiver ativa).")]
+    [SerializeField] private float quickReleaseThreshold = 0.1f;
+    [Tooltip("Um grapple precisa durar mais que este tempo para restaurar a tolerância de cooldown.")]
+    [SerializeField] private float longGrappleThreshold = 1.0f;
+    #endregion
+
+    #region Joint Settings
+    [Header("Configurações da Junta (Puxão)")]
+    [SerializeField] private float springForce = 8f;
+    [SerializeField] private float damper = 7f;
+    [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private float minSpringSize = .1f;
+    [SerializeField] private float maxSpringSize = .8f;
+    #endregion
+
+    #region Swing Settings
+    [Header("Configurações do Pêndulo")]
+    [SerializeField] private float swingForce = 50f;
+    #endregion
+
+    #region Input Buffer
+    [Header("Buffer de Input")]
+    [SerializeField] private float grappleInputBufferTime = 0.5f;
+    #endregion
+
+    #region State
+    public bool IsGrappling => _isGrappling;
+    public float grappleDistance { get; private set; }
+    public Vector3 GrapplePoint { get; private set; }
+
+    private bool _isGrappling = false;
+    private bool _hasGrappleAvailable = true;
+    private bool _hasValidGrappleTarget;
+    private bool _isInputBuffered;
+    private bool _wasPredictionTargetValidLastFrame = false;
+
+    private float _cooldownTimer;
+    private float _grappleTimer;
+    private float _grappleInputBufferTimer;
+    private float _grappleValidityCheckTimer;
+    
+    private float _grappleElapsedTime;
+    private bool _hasCooldownTolerance = true;
+
+    private Vector2 _moveInput;
+    private Rigidbody _grappledRigidbody;
+    private IGrappleable _currentGrappleableTarget;
+    private SpringJoint _joint;
+    private GameObject _predictionPointInstance;
+    private RaycastHit _predictionHit;
+    
+    private Vector3 _grappledPointOffsetLocalToTarget; 
+    #endregion
+
+    #region Unity Lifecycle
+    private void Awake()
+    {
+        if (playerMovement == null) playerMovement = GetComponent<PlayerMovementController>();
+        _hasGrappleAvailable = true;
+
+        if (predictionPointPrefab != null)
+        {
+            _predictionPointInstance = Instantiate(predictionPointPrefab);
+            _predictionPointInstance.SetActive(false);
+        }
+        
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void OnEnable()
+    {
+        InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
+        InputManager.Instance.OnMove += SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
+        InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
+        InputManager.Instance.OnMove -= SetMoveInput;
+        if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
+
+        if (_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+            _wasPredictionTargetValidLastFrame = false;
+        }
+        if (_predictionPointInstance != null) _predictionPointInstance.SetActive(false);
+        
+        if (_isGrappling)
+        {
+            StopGrapple();
+        }
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void Update()
+    {
+        HandleTimers();
+        HandleInputBuffer();
+        UpdateGrappleStateAndVisuals();
+        CheckGrappleValidity();
+    }
+
+    private void LateUpdate() 
+    { 
+        if (_isGrappling) 
+        {
+            DrawRope(); 
+        }
+    }
+    private void FixedUpdate() { ApplySwingForce(); }
+    #endregion
+
+    #region Prediction & State Broadcasting
+    private void UpdateGrappleStateAndVisuals()
+    {
+        _hasValidGrappleTarget = !_isGrappling && FindValidGrappleTarget(out _predictionHit);
+        bool isPredictionReady = _hasValidGrappleTarget && CanCurrentlyAttemptGrapple();
+
+        UpdatePredictionPointVisual(isPredictionReady);
+        BroadcastPredictionStateChange(isPredictionReady);
+    }
+
+    private void UpdatePredictionPointVisual(bool show)
+    {
+        if (_predictionPointInstance == null) return;
+
+        if (show && !_predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(true);
+        }
+        else if (!show && _predictionPointInstance.activeSelf)
+        {
+            _predictionPointInstance.SetActive(false);
+        }
+
+        if (show)
+        {
+            _predictionPointInstance.transform.position = _predictionHit.point;
+        }
+    }
+
+    private void BroadcastPredictionStateChange(bool isReady)
+    {
+        if (isReady && !_wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(_predictionPointInstance.transform);
+        }
+        else if (!isReady && _wasPredictionTargetValidLastFrame)
+        {
+            OnPredictionTargetChanged?.Invoke(null);
+        }
+        _wasPredictionTargetValidLastFrame = isReady;
+    }
+    #endregion
+
+    #region Input & Event Handlers
+    private void SetMoveInput(Vector2 input) => _moveInput = input;
+    private void OnGrappleInputStarted()
+    {
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
+    }
+    private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
+    private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
+    public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
+    #endregion
+
+    #region Core Grapple Logic
+    private void ExecuteGrapple()
+    {
+        _grappleElapsedTime = 0f;
+        OnGrappleStarted?.Invoke();
+        _isGrappling = true;
+        _grappleTimer = maximumTimeGrappling;
+        ClearInputBuffer();
+        grappleDistance = _predictionHit.distance;
+        GrapplePoint = _predictionHit.point;
+        
+        _currentGrappleableTarget = _predictionHit.collider.GetComponentInParent<IGrappleable>();
+
+        if (_predictionHit.rigidbody != null)
+        {
+             _grappledRigidbody = _predictionHit.rigidbody;
+             _grappledPointOffsetLocalToTarget = _predictionHit.rigidbody.transform.InverseTransformPoint(GrapplePoint);
+        }
+        else
+        {
+            _grappledRigidbody = null;
+            _grappledPointOffsetLocalToTarget = _predictionHit.collider.transform.InverseTransformPoint(GrapplePoint);
+        }
+
+        CreateAndConfigureJoint(GrapplePoint);
+        if (!canDoMultipleGrapple && !playerMovement.isGrounded) { _hasGrappleAvailable = false; }
+        UpdateGrappleStateAndVisuals();
+    }
+
+    public void StopGrapple()
+    {
+        if (!_isGrappling) return;
+
+        bool isQuickRelease = _hasCooldownTolerance && _grappleElapsedTime < quickReleaseThreshold;
+
+        OnGrappleStopped?.Invoke();
+        _isGrappling = false;
+        
+        Destroy(_joint);
+        _grappledRigidbody = null;
+        _currentGrappleableTarget = null;
+        _grappledPointOffsetLocalToTarget = Vector3.zero;
+
+        if (isQuickRelease)
+        {
+            _hasCooldownTolerance = false;
+        }
+        else
+        {
+            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteGrappleCooldownActive)
+            {
+                _cooldownTimer = grappleCooldown;
+            }
+            playerMovement.ResetDoubleJump();
+            
+            if (!_hasCooldownTolerance && _grappleElapsedTime >= longGrappleThreshold)
+            {
+                _hasCooldownTolerance = true;
+            }
+        }
+        
+        UpdateGrappleStateAndVisuals();
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
+    private void ApplySwingForce()
+    {
+        if (!_joint) return;
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+        playerMovement.Rb.AddForce(forward * _moveInput.y * swingForce, ForceMode.Force);
+        playerMovement.Rb.AddForce(right * _moveInput.x * swingForce, ForceMode.Force);
+    }
+    #endregion
+    private bool FindValidGrappleTarget(out RaycastHit hit)
+    {
+        return TryFindValidGrappleTarget(cameraTransform.position, cameraTransform.forward, out hit) ||
+               TryFindValidGrappleTarget(playerMovement.Rb.position, cameraTransform.forward, out hit, 3f);
+    }
+
+    private bool TryFindValidGrappleTarget(Vector3 origin, Vector3 direction, out RaycastHit hit, float sphereRadius = 0f)
+    {
+        bool didHit;
+        if (sphereRadius > 0)
+        {
+            didHit = Physics.SphereCast(origin, sphereRadius, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+        else
+        {
+            didHit = Physics.Raycast(origin, direction, out hit, maxGrappleDistance, grappleableLayer);
+        }
+
+        if (didHit)
+        {
+            IGrappleable targetGrappleable = hit.collider.GetComponentInParent<IGrappleable>();
+
+            if ((targetGrappleable != null && targetGrappleable.CanBeGrappledNow()) ||
+                (targetGrappleable == null && (hit.rigidbody == null || !hit.rigidbody.isKinematic)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void DrawRope()
+    {
+        if (!_joint) return;
+        
+        if (_grappledRigidbody != null) 
+        {
+            UpdateGrappleAnchorPosition();
+        }
+        else if (_currentGrappleableTarget != null && _currentGrappleableTarget.GetGameObject() != null)
+        {
+            GrapplePoint = _currentGrappleableTarget.GetGameObject().transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+        }
+        
+        if (_joint) _joint.connectedAnchor = GrapplePoint;
+        
+        lineRenderer.positionCount = 2;
+        lineRenderer.SetPosition(0, grappleTip.position);
+        lineRenderer.SetPosition(1, GrapplePoint);
+    }
+    
+    private void UpdateGrappleAnchorPosition()
+    {
+        GrapplePoint = _grappledRigidbody.transform.TransformPoint(_grappledPointOffsetLocalToTarget);
+    }
+
+    #region State & Timers
+    private void HandleTimers()
+    {
+        if (_cooldownTimer > 0) _cooldownTimer -= Time.deltaTime;
+        if (_isGrappling)
+        {
+            _grappleElapsedTime += Time.deltaTime;
+            bool infiniteDuration = CheatManager.Instance != null && CheatManager.Instance.IsInfiniteGrappleDurationActive;
+            if (!infiniteDuration) { _grappleTimer -= Time.deltaTime; if (_grappleTimer <= 0) StopGrapple(); }
+        }
+        if (canDoMultipleGrapple && _cooldownTimer <= 0) { _hasGrappleAvailable = true; }
+    }
+
+    private void HandleInputBuffer()
+    {
+        if (!_isInputBuffered) return;
+        _grappleInputBufferTimer -= Time.deltaTime;
+        if (CanStartGrapple()) { ExecuteGrapple(); }
+        else if (_grappleInputBufferTimer <= 0f) { ClearInputBuffer(); }
+    }
+    private void ClearInputBuffer() { _isInputBuffered = false; _grappleInputBufferTimer = 0f; }
+    private bool CanStartGrapple() { return _hasValidGrappleTarget && CanCurrentlyAttemptGrapple(); }
+    private bool CanCurrentlyAttemptGrapple()
+    {
+        bool hasUseAvailable = canDoMultipleGrapple || _hasGrappleAvailable || playerMovement.isGrounded;
+        return hasUseAvailable && _cooldownTimer <= 0 && !_isGrappling;
+    }
+    #endregion
+
+    #region Utility
+    private void CreateAndConfigureJoint(Vector3 connectedPoint)
+    {
+        _joint = gameObject.AddComponent<SpringJoint>();
+        _joint.autoConfigureConnectedAnchor = false;
+        _joint.anchor = Vector3.zero;
+        _joint.connectedAnchor = connectedPoint;
+
+        float distanceFromPoint = Vector3.Distance(transform.position, connectedPoint);
+        _joint.maxDistance = distanceFromPoint * maxSpringSize;
+        _joint.minDistance = distanceFromPoint * minSpringSize;
+        _joint.spring = springForce;
+        _joint.damper = damper;
+        _joint.massScale = massScale;
+    }
+
+    private void CheckGrappleValidity()
+    {
+        if (!_isGrappling || _currentGrappleableTarget == null) return;
+
+        _grappleValidityCheckTimer -= Time.deltaTime;
+        if (_grappleValidityCheckTimer <= 0f)
+        {
+            if (_currentGrappleableTarget.GetGameObject() == null || !_currentGrappleableTarget.CanBeGrappledNow())
+            {
+                StopGrapple();
+            }
+            _grappleValidityCheckTimer = grappleValidityCheckInterval;
+        }
+    }
+    #endregion
 }
 </file>
 
