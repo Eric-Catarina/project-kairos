@@ -464,8 +464,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4616986456210483324}
-  - component: {fileID: 5620642575187998777}
   - component: {fileID: 4419309073097425737}
+  - component: {fileID: 8459235909061617581}
   m_Layer: 0
   m_Name: Checkpoint
   m_TagString: Untagged
@@ -489,27 +489,6 @@ Transform:
   - {fileID: 929856003078718460}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!135 &5620642575187998777
-SphereCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4348258777324966319}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Radius: 4
-  m_Center: {x: 0, y: -1.12, z: 0}
 --- !u!114 &4419309073097425737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -528,6 +507,27 @@ MonoBehaviour:
   activatedVisual: {fileID: 3161841800856654375}
   activationEffect: {fileID: 0}
   activationSfx: CheckpointActivate
+--- !u!65 &8459235909061617581
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4348258777324966319}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 40.68, y: 1, z: 45.32}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4965048480215835001
 GameObject:
   m_ObjectHideFlags: 0
