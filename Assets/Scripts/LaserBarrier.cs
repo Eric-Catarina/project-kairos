@@ -79,6 +79,9 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable, IResettable
     {
         var playerMovement = playerObject.GetComponent<PlayerMovementController>();
         if (playerMovement == null) return;
+
+        playerMovement.TriggerShockEffect();
+        
         Vector3 repulsionDirection = (playerObject.transform.position - transform.position);
         repulsionDirection.y = 0;
         repulsionDirection.Normalize();

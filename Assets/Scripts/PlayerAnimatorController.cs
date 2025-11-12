@@ -12,7 +12,7 @@ public class PlayerAnimationController : MonoBehaviour
     [Tooltip("A velocidade angular (graus por segundo) que corresponde à inclinação máxima da animação.")]
     [SerializeField] private float maxTurnSpeedForAnimation = 180f;
     [Tooltip("Tempo de suavização para a animação de inclinação. Valores menores são mais rápidos, maiores são mais suaves.")]
-    private float turnAnimationSmoothTime = 0.1f;
+    [SerializeField] private float turnAnimationSmoothTime = 0.1f;
 
     private Animator _animator;
     private float _lastYRotation;
@@ -27,6 +27,7 @@ public class PlayerAnimationController : MonoBehaviour
     private readonly int _hashGrappleStop = Animator.StringToHash("GrappleStopTrigger");
     private readonly int _hashIsGrappling = Animator.StringToHash("IsGrappling");
     private readonly int _hashTurnDirection = Animator.StringToHash("TurnDirection");
+    private readonly int _hashShockTrigger = Animator.StringToHash("ShockTrigger");
 
 
     private void Awake()
@@ -54,6 +55,7 @@ public class PlayerAnimationController : MonoBehaviour
         playerMovementController.OnDoubleJumpUsed += HandleDoubleJump;
         playerMovementController.OnGroundLanded += HandleLand;
         playerMovementController.OnLeftGround += HandleLeftGround;
+        playerMovementController.OnShocked += HandleShock;
 
         if (grapplingHookController != null)
         {
@@ -71,6 +73,7 @@ public class PlayerAnimationController : MonoBehaviour
             playerMovementController.OnDoubleJumpUsed -= HandleDoubleJump;
             playerMovementController.OnGroundLanded -= HandleLand;
             playerMovementController.OnLeftGround -= HandleLeftGround;
+            playerMovementController.OnShocked -= HandleShock;
         }
 
         if (grapplingHookController != null)
@@ -122,6 +125,11 @@ public class PlayerAnimationController : MonoBehaviour
         );
 
         _animator.SetFloat(_hashTurnDirection, _currentTurnAmount);
+    }
+
+    private void HandleShock()
+    {
+        _animator.SetTrigger(_hashShockTrigger);
     }
 
     private void HandleVelocityChanged(float horizontalSpeed)
