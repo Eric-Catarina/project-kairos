@@ -3044,6 +3044,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: YellowBackground
       objectReference: {fileID: 0}
+    - target: {fileID: 8587330413695957237, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: maxClamp
+      value: 0.01
+      objectReference: {fileID: 0}
     - target: {fileID: 8654821561539116598, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -3062,10 +3066,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 2475794328341652202, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1813686072}
+    m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
 --- !u!1001 &431384472
@@ -3377,7 +3378,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1700055102}
+    m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 5996443215573612055, guid: 1dc5adddbf5557b1f925db8ed0497d6c, type: 3}
       propertyPath: m_Pivot.x
@@ -10659,11 +10660,6 @@ Mesh:
     offset: 0
     size: 0
     path: 
---- !u!224 &1700055102 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 2475794328341652202, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
-  m_PrefabInstance: {fileID: 416039480}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1788996110
 GameObject:
   m_ObjectHideFlags: 0
@@ -10915,11 +10911,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2000f6cfee6bbb749bee40a53a2d86b9, type: 3}
---- !u!224 &1813686072 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 5996443215573612055, guid: 1dc5adddbf5557b1f925db8ed0497d6c, type: 3}
-  m_PrefabInstance: {fileID: 632159103}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1820990502
 GameObject:
   m_ObjectHideFlags: 0
@@ -14353,3 +14344,4 @@ SceneRoots:
   - {fileID: 1122984320}
   - {fileID: 304600073}
   - {fileID: 1341621231}
+  - {fileID: 632159103}
