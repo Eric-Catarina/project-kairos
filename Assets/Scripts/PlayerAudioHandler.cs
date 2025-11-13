@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour
+public class PlayerAudioHandler : MonoBehaviour, IResettable
 {
     private PlayerMovementController movement;
     private GrapplingHookController grapple;
@@ -19,13 +19,11 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private string[] ringSfxOptions;
     [SerializeField] private string[] jumpPadSfxOptions;
 
-
     [Header("Sons - Estado do Player")]
     [SerializeField] private string deathSfx = "Death";
-    [SerializeField] private string deathFallSFX = "DeathFall";
-    [SerializeField] private string respawnSfx = "Respawn";
     [SerializeField] private string timeSkillOnSfx = "TimeOn";
     [SerializeField] private string timeSkillOffSfx = "TimeOff";
+    [SerializeField] private string victorySfx = "Victory";
 
     [Header("Sons - Grappling Hook")]
     [SerializeField] private string[] grappleShootSfxOptions;
@@ -42,6 +40,24 @@ public class PlayerAudioHandler : MonoBehaviour
     [SerializeField] private float windMinSpeed = 20f;
     [SerializeField] private float windMaxSpeed = 60f;
     [SerializeField] private float windFadeSpeed = 5f;
+
+    [Header("Sons - Dano e Laser")]
+    [SerializeField] private string[] laserHitSfxOptions;
+    [SerializeField] private string[] damageSfxOptions;
+
+    [Header("Som - Laser Barreiras")]
+    [SerializeField] private string laserLoopSfx = "LaserLoop";
+    [SerializeField] private float laserMaxDistance = 10f; // distância máxima pra ouvir o laser
+    [SerializeField] private float laserFadeSpeed = 5f;
+
+    private AudioSource laserLoopSource;
+    private LaserBarrier nearestLaser;
+    private AudioSource deathSource;
+    private bool isResetting = false;
+    private bool isPausedManual = false;
+
+
+    private bool victoryPlayed = false;
 
     private float stepTimer;
     private bool hasLandedOnce = false;
@@ -65,6 +81,13 @@ public class PlayerAudioHandler : MonoBehaviour
         grapple = GetComponent<GrapplingHookController>();
         rb = GetComponent<Rigidbody>();
 
+        deathSource = gameObject.AddComponent<AudioSource>();
+        deathSource.playOnAwake = false;
+        deathSource.loop = false;
+        deathSource.ignoreListenerPause = false;
+
+        isResetting = false;
+
         stepTimer = stepInterval;
         lastPosition = transform.position;
 
@@ -76,6 +99,8 @@ public class PlayerAudioHandler : MonoBehaviour
         {
             Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
         }
+
+
     }
 
     private void OnEnable()
@@ -87,6 +112,7 @@ public class PlayerAudioHandler : MonoBehaviour
             InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
             InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
             InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
+            InputManager.Instance.OnResetToCheckpoint += PlayDeathSound;
 
             BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
 
@@ -109,6 +135,8 @@ public class PlayerAudioHandler : MonoBehaviour
             InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
             InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
             InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
+            InputManager.Instance.OnResetToCheckpoint -= PlayDeathSound;
+
             BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
         }
 
@@ -117,11 +145,30 @@ public class PlayerAudioHandler : MonoBehaviour
 
     private void Update()
     {
+
+        if (Time.timeScale == 0f)
+        {
+            if (deathSource.isPlaying)
+            {
+                deathSource.Pause();
+                isPausedManual = true; // Marca que fomos nós que pausamos
+            }
+            return;
+        }
+        else
+        {
+            // Se o jogo despausou e nós tínhamos pausado o som, solta o play
+            if (isPausedManual)
+            {
+                deathSource.UnPause();
+                isPausedManual = false;
+            }
+        }
+
         HandleFootsteps();
-        DetectRespawn();
         HandleGrappleAudio();
         HandleWindAudio();
-        //HandleDoubleJumpAudio();
+        HandleLaserAudio();
 
         if (movement.isGrounded)
         {
@@ -129,8 +176,16 @@ public class PlayerAudioHandler : MonoBehaviour
             canDoubleJump = false;
             doubleJumpSoundPlayed = false;
         }
+
+        if (isResetting && !deathSource.isPlaying)
+        {
+            isResetting = false;
+        }
+
+        lastPosition = transform.position;
     }
 
+    
 
     private void HandleJumpAudio()
     {
@@ -196,20 +251,6 @@ public class PlayerAudioHandler : MonoBehaviour
         }
     }
 
-    private void DetectRespawn()
-    {
-        float distance = Vector3.Distance(transform.position, lastPosition);
-        if (distance > 10f && movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(respawnSfx);
-            if (windSource != null)
-            {
-                windSource.Stop();
-                windSource.Play();
-            }
-        }
-        lastPosition = transform.position;
-    }
 
     private void HandleGrappleStart()
     {
@@ -218,7 +259,6 @@ public class PlayerAudioHandler : MonoBehaviour
             int idx = Random.Range(0, grappleShootSfxOptions.Length);
             AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
         }
-        //AudioManager.instance.PlaySFX(grappleShootSfx);
         grappleJustStarted = true;
     }
 
@@ -230,9 +270,6 @@ public class PlayerAudioHandler : MonoBehaviour
             AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
         }
 
-        //AudioManager.instance.PlaySFX(grappleReleaseSfx);
-
-        // Libera double jump só se tinha realmente se agarrado
         if (wasGrappling)
         {
             doubleJumpAvailable = true;
@@ -255,7 +292,6 @@ public class PlayerAudioHandler : MonoBehaviour
                 int idx = Random.Range(0, grappleAttachSfxOptions.Length);
                 AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
             }
-            //AudioManager.instance.PlaySFX(grappleAttachSfx);
 
             // Bloqueia double jump enquanto estiver agarrado
             doubleJumpAvailable = false;
@@ -324,6 +360,12 @@ public class PlayerAudioHandler : MonoBehaviour
         {
             AudioManager.instance.PlaySFX(wallHitSfx);
         }
+
+        if (!victoryPlayed && collision.gameObject.GetComponent<WinLogic>() != null)
+        {
+            victoryPlayed = true;
+            PlayVictoryAudio();
+        }
     }
 
 
@@ -338,12 +380,10 @@ public class PlayerAudioHandler : MonoBehaviour
 
         doubleJumpAvailable = true;
         doubleJumpSoundPlayed = false;
-        //AudioManager.instance.PlaySFX(ringSfx);
     }
 
     private void AddJumpPadListener(JumpPad pad)
     {
-        // Essa parte é uma gambiarra temporária, mas funciona bem
         var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
         trigger.Setup(pad, this);
     }
@@ -358,24 +398,118 @@ public class PlayerAudioHandler : MonoBehaviour
 
         doubleJumpAvailable = true;
         doubleJumpSoundPlayed = false;
-        //AudioManager.instance.PlaySFX(jumpPadSfx);
     }
 
-
-
-
-
-
-
-
-    // Funções públicas de áudio
-    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual()
+    public void PlayLaserHitAudio()
     {
-        AudioManager.instance.PlaySFX(respawnSfx);
-        if (windSource != null)
-            windSource.volume = 0f;
+        if (laserHitSfxOptions != null && laserHitSfxOptions.Length > 0)
+        {
+            int laserIdx = Random.Range(0, laserHitSfxOptions.Length);
+            AudioManager.instance.PlaySFX(laserHitSfxOptions[laserIdx]);
+        }
+
+        if (damageSfxOptions != null && damageSfxOptions.Length > 0)
+        {
+            int damageIdx = Random.Range(0, damageSfxOptions.Length);
+            AudioManager.instance.PlaySFX(damageSfxOptions[damageIdx]);
+        }
     }
+
+    public void PlayVictoryAudio()
+    {
+        if (AudioManager.instance == null) return;
+
+        AudioManager.instance.PauseMusic(); // pausa a música
+        AudioManager.instance.PlaySFX(victorySfx); // toca som de vitória
+        Debug.Log("Música pausada? " + !AudioManager.instance.musicSource.isPlaying);
+    }
+
+
+    public void ResetState()
+    {
+        // Toca o som instantaneamente quando o Manager manda resetar
+        PlayDeathSound();
+    }
+    private void PlayDeathSound()
+    {
+        if (isResetting) return;
+        if ( string.IsNullOrEmpty(deathSfx) || AudioManager.instance == null)
+            return;
+
+        if (AudioManager.instance != null)
+        {
+            if (deathSource.isPlaying) deathSource.Stop();
+            // Chama a função que toca o SFX na fonte dedicada
+            AudioManager.instance.PlaySFXInSource(deathSfx, deathSource);
+            isResetting = true;
+            Debug.Log("Death sound played!");
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // Se encostar em um laser
+        if (other.GetComponent<LaserBarrier>() != null)
+        {
+            PlayLaserHitAudio();
+        }
+
+    }
+
+
+    private void HandleLaserAudio()
+    {
+        // Cria a fonte de áudio do laser se ainda não existir
+        if (laserLoopSource == null)
+            laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
+
+        float targetVolume = 0f;
+
+        if (Time.timeScale == 0f)
+        {
+            if (laserLoopSource != null)
+                laserLoopSource.volume = 0f;
+            return;
+        }
+
+        // Procura o laser mais próximo com collider ativo
+        LaserBarrier closest = null;
+        float closestDist = float.MaxValue;
+        foreach (var laser in FindObjectsOfType<LaserBarrier>())
+        {
+            Collider col = laser.GetComponent<Collider>();
+            if (!col.enabled) continue;
+
+            Vector3 closestPoint = col.ClosestPoint(transform.position);
+            float dist = Vector3.Distance(transform.position, closestPoint);
+
+            if (dist < closestDist)
+            {
+                closestDist = dist;
+                closest = laser;
+            }
+        }
+
+        nearestLaser = closest;
+
+        // Se tem laser próximo dentro da distância, volume máximo
+        if (nearestLaser != null && closestDist <= laserMaxDistance)
+        {
+            // Calcula volume baseado na distância: perto = 1, longe = 0
+            targetVolume = 1f - (closestDist / laserMaxDistance);
+            targetVolume = Mathf.Clamp01(targetVolume); // garante entre 0 e 1
+        }
+
+        // Atualiza o volume da fonte diretamente
+        if (laserLoopSource != null)
+            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, targetVolume, Time.deltaTime * laserFadeSpeed);
+
+    }
+
+
+
+
+
     public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
     public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }

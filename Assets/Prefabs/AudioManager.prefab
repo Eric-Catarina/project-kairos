@@ -45,7 +45,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0.43986446
+  m_Volume: 0.8513614
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -445,7 +445,21 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: d913ac3c48f4d2448b0b1dccddc34d17, type: 3}
   - name: Gameplay3
     clip: {fileID: 8300000, guid: d22ab9235391a054d963f0edac9eb4fe, type: 3}
-  ambientSounds: []
+  - name: Gameplay4
+    clip: {fileID: 8300000, guid: be8245b297fe61646ba4be14a78d2139, type: 3}
+  - name: Gameplay5
+    clip: {fileID: 8300000, guid: 8baf181dd91ba8c4591aa3823d808cf1, type: 3}
+  - name: Gameplay6
+    clip: {fileID: 8300000, guid: 073e0982837257340abce09cd004e1ce, type: 3}
+  - name: Gameplay7
+    clip: {fileID: 8300000, guid: ea9c5e2bb2556af4eaa74e71d08ffe42, type: 3}
+  ambientSounds:
+  - name: City1
+    clip: {fileID: 0}
+  - name: City2
+    clip: {fileID: 0}
+  - name: City3
+    clip: {fileID: 0}
   sfxSounds:
   - name: Footstep
     clip: {fileID: 8300000, guid: 70bacb606cc765b459dfb681b3ee3d2d, type: 3}
@@ -461,34 +475,32 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 76fe289358a361849af376fc615fc414, type: 3}
   - name: Jump
     clip: {fileID: 8300000, guid: e6767535572b82c48b2312e7abc6774d, type: 3}
-  - name: Jump2
+  - name: Dano
     clip: {fileID: 8300000, guid: 6627f91932b313b49bfa308b4505a6be, type: 3}
-  - name: Jump3
+  - name: Dano2
     clip: {fileID: 8300000, guid: e5f45f511875b9f47b2ccedacfb90fba, type: 3}
-  - name: Jump4
+  - name: Dano3
     clip: {fileID: 8300000, guid: 479490a68666f2c408429d00616d308e, type: 3}
   - name: DoubleJump
     clip: {fileID: 8300000, guid: eb770223533733346b402fb9432ed435, type: 3}
-  - name: DoubleJump2
-    clip: {fileID: 8300000, guid: b99363f1faa9bdc4e8e77a6c29f218d9, type: 3}
   - name: Death
-    clip: {fileID: 0}
-  - name: Respawn
+    clip: {fileID: 8300000, guid: cc8f593a83b99d442a3dec5fc794837e, type: 3}
+  - name: CheckpointActivate
     clip: {fileID: 0}
   - name: Wind
-    clip: {fileID: 8300000, guid: 081d662233494dc48a4b44303e61201e, type: 3}
+    clip: {fileID: 8300000, guid: b2ca8f5091323a04980c47d9d4a2abc6, type: 3}
   - name: Breathing
     clip: {fileID: 8300000, guid: d45947d8dc4c1ba4b910c473fa1d8892, type: 3}
   - name: GrappleAttach
-    clip: {fileID: 8300000, guid: a7a07113dadee114bba8edff28f6f5cb, type: 3}
+    clip: {fileID: 8300000, guid: e04131e70707de34db95f30259cc1ad0, type: 3}
   - name: GrappleRelease
-    clip: {fileID: 8300000, guid: 44979a05d4a10a34b8f3b6d9a2f2b2ab, type: 3}
+    clip: {fileID: 8300000, guid: 8d40bcbba7374af4c8c9b8eada58369f, type: 3}
   - name: GrappleRelease2
-    clip: {fileID: 8300000, guid: e3e1dc2cdb5158f4eb7bcc65e054948a, type: 3}
+    clip: {fileID: 8300000, guid: 8a3788943b4b23f4795507d45afbb708, type: 3}
   - name: GrappleShoot
-    clip: {fileID: 8300000, guid: 042b9d28fd772514887d9f445e0eb14e, type: 3}
+    clip: {fileID: 8300000, guid: 40e0a64f933f64e4b855c67a65402d95, type: 3}
   - name: GrappleShoot2
-    clip: {fileID: 8300000, guid: a1a56a184ca7edf4daa9de9c3fcab65c, type: 3}
+    clip: {fileID: 8300000, guid: 1c47501608b16e245875e65b300507b2, type: 3}
   - name: TimeOff
     clip: {fileID: 8300000, guid: b11b6c0baf4862c4aaee03ead89e423c, type: 3}
   - name: TimeOn
@@ -496,15 +508,27 @@ MonoBehaviour:
   - name: WallHit
     clip: {fileID: 8300000, guid: de6eb171c352e5141b22d56da31d735d, type: 3}
   - name: JumpPad1
-    clip: {fileID: 8300000, guid: e201f1ce0e6ac4a4daf47c5c94a8683b, type: 3}
+    clip: {fileID: 8300000, guid: cc21853027926324481f50e3178ed49d, type: 3}
   - name: JumpPad2
-    clip: {fileID: 8300000, guid: c8ee1a3d9fbee944ea1089fd06bf3f79, type: 3}
+    clip: {fileID: 8300000, guid: d75dac7eee2f7bf4db7a61fd776f6c17, type: 3}
   - name: Ring1
-    clip: {fileID: 8300000, guid: f93aaf971a8f7cb42b8993b18697124f, type: 3}
+    clip: {fileID: 8300000, guid: 7eddbae347625b247bd3e426b9102caf, type: 3}
   - name: Ring2
-    clip: {fileID: 8300000, guid: 389edf91544bb2c448d68199cda29bdd, type: 3}
+    clip: {fileID: 8300000, guid: bfe101bd2a28fe147bde4f4041d3f5cf, type: 3}
   - name: Ring3
-    clip: {fileID: 8300000, guid: 11e1260305082754fbca41d9bdb31b73, type: 3}
+    clip: {fileID: 8300000, guid: 541da1a101dd7df47a6a52c1b1291874, type: 3}
+  - name: LaserLoop
+    clip: {fileID: 8300000, guid: fbdc4ce9895f8dc45a51135525765c1c, type: 3}
+  - name: LaserHit
+    clip: {fileID: 8300000, guid: 2c5f990e53eb4904b8de655620a05ed2, type: 3}
+  - name: LaserHit2
+    clip: {fileID: 8300000, guid: 0534344f997b12f41bbe762d847940a9, type: 3}
+  - name: LaserHit3
+    clip: {fileID: 8300000, guid: 34ffd566242ec7046925e8e24d21b83f, type: 3}
+  - name: SFXFeedback
+    clip: {fileID: 8300000, guid: e726d44374814ae42a5a70681e9a9c8b, type: 3}
+  - name: Victory
+    clip: {fileID: 8300000, guid: 30b84c78a5278354bbdf4da8f3117272, type: 3}
   masterSource: {fileID: 7767049816164541703}
   musicSource: {fileID: 2232251504600985692}
   sfxSource: {fileID: 8454008366039571731}
@@ -512,14 +536,37 @@ MonoBehaviour:
   audioMixer: {fileID: 24100000, guid: 558244343adc0684d84eb304c41aaff7, type: 2}
   sfxPitchVariation: 0.2
   sceneMusics:
-  - scene: 7
-    musicName: Gameplay
-  - scene: 23
-    musicName: Gameplay2
-  - scene: 5
-    musicName: Gameplay3
-  - scene: 15
+  - scene: 6
     musicName: Menu
+  - scene: 9
+    musicName: Gameplay
+  - scene: 5
+    musicName: Gameplay2
+  - scene: 7
+    musicName: Gameplay3
+  - scene: 0
+    musicName: Gameplay4
+  - scene: 12
+    musicName: Gameplay5
+  - scene: 13
+    musicName: Gameplay6
+  - scene: 15
+    musicName: Gameplay7
+  sceneAmbients:
+  - scene: 9
+    musicName: 
+  - scene: 5
+    musicName: 
+  - scene: 7
+    musicName: 
+  - scene: 0
+    musicName: 
+  - scene: 12
+    musicName: 
+  - scene: 13
+    musicName: 
+  - scene: 10
+    musicName: 
 --- !u!82 &7767049816164541703
 AudioSource:
   m_ObjectHideFlags: 0
@@ -665,7 +712,7 @@ AudioSource:
   m_Volume: 0.45
   m_Pitch: 1
   Loop: 1
-  Mute: 0
+  Mute: 1
   Spatialize: 0
   SpatializePostEffects: 0
   Priority: 128
