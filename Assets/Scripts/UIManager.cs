@@ -80,6 +80,7 @@ public class UIManager : MonoBehaviour
     
     public void ShowPanel(UIPanelType panelType)
     {
+        FindAndRegisterAllPanels();
         if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
         {
             panel.Show();

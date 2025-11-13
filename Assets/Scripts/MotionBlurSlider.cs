@@ -1,34 +1,29 @@
 // Local: Assets/Scripts/UI/MotionBlurSlider.cs
-// (Removido PlayerPrefs, agora usa GameSettingsManager)
-
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Slider))]
 public class MotionBlurSlider : MonoBehaviour
 {
-    [Header("Dependências")]
-    private Volume globalVolume;
-
     [Header("Configurações de Clamp")]
     [SerializeField] private float minClamp = 0f;
     [SerializeField] private float maxClamp = 0.02f;
 
     private Slider _slider;
-    private MotionBlur _motionBlur;
+    private readonly List<MotionBlur> _motionBlurOverrides = new();
 
     private void Awake()
     {
         _slider = GetComponent<Slider>();
-        globalVolume = FindFirstObjectByType<Volume>();
-        InitializeMotionBlurReference();
+        InitializeMotionBlurReferences();
     }
 
     private void Start()
     {
-        if (_motionBlur == null)
+        if (_motionBlurOverrides.Count == 0)
         {
             _slider.interactable = false;
             return;
@@ -37,46 +32,47 @@ public class MotionBlurSlider : MonoBehaviour
         LoadSavedValue();
         _slider.onValueChanged.AddListener(OnSliderValueChanged);
     }
-    
+
     private void OnDestroy()
     {
         _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
     }
 
-    private void InitializeMotionBlurReference()
+    private void InitializeMotionBlurReferences()
     {
-        if (globalVolume != null)
+        Volume[] volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        foreach (var volume in volumes)
         {
-            // Maneira mais segura e eficiente de pegar o componente do que iterar a lista
-            if (!globalVolume.profile.TryGet(out _motionBlur))
+            if (volume.profile != null && volume.profile.TryGet(out MotionBlur motionBlur))
             {
-                // Opcional: Adiciona o componente se ele não existir no perfil
-                // _motionBlur = globalVolume.profile.Add<MotionBlur>(false);
+                _motionBlurOverrides.Add(motionBlur);
             }
         }
     }
+
     private void LoadSavedValue()
     {
-        // Pega o valor do nosso novo sistema centralizado
         float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
-        
         _slider.SetValueWithoutNotify(savedNormalizedValue);
-        ApplyMotionBlurClamp(savedNormalizedValue);
+        ApplyMotionBlurToAllVolumes(savedNormalizedValue);
     }
 
     private void OnSliderValueChanged(float normalizedValue)
     {
-        ApplyMotionBlurClamp(normalizedValue);
-        // Notifica o GameSettingsManager para atualizar e salvar
+        ApplyMotionBlurToAllVolumes(normalizedValue);
         GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
     }
 
-    private void ApplyMotionBlurClamp(float normalizedValue)
+    private void ApplyMotionBlurToAllVolumes(float normalizedValue)
     {
-        if (_motionBlur != null)
+        float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
+
+        foreach (var motionBlur in _motionBlurOverrides)
         {
-            float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
-            _motionBlur.clamp.Override(newValue);
+            if (motionBlur != null)
+            {
+                motionBlur.clamp.Override(newValue);
+            }
         }
     }
 }
