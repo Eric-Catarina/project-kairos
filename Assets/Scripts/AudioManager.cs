@@ -28,6 +28,12 @@ public class AudioManager : MonoBehaviour
     [Header("Músicas por Cena (Enum)")]
     [SerializeField] private SceneMusic[] sceneMusics;
 
+    [Header("Ambientes por Cena (Enum)")]
+    [SerializeField] private SceneMusic[] sceneAmbients;
+
+    private float lastSFXFeedbackTime;
+    private const float feedbackCooldown = 0.15f;
+
     private void Awake()
     {
         AddSoundsToDictionary(sfxSounds);
@@ -43,6 +49,29 @@ public class AudioManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        LoadVolumes();
+    }
+
+
+
+    public void SaveVolumes()
+    {
+        PlayerPrefs.SetFloat("MasterVolume", masterSource.volume);
+        PlayerPrefs.SetFloat("MusicVolume", musicSource.volume);
+        PlayerPrefs.SetFloat("SFXVolume", sfxSource.volume);
+        PlayerPrefs.Save();
+    }
+
+    public void LoadVolumes()
+    {
+        float master = PlayerPrefs.GetFloat("MasterVolume", 1f);
+        float music = PlayerPrefs.GetFloat("MusicVolume", 1f);
+        float sfx = PlayerPrefs.GetFloat("SFXVolume", 1f);
+
+        MasterVolume(master);
+        MusicVolume(music);
+        SFXVolume(sfx);
     }
 
     private void Start()
@@ -112,10 +141,29 @@ public class AudioManager : MonoBehaviour
     public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
     public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
 
-    public void MusicVolume(float volume) => musicSource.volume = volume * masterSource.volume;
-    public void AmbientVolume(float volume) => ambientSource.volume = volume * masterSource.volume;
-    public void SFXVolume(float volume) => sfxSource.volume = volume * masterSource.volume;
-    public void MasterVolume(float volume) => audioMixer.SetFloat("MasterVolume", volume);
+    public void MasterVolume(float volume)
+    {
+        masterSource.volume = volume;
+        SaveVolumes();
+    }
+
+    public void MusicVolume(float volume)
+    {
+        musicSource.volume = volume * masterSource.volume;
+        SaveVolumes();
+    }
+
+    public void SFXVolume(float volume)
+    {
+        sfxSource.volume = volume * masterSource.volume;
+        SaveVolumes();
+
+        if (Time.unscaledTime - lastSFXFeedbackTime > feedbackCooldown)
+        {
+            PlaySFX("SFXFeedback");
+            lastSFXFeedbackTime = Time.unscaledTime;
+        }
+    }
 
     public void SetMasterMute(bool muteState) 
     {
@@ -164,6 +212,8 @@ public class AudioManager : MonoBehaviour
     {
         GameScene sceneEnum = GetSceneEnum(scene.name);
         PlaySceneMusic(sceneEnum);
+
+        PlaySceneAmbient(sceneEnum);
     }
 
     private void PlaySceneMusic(GameScene sceneEnum)
@@ -178,11 +228,54 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    private void PlaySceneAmbient(GameScene sceneEnum)
+    {
+        foreach (var sceneAmbient in sceneAmbients)
+        {
+            if (sceneAmbient.scene == sceneEnum)
+            {
+                PlayAmbient(sceneAmbient.musicName); 
+                return;
+            }
+        }
+
+    }
+
     private GameScene GetSceneEnum(string sceneName)
     {
         if (Enum.TryParse(sceneName, out GameScene parsedEnum))
             return parsedEnum;
 
         return (GameScene)(-1);
+    }
+
+    public void PauseMusic()
+    {
+        if (musicSource.isPlaying)
+            musicSource.Pause();
+    }
+
+    public void PlaySFXInSource(string name, AudioSource source)
+    {
+        if (source == null || string.IsNullOrEmpty(name))
+            return;
+
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            source.clip = clip;
+            source.loop = false;
+
+            float finalVolume = sfxSource.volume * masterSource.volume;
+            source.volume = finalVolume;
+
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            source.pitch = randomPitch;
+
+            source.Play();
+        }
+        else
+        {
+            Debug.LogWarning("Sound Not Found for dedicated source: " + name);
+        }
     }
 }
