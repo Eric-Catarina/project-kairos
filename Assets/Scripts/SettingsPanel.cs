@@ -1,5 +1,3 @@
-
-
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,19 +9,21 @@ public class SettingsPanel : UIPanel
     [SerializeField] private Slider masterSlider;
     [SerializeField] private Slider musicSlider;
     [SerializeField] private Slider sfxSlider;
+    [SerializeField] private Slider ambientSlider;
     [Header("Referências Toggles")]
     [SerializeField] private Toggle masterToggle;
     [SerializeField] private Toggle musicToggle;
     [SerializeField] private Toggle sfxToggle;
-    [SerializeField] private Toggle checkpointsToggle; // Adicione este campo
+    [SerializeField] private Toggle ambientToggle;
+    [SerializeField] private Toggle checkpointsToggle;
 
     private void Awake()
     {
+        base.Awake();
         SetupButtonListeners();
         SetupVolumeListeners();
         SetupToggleListeners();
-
-        InitializeSliders(); // Peu, Coisa dos Sliders
+        InitializeSliders();
     }
 
     private void OnEnable()
@@ -50,10 +50,12 @@ public class SettingsPanel : UIPanel
         masterSlider?.onValueChanged.RemoveAllListeners();
         musicSlider?.onValueChanged.RemoveAllListeners();
         sfxSlider?.onValueChanged.RemoveAllListeners();
+        ambientSlider?.onValueChanged.RemoveAllListeners();
 
         masterSlider?.onValueChanged.AddListener(AudioManager.instance.MasterVolume);
         musicSlider?.onValueChanged.AddListener(AudioManager.instance.MusicVolume);
         sfxSlider?.onValueChanged.AddListener(AudioManager.instance.SFXVolume);
+        ambientSlider?.onValueChanged.AddListener(AudioManager.instance.AmbientVolume);
     }
 
     private void SetupToggleListeners()
@@ -63,10 +65,12 @@ public class SettingsPanel : UIPanel
             masterToggle?.onValueChanged.RemoveAllListeners();
             musicToggle?.onValueChanged.RemoveAllListeners();
             sfxToggle?.onValueChanged.RemoveAllListeners();
+            ambientToggle?.onValueChanged.RemoveAllListeners();
 
             masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
             musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
             sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
+            ambientToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetAmbientMute(!value));
         }
 
         if (GameSettingsManager.Instance != null)
@@ -96,9 +100,7 @@ public class SettingsPanel : UIPanel
             Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
         }
     }
-
-
-    // Peu \/ Ta salvando os sliders entre as cenas 
+    
     private void InitializeSliders()
     {
         if (AudioManager.instance == null) return;
@@ -118,6 +120,11 @@ public class SettingsPanel : UIPanel
             sfxSlider.value = AudioManager.instance.GetSFXVolumeBase();
         }
 
+        if (ambientSlider != null)
+        {
+            ambientSlider.value = AudioManager.instance.GetAmbientVolumeBase();
+        }
+
         if (masterToggle != null)
         {
             masterToggle.isOn = !AudioManager.instance.masterSource.mute;
@@ -132,6 +139,10 @@ public class SettingsPanel : UIPanel
         {
             sfxToggle.isOn = !AudioManager.instance.sfxSource.mute;
         }
-    }
 
+        if (ambientToggle != null)
+        {
+            ambientToggle.isOn = !AudioManager.instance.ambientSource.mute;
+        }
+    }
 }
