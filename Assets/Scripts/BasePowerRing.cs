@@ -77,6 +77,7 @@ public abstract class BasePowerUpRing : MonoBehaviour
     // Uses Dotween to rotate the ring when activated
     private void RotateRing()
     {
+        return;
         transform.DORotate(new Vector3(90, 0, 360), 1f, RotateMode.FastBeyond360)
                  .SetLoops(-1, LoopType.Restart)
                  .SetEase(Ease.Linear);
