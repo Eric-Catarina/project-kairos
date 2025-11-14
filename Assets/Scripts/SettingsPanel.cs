@@ -22,6 +22,8 @@ public class SettingsPanel : UIPanel
         SetupButtonListeners();
         SetupVolumeListeners();
         SetupToggleListeners();
+
+        InitializeSliders(); // Peu, Coisa dos Sliders
     }
 
     private void OnEnable()
@@ -94,4 +96,42 @@ public class SettingsPanel : UIPanel
             Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
         }
     }
+
+
+    // Peu \/ Ta salvando os sliders entre as cenas 
+    private void InitializeSliders()
+    {
+        if (AudioManager.instance == null) return;
+
+        if (masterSlider != null)
+        {
+            masterSlider.value = AudioManager.instance.GetMasterVolumeBase();
+        }
+
+        if (musicSlider != null)
+        {
+            musicSlider.value = AudioManager.instance.GetMusicVolumeBase();
+        }
+
+        if (sfxSlider != null)
+        {
+            sfxSlider.value = AudioManager.instance.GetSFXVolumeBase();
+        }
+
+        if (masterToggle != null)
+        {
+            masterToggle.isOn = !AudioManager.instance.masterSource.mute;
+        }
+
+        if (musicToggle != null)
+        {
+            musicToggle.isOn = !AudioManager.instance.musicSource.mute;
+        }
+
+        if (sfxToggle != null)
+        {
+            sfxToggle.isOn = !AudioManager.instance.sfxSource.mute;
+        }
+    }
+
 }

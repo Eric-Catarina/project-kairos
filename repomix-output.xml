@@ -67,7 +67,9 @@ Assets/
     AudioManager.cs
     BackButton.cs
     BasePowerRing.cs
+    BottomButtonsPanel.cs
     BuildingShooter.cs
+    ButtonJuice.cs
     CheatManager.cs
     Checkpoint.cs
     CheckpointManager.cs
@@ -708,197 +710,6 @@ public class AnimationTrigger : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/AudioManager.cs">
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Audio;
-using UnityEngine.SceneManagement;
-
-
-[Serializable]
-public class SceneMusic
-{
-    public GameScene scene;
-    public string musicName;
-}
-
-public class AudioManager : MonoBehaviour
-{
-    public static AudioManager instance;
-
-    public Sound[] musicSounds, ambientSounds, sfxSounds;
-    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
-    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
-    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
-
-    [SerializeField] private AudioMixer audioMixer;
-    [SerializeField] private float sfxPitchVariation = 0.1f;
-
-    [Header("Músicas por Cena (Enum)")]
-    [SerializeField] private SceneMusic[] sceneMusics;
-
-    private void Awake()
-    {
-        AddSoundsToDictionary(sfxSounds);
-        AddSoundsToDictionary(musicSounds);
-        AddSoundsToDictionary(ambientSounds);
-
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    private void Start()
-    {
-        GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
-        PlaySceneMusic(currentSceneEnum);
-    }
-
-    private void AddSoundsToDictionary(Sound[] soundArray)
-    {
-        foreach (Sound s in soundArray)
-        {
-            if (!sfxDictionary.ContainsKey(s.name))
-            {
-                sfxDictionary.Add(s.name, s.clip);
-            }
-        }
-    }
-
-    public void PlayMusic(string name)
-    {
-        Sound s = Array.Find(musicSounds, x => x.name == name);
-
-        if (s == null)
-        {
-            Debug.LogWarning($"Sound Not Found: {name}");
-        }
-        else
-        {
-            musicSource.clip = s.clip;
-            musicSource.volume = musicSource.volume * masterSource.volume;
-            musicSource.Play();
-        }
-    }
-
-    public void PlayAmbient(string name)
-    {
-        Sound s = Array.Find(ambientSounds, x => x.name == name);
-        if (s == null)
-        {
-            Debug.LogWarning("Ambient sound not found: " + name);
-        }
-        else
-        {
-            ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
-            ambientSource.loop = true;
-            ambientSource.Play();
-        }
-    }
-
-    public void PlaySFX(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-            sfxSource.pitch = randomPitch;
-            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
-        }
-        else
-        {
-            Debug.LogWarning("Sound Not Found: " + name);
-        }
-    }
-
-    public void ToggleMusic() => musicSource.mute = !musicSource.mute;
-    public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
-    public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
-
-    public void MusicVolume(float volume) => musicSource.volume = volume * masterSource.volume;
-    public void AmbientVolume(float volume) => ambientSource.volume = volume * masterSource.volume;
-    public void SFXVolume(float volume) => sfxSource.volume = volume * masterSource.volume;
-    public void MasterVolume(float volume) => audioMixer.SetFloat("MasterVolume", volume);
-
-    public void SetMasterMute(bool muteState) 
-    {
-    	masterSource.mute = muteState;
-    	musicSource.mute = muteState;
-    	sfxSource.mute = muteState;
-    }
-
-    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
-
-    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
-
-    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
-
-    private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
-    private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
-
-    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
-    {
-        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
-            return existingSource;
-
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            GameObject obj = new GameObject("LoopingSFX_" + name);
-            obj.transform.parent = transform;
-
-            AudioSource newSource = obj.AddComponent<AudioSource>();
-            newSource.clip = clip;
-            newSource.loop = true;
-            newSource.playOnAwake = false;
-            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
-            newSource.Play();
-
-            loopingSources.Add(name, newSource);
-            return newSource;
-        }
-        else
-        {
-            Debug.LogWarning("Looping Sound Not Found: " + name);
-            return null;
-        }
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        GameScene sceneEnum = GetSceneEnum(scene.name);
-        PlaySceneMusic(sceneEnum);
-    }
-
-    private void PlaySceneMusic(GameScene sceneEnum)
-    {
-        foreach (var sceneMusic in sceneMusics)
-        {
-            if (sceneMusic.scene == sceneEnum)
-            {
-                PlayMusic(sceneMusic.musicName);
-                return;
-            }
-        }
-    }
-
-    private GameScene GetSceneEnum(string sceneName)
-    {
-        if (Enum.TryParse(sceneName, out GameScene parsedEnum))
-            return parsedEnum;
-
-        return (GameScene)(-1);
-    }
-}
-</file>
-
 <file path="Assets/Scripts/BackButton.cs">
 using System.Collections;
 
@@ -1003,6 +814,286 @@ public abstract class BasePowerUpRing : MonoBehaviour
         transform.DORotate(new Vector3(90, 0, 360), 1f, RotateMode.FastBeyond360)
                  .SetLoops(-1, LoopType.Restart)
                  .SetEase(Ease.Linear);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/BottomButtonsPanel.cs">
+using UnityEngine.UI;
+using UnityEngine;
+
+public class BottomButtonsPanel : MonoBehaviour
+{
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+  [Header("Referências dos Botões")]
+    [SerializeField] private Button mainMenuButton;
+    [SerializeField] private Button resumeButton;
+
+    private UIJuice _uiJuice;
+
+    private void Awake()
+    {
+        
+        mainMenuButton?.onClick.RemoveAllListeners();
+        resumeButton?.onClick.RemoveAllListeners();
+
+        // Adiciona os listeners via código, garantindo que a referência ao Singleton seja sempre a mais recente
+        if (SceneManagerLogic.Instance != null)
+        {
+            mainMenuButton?.onClick.AddListener(SceneManagerLogic.Instance.LoadMainMenu);
+            resumeButton?.onClick.AddListener(GameFlowManager.Instance.ResumeGame);
+        }
+        else
+        {
+            Debug.LogError("SceneManagerLogic.Instance não foi encontrado. Os botões do PostGamePanel não funcionarão.");
+        }
+    }
+
+}
+</file>
+
+<file path="Assets/Scripts/BuildingShooter.cs">
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class RandomPrefabShooter : MonoBehaviour
+{
+    [Header("Prefab Settings")]
+    [Tooltip("Assign up to 5 prefabs to shoot randomly.")]
+    public GameObject[] prefabs = new GameObject[5];
+
+    [Header("Shooting Settings")]
+    [Tooltip("Time interval between each shot (seconds).")]
+    public float shootInterval = 2f;
+
+    [Tooltip("Force applied to shoot the prefab forward.")]
+    public float shootForce = 10f;
+
+    [Header("Lifetime Settings")]
+    [Tooltip("Time before each spawned prefab is destroyed (seconds).")]
+    public float prefabLifetime = 5f;
+
+    [Header("Prewarm Settings")]
+    [Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
+    public bool enablePrewarm = true;
+
+    private float shootTimer;
+    private bool _isTimeStopped;
+
+    // Nova estrutura para gerenciar objetos spawnados e seus tempos de vida restantes
+    private struct SpawnedObject
+    {
+        public GameObject obj;
+        public float remainingLifetime;
+    }
+
+    private List<SpawnedObject> spawnedObjects = new List<SpawnedObject>();
+
+    private void Start()
+    {
+        if (enablePrewarm)
+            PerformPrewarm();
+    }
+
+    private void Update()
+    {
+        _isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
+
+        if (!_isTimeStopped)
+        {
+            shootTimer += Time.deltaTime;
+            if (shootTimer >= shootInterval)
+            {
+                ShootRandomPrefab();
+                shootTimer = 0f;
+            }
+
+            // Gerenciar tempos de vida dos objetos spawnados
+            for (int i = spawnedObjects.Count - 1; i >= 0; i--)
+            {
+                SpawnedObject so = spawnedObjects[i];
+                so.remainingLifetime -= Time.deltaTime;
+                if (so.remainingLifetime <= 0f)
+                {
+                    Destroy(so.obj);
+                    spawnedObjects.RemoveAt(i);
+                }
+                else
+                {
+                    spawnedObjects[i] = so; // Atualizar na lista
+                }
+            }
+        }
+    }
+
+    private void PerformPrewarm()
+    {
+        if (prefabs == null || prefabs.Length == 0)
+            return;
+
+        int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
+        for (int i = 0; i < steps; i++)
+        {
+            float age = i * shootInterval; // seconds since it would have been fired
+            float remainingLife = prefabLifetime - age;
+
+            if (remainingLife > 0f)
+            {
+                GameObject spawned = SpawnPrefabAtTimeOffset(age);
+                // Adicionar à lista de objetos gerenciados
+                spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = remainingLife });
+            }
+        }
+    }
+
+    private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
+    {
+        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+        if (validPrefabs.Length == 0) return null;
+
+        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+
+        Rigidbody rb = spawned.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            // Simulate where it would be if fired 'timeOffset' seconds ago
+            Vector3 velocity = transform.forward * shootForce;
+            spawned.transform.position += velocity * timeOffset;
+
+            rb.linearVelocity = velocity;
+        }
+
+        return spawned;
+    }
+
+    private void ShootRandomPrefab()
+    {
+        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
+        if (validPrefabs.Length == 0) return;
+
+        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
+        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
+
+        Rigidbody rb = spawned.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.AddForce(transform.forward * shootForce, ForceMode.VelocityChange);
+        }
+
+        // Adicionar à lista de objetos gerenciados com tempo de vida total
+        spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = prefabLifetime });
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawRay(transform.position, transform.forward * 2f);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/ButtonJuice.cs">
+using UnityEngine;
+using UnityEngine.UI;
+using DG.Tweening;
+using UnityEngine.EventSystems;
+
+public class ButtonJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+{
+    [SerializeField] private Image targetImage;
+    [Space]
+    [Header("Hover Settings")]
+    [SerializeField] private Color hoverColor = Color.magenta;
+    [SerializeField] private float hoverScaleFactor = 1.1f;
+    [SerializeField] private float hoverDuration = 0.2f;
+
+    [Header("Click Settings")]
+    [SerializeField] private float punchScaleFactor = -0.1f; // Um valor negativo cria um efeito de "pressionar"
+    [SerializeField] private float punchDuration = 0.1f;
+
+    private Color normalColor;
+    private Vector3 initialScale;
+    private Sequence hoverSequence;
+    private Sequence clickSequence;
+    private Image selfImage;
+
+    void Start()
+    {
+        // Garante que o targetImage foi atribuído para evitar erros
+        if (targetImage == null)
+        {
+            Debug.LogError("Target Image não foi atribuída no Inspector!", this);
+            return;
+        }
+        selfImage = GetComponent<Image>();
+
+        // Armazena os valores iniciais
+        normalColor = targetImage.color;
+        initialScale = targetImage.transform.localScale;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        // Mata a animação anterior para evitar conflitos e executa a nova
+        CreateHoverSequence(true).Play();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        // Mata a animação anterior e executa a de retorno
+        CreateHoverSequence(false).Play();
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // Executa a animação de clique
+        CreateClickSequence().Play();
+    }
+
+    // Cria a sequência de animação para o hover (entrar e sair)
+    private Sequence CreateHoverSequence(bool isEntering)
+    {
+        // DOKill() mata qualquer tween em andamento no objeto, garantindo uma transição limpa
+        if (hoverSequence != null && hoverSequence.IsActive())
+        {
+            hoverSequence.Kill();
+        }
+
+        hoverSequence = DOTween.Sequence();
+
+        // Define a cor e escala de destino com base em se o mouse está entrando ou saindo
+        Color targetColor = isEntering ? hoverColor : normalColor;
+        Vector3 targetScale = isEntering ? initialScale * hoverScaleFactor : initialScale;
+
+        // 'Join' faz com que ambas as animações rodem ao mesmo tempo
+        hoverSequence.Join(targetImage.DOColor(targetColor, hoverDuration))
+                     .Join(selfImage.transform.DOScale(targetScale, hoverDuration));
+
+        
+        // A MÁGICA ACONTECE AQUI:
+        // Define a sequência para usar tempo não escalado, então funciona mesmo com Time.timeScale = 0
+        hoverSequence.SetUpdate(UpdateType.Normal, true);
+
+        return hoverSequence;
+    }
+
+    // Cria a sequência para o efeito de "punch" no clique
+    private Sequence CreateClickSequence()
+    {
+        if (clickSequence != null && clickSequence.IsActive())
+        {
+            clickSequence.Kill();
+        }
+
+        clickSequence = DOTween.Sequence();
+        
+        clickSequence.Append(targetImage.transform.DOPunchScale(Vector3.one * punchScaleFactor, punchDuration, 0))
+                     .SetUpdate(UpdateType.Normal, true);
+
+        return clickSequence;
     }
 }
 </file>
@@ -1694,44 +1785,6 @@ public class FlyingDroneEnemy : MonoBehaviour, ITimeSlowable
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, attackRange);
     }
-}
-</file>
-
-<file path="Assets/Scripts/GameSceneEnum.cs">
-using System;
-
-[Serializable]
-public enum GameScene
-{
-    ARTBonesClimbGrayBox,
-    ARTBonesClimbGrayBoxCopia,
-    BackGroundTest,
-    Basic,
-    BasicMovement,
-    BonesClimbGrayBox,
-    BonesClimbGrayBoxCopia,
-    BonesStartGrayBox,
-    BonesStartGrayBoxCopia,
-    CarLevel,
-    EricAnimations,
-    EricGraybox,
-    FineTuningMovement,
-    Hellcat,
-    LevelDesignCaio,
-    MainMenu,
-    MainMenuCopia,
-    MenuCaio,
-    MenuCaioAUDIO,
-    MenuCopiaPeu,
-    PrefabsTest,
-    Standard,
-    TimeStop,
-    Tutorial,
-    VFXBonesTest,
-    VFXGabriel,
-    VictorAgarrar,
-    VictorGraybox,
-    ViniciusLevelDesign,
 }
 </file>
 
@@ -2427,91 +2480,6 @@ public class MainMenu : UIPanel
 }
 </file>
 
-<file path="Assets/Scripts/MotionBlurSlider.cs">
-// Local: Assets/Scripts/UI/MotionBlurSlider.cs
-// (Removido PlayerPrefs, agora usa GameSettingsManager)
-
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-using UnityEngine.UI;
-
-[RequireComponent(typeof(Slider))]
-public class MotionBlurSlider : MonoBehaviour
-{
-    [Header("Dependências")]
-    private Volume globalVolume;
-
-    [Header("Configurações de Clamp")]
-    [SerializeField] private float minClamp = 0f;
-    [SerializeField] private float maxClamp = 0.02f;
-
-    private Slider _slider;
-    private MotionBlur _motionBlur;
-
-    private void Awake()
-    {
-        _slider = GetComponent<Slider>();
-        globalVolume = FindFirstObjectByType<Volume>();
-        InitializeMotionBlurReference();
-    }
-
-    private void Start()
-    {
-        if (_motionBlur == null)
-        {
-            _slider.interactable = false;
-            return;
-        }
-
-        LoadSavedValue();
-        _slider.onValueChanged.AddListener(OnSliderValueChanged);
-    }
-    
-    private void OnDestroy()
-    {
-        _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
-    }
-
-    private void InitializeMotionBlurReference()
-    {
-        if (globalVolume != null)
-        {
-            // Maneira mais segura e eficiente de pegar o componente do que iterar a lista
-            if (!globalVolume.profile.TryGet(out _motionBlur))
-            {
-                // Opcional: Adiciona o componente se ele não existir no perfil
-                // _motionBlur = globalVolume.profile.Add<MotionBlur>(false);
-            }
-        }
-    }
-    private void LoadSavedValue()
-    {
-        // Pega o valor do nosso novo sistema centralizado
-        float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
-        
-        _slider.SetValueWithoutNotify(savedNormalizedValue);
-        ApplyMotionBlurClamp(savedNormalizedValue);
-    }
-
-    private void OnSliderValueChanged(float normalizedValue)
-    {
-        ApplyMotionBlurClamp(normalizedValue);
-        // Notifica o GameSettingsManager para atualizar e salvar
-        GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
-    }
-
-    private void ApplyMotionBlurClamp(float normalizedValue)
-    {
-        if (_motionBlur != null)
-        {
-            float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
-            _motionBlur.clamp.Override(newValue);
-        }
-    }
-}
-</file>
-
 <file path="Assets/Scripts/MouseSensitivitySlider.cs">
 // Local: Assets/Scripts/MouseSensitivitySlider.cs
 
@@ -2591,390 +2559,6 @@ public class ObjectRotator : MonoBehaviour
     {
         transform.Rotate(rotationAxis, rotationSpeed * Time.deltaTime);
     }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerAudioHandler.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour
-{
-    private PlayerMovementController movement;
-    private GrapplingHookController grapple;
-    private Rigidbody rb;
-
-    private bool jumpSoundPlayed = false;
-
-    [Header("Sons - Movimento")]
-    [SerializeField] private string[] footstepSfxOptions;
-    [SerializeField] private string[] jumpSfxOptions;
-    [SerializeField] private string[] doubleJumpSfxOptions;
-    [SerializeField] private string[] landSfxOptions;
-    [SerializeField] private string footstepSfx = "footstep";
-    [SerializeField] private string wallHitSfx = "WallHit";
-    [SerializeField] private string[] ringSfxOptions;
-    [SerializeField] private string[] jumpPadSfxOptions;
-
-
-    [Header("Sons - Estado do Player")]
-    [SerializeField] private string deathSfx = "Death";
-    [SerializeField] private string deathFallSFX = "DeathFall";
-    [SerializeField] private string respawnSfx = "Respawn";
-    [SerializeField] private string timeSkillOnSfx = "TimeOn";
-    [SerializeField] private string timeSkillOffSfx = "TimeOff";
-
-    [Header("Sons - Grappling Hook")]
-    [SerializeField] private string[] grappleShootSfxOptions;
-    [SerializeField] private string[] grappleAttachSfxOptions;
-    [SerializeField] private string[] grappleReleaseSfxOptions;
-
-    [Header("Parâmetros")]
-    [SerializeField] private float stepInterval = 0.35f;
-    [SerializeField] private float minStepSpeed = 2f;
-    [SerializeField] private float wallHitMinForce = 5f;
-
-    [Header("Som - Vento")]
-    [SerializeField] private string windSfx = "Wind";
-    [SerializeField] private float windMinSpeed = 20f;
-    [SerializeField] private float windMaxSpeed = 60f;
-    [SerializeField] private float windFadeSpeed = 5f;
-
-    private float stepTimer;
-    private bool hasLandedOnce = false;
-    private Vector3 lastPosition;
-
-    private bool wasGrappling;
-    private bool grappleJustStarted;
-
-    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
-    private bool canDoubleJump = false; // Se double jump pode tocar
-
-    private bool doubleJumpAvailable = false;
-    private bool doubleJumpSoundPlayed = false;
-
-
-    private AudioSource windSource;
-
-    private void Awake()
-    {
-        movement = GetComponent<PlayerMovementController>();
-        grapple = GetComponent<GrapplingHookController>();
-        rb = GetComponent<Rigidbody>();
-
-        stepTimer = stepInterval;
-        lastPosition = transform.position;
-
-        if (AudioManager.instance != null)
-        {
-            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
-        }
-        else
-        {
-            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
-        }
-    }
-
-    private void OnEnable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
-
-            BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
-
-            // Escuta manualmente JumpPads que existirem na cena
-            foreach (var jumpPad in FindObjectsOfType<JumpPad>())
-            {
-                AddJumpPadListener(jumpPad);
-            }
-        }
-
-        movement.OnGroundLanded += PlayLand;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
-            BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
-        }
-
-        movement.OnGroundLanded -= PlayLand;
-    }
-
-    private void Update()
-    {
-        HandleFootsteps();
-        DetectRespawn();
-        HandleGrappleAudio();
-        HandleWindAudio();
-        //HandleDoubleJumpAudio();
-
-        if (movement.isGrounded)
-        {
-            hasJumpedOnce = false;
-            canDoubleJump = false;
-            doubleJumpSoundPlayed = false;
-        }
-    }
-
-
-    private void HandleJumpAudio()
-    {
-        if (movement.isGrounded)
-        {
-            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, jumpSfxOptions.Length);
-                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
-            }
-
-            doubleJumpAvailable = true;
-            doubleJumpSoundPlayed = false;
-        }
-        else
-        {
-            // Double jump: toca som apenas se ainda estiver disponível
-            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
-            {
-                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
-                {
-                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
-                    {
-                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
-                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
-                    }
-
-                    doubleJumpSoundPlayed = true;
-                    doubleJumpAvailable = false;
-                }
-            }
-        }
-    }
-
-
-
-
-
-    private void HandleFootsteps()
-    {
-        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
-        {
-            stepTimer = stepInterval;
-            return;
-        }
-
-        stepTimer -= Time.deltaTime;
-        if (stepTimer <= 0f)
-        {
-            string sfxToPlay = footstepSfx;
-
-            if (footstepSfxOptions != null && footstepSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, footstepSfxOptions.Length);
-
-
-                if (!string.IsNullOrEmpty(footstepSfxOptions[idx]))
-                    sfxToPlay = footstepSfxOptions[idx];
-            }
-
-            AudioManager.instance.PlaySFX(sfxToPlay);
-            stepTimer = stepInterval;
-        }
-    }
-
-    private void DetectRespawn()
-    {
-        float distance = Vector3.Distance(transform.position, lastPosition);
-        if (distance > 10f && movement.isGrounded)
-        {
-            AudioManager.instance.PlaySFX(respawnSfx);
-            if (windSource != null)
-            {
-                windSource.Stop();
-                windSource.Play();
-            }
-        }
-        lastPosition = transform.position;
-    }
-
-    private void HandleGrappleStart()
-    {
-        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, grappleShootSfxOptions.Length);
-            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
-        }
-        //AudioManager.instance.PlaySFX(grappleShootSfx);
-        grappleJustStarted = true;
-    }
-
-    private void HandleGrappleEnd()
-    {
-        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
-            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
-        }
-
-        //AudioManager.instance.PlaySFX(grappleReleaseSfx);
-
-        // Libera double jump só se tinha realmente se agarrado
-        if (wasGrappling)
-        {
-            doubleJumpAvailable = true;
-            doubleJumpSoundPlayed = false;
-        }
-
-        grappleJustStarted = false;
-        wasGrappling = false;
-    }
-
-    private void HandleGrappleAudio()
-    {
-        if (grapple == null || !grappleJustStarted) return;
-
-        // Som e estado só se realmente conectar
-        if (grapple.IsGrappling)
-        {
-            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
-                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
-            }
-            //AudioManager.instance.PlaySFX(grappleAttachSfx);
-
-            // Bloqueia double jump enquanto estiver agarrado
-            doubleJumpAvailable = false;
-            doubleJumpSoundPlayed = false;
-
-            wasGrappling = true;
-            grappleJustStarted = false;
-        }
-
-    }
-
-
-    private void HandleWindAudio()
-    {
-        if (windSource == null) return;
-
-        // Se o jogo está pausado, zera o volume
-        if (Time.timeScale == 0f)
-        {
-            windSource.volume = 0f;
-            return;
-        }
-
-        // Calcula volume base pelo movimento do player
-        float speed = rb.linearVelocity.magnitude;
-        float targetVolume = 0f;
-
-        if (speed > windMinSpeed)
-            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
-
-        // Aplica SFX e Master volume, e considera muting
-        if (AudioManager.instance != null)
-        {
-            float sfxVolume = AudioManager.instance.sfxSource.volume;
-            float masterVolume = AudioManager.instance.masterSource.volume;
-            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
-
-            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
-        }
-
-        // Suaviza a transição do volume
-        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
-    }
-
-
-
-    private void PlayLand()
-    {
-        if (!hasLandedOnce)
-        {
-            hasLandedOnce = true;
-            return;
-        }
-
-        if (landSfxOptions != null && landSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, landSfxOptions.Length);
-            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
-        }
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        Vector3 normal = collision.contacts[0].normal;
-        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
-        {
-            AudioManager.instance.PlaySFX(wallHitSfx);
-        }
-    }
-
-
-
-    private void HandlePowerRingAudio()
-    {
-        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, ringSfxOptions.Length);
-            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
-        }
-
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
-        //AudioManager.instance.PlaySFX(ringSfx);
-    }
-
-    private void AddJumpPadListener(JumpPad pad)
-    {
-        // Essa parte é uma gambiarra temporária, mas funciona bem
-        var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
-        trigger.Setup(pad, this);
-    }
-
-    public void PlayJumpPadAudio()
-    {
-        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, jumpPadSfxOptions.Length);
-            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
-        }
-
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
-        //AudioManager.instance.PlaySFX(jumpPadSfx);
-    }
-
-
-
-
-
-
-
-
-    // Funções públicas de áudio
-    public void PlayDeath() => AudioManager.instance.PlaySFX(deathSfx);
-    public void PlayRespawnManual()
-    {
-        AudioManager.instance.PlaySFX(respawnSfx);
-        if (windSource != null)
-            windSource.volume = 0f;
-    }
-    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
-    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
@@ -6951,145 +6535,286 @@ public class SlowableRigidbody : MonoBehaviour, ITimeSlowable, IGrappleable
 }
 </file>
 
-<file path="Assets/Scripts/BuildingShooter.cs">
+<file path="Assets/Scripts/AudioManager.cs">
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
-public class RandomPrefabShooter : MonoBehaviour
+
+[Serializable]
+public class SceneMusic
 {
-    [Header("Prefab Settings")]
-    [Tooltip("Assign up to 5 prefabs to shoot randomly.")]
-    public GameObject[] prefabs = new GameObject[5];
+    public GameScene scene;
+    public string musicName;
+}
 
-    [Header("Shooting Settings")]
-    [Tooltip("Time interval between each shot (seconds).")]
-    public float shootInterval = 2f;
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager instance;
 
-    [Tooltip("Force applied to shoot the prefab forward.")]
-    public float shootForce = 10f;
+    public Sound[] musicSounds, ambientSounds, sfxSounds;
+    public AudioSource masterSource, musicSource, sfxSource, ambientSource;
+    private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+    private Dictionary<string, AudioSource> loopingSources = new Dictionary<string, AudioSource>();
 
-    [Header("Lifetime Settings")]
-    [Tooltip("Time before each spawned prefab is destroyed (seconds).")]
-    public float prefabLifetime = 5f;
+    [SerializeField] private AudioMixer audioMixer;
+    [SerializeField] private float sfxPitchVariation = 0.1f;
 
-    [Header("Prewarm Settings")]
-    [Tooltip("If true, the shooter starts as if it has already been firing for 'prefabLifetime' seconds.")]
-    public bool enablePrewarm = true;
+    [Header("Músicas por Cena (Enum)")]
+    [SerializeField] private SceneMusic[] sceneMusics;
 
-    private float shootTimer;
-    private bool _isTimeStopped;
+    [Header("Ambientes por Cena (Enum)")]
+    [SerializeField] private SceneMusic[] sceneAmbients;
 
-    // Nova estrutura para gerenciar objetos spawnados e seus tempos de vida restantes
-    private struct SpawnedObject
+    private float lastSFXFeedbackTime;
+    private const float feedbackCooldown = 0.15f;
+
+    private void Awake()
     {
-        public GameObject obj;
-        public float remainingLifetime;
+        AddSoundsToDictionary(sfxSounds);
+        AddSoundsToDictionary(musicSounds);
+        AddSoundsToDictionary(ambientSounds);
+
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
+        LoadVolumes();
     }
 
-    private List<SpawnedObject> spawnedObjects = new List<SpawnedObject>();
+
+
+    public void SaveVolumes()
+    {
+        PlayerPrefs.SetFloat("MasterVolume", masterSource.volume);
+        PlayerPrefs.SetFloat("MusicVolume", musicSource.volume);
+        PlayerPrefs.SetFloat("SFXVolume", sfxSource.volume);
+        PlayerPrefs.Save();
+    }
+
+    public void LoadVolumes()
+    {
+        float master = PlayerPrefs.GetFloat("MasterVolume", 1f);
+        float music = PlayerPrefs.GetFloat("MusicVolume", 1f);
+        float sfx = PlayerPrefs.GetFloat("SFXVolume", 1f);
+
+        MasterVolume(master);
+        MusicVolume(music);
+        SFXVolume(sfx);
+    }
 
     private void Start()
     {
-        if (enablePrewarm)
-            PerformPrewarm();
+        GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
+        PlaySceneMusic(currentSceneEnum);
     }
 
-    private void Update()
+    private void AddSoundsToDictionary(Sound[] soundArray)
     {
-        _isTimeStopped = TimeManipulationManager.Instance != null && TimeManipulationManager.Instance.IsTimeSlowed;
-
-        if (!_isTimeStopped)
+        foreach (Sound s in soundArray)
         {
-            shootTimer += Time.deltaTime;
-            if (shootTimer >= shootInterval)
+            if (!sfxDictionary.ContainsKey(s.name))
             {
-                ShootRandomPrefab();
-                shootTimer = 0f;
-            }
-
-            // Gerenciar tempos de vida dos objetos spawnados
-            for (int i = spawnedObjects.Count - 1; i >= 0; i--)
-            {
-                SpawnedObject so = spawnedObjects[i];
-                so.remainingLifetime -= Time.deltaTime;
-                if (so.remainingLifetime <= 0f)
-                {
-                    Destroy(so.obj);
-                    spawnedObjects.RemoveAt(i);
-                }
-                else
-                {
-                    spawnedObjects[i] = so; // Atualizar na lista
-                }
+                sfxDictionary.Add(s.name, s.clip);
             }
         }
     }
 
-    private void PerformPrewarm()
+    public void PlayMusic(string name)
     {
-        if (prefabs == null || prefabs.Length == 0)
+        Sound s = Array.Find(musicSounds, x => x.name == name);
+
+        if (s == null)
+        {
+            Debug.LogWarning($"Sound Not Found: {name}");
+        }
+        else
+        {
+            musicSource.clip = s.clip;
+            musicSource.volume = musicSource.volume * masterSource.volume;
+            musicSource.Play();
+        }
+    }
+
+    public void PlayAmbient(string name)
+    {
+        Sound s = Array.Find(ambientSounds, x => x.name == name);
+        if (s == null)
+        {
+            Debug.LogWarning("Ambient sound not found: " + name);
+        }
+        else
+        {
+            ambientSource.clip = s.clip;
+            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            ambientSource.loop = true;
+            ambientSource.Play();
+        }
+    }
+
+    public void PlaySFX(string name)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            sfxSource.pitch = randomPitch;
+            sfxSource.PlayOneShot(clip, sfxSource.volume * masterSource.volume);
+        }
+        else
+        {
+            Debug.LogWarning("Sound Not Found: " + name);
+        }
+    }
+
+    public void ToggleMusic() => musicSource.mute = !musicSource.mute;
+    public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
+    public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
+
+    public void MasterVolume(float volume)
+    {
+        masterSource.volume = volume;
+        SaveVolumes();
+    }
+
+    public void MusicVolume(float volume)
+    {
+        musicSource.volume = volume * masterSource.volume;
+        SaveVolumes();
+    }
+
+    public void SFXVolume(float volume)
+    {
+        sfxSource.volume = volume * masterSource.volume;
+        SaveVolumes();
+
+        if (Time.unscaledTime - lastSFXFeedbackTime > feedbackCooldown)
+        {
+            PlaySFX("SFXFeedback");
+            lastSFXFeedbackTime = Time.unscaledTime;
+        }
+    }
+
+    public void SetMasterMute(bool muteState) 
+    {
+    	masterSource.mute = muteState;
+    	musicSource.mute = muteState;
+    	sfxSource.mute = muteState;
+    }
+
+    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
+
+    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
+
+    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
+
+    private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
+    private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
+
+    public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
+    {
+        if (loopingSources.TryGetValue(name, out AudioSource existingSource))
+            return existingSource;
+
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("LoopingSFX_" + name);
+            obj.transform.parent = transform;
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+            newSource.Play();
+
+            loopingSources.Add(name, newSource);
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Looping Sound Not Found: " + name);
+            return null;
+        }
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        GameScene sceneEnum = GetSceneEnum(scene.name);
+        PlaySceneMusic(sceneEnum);
+
+        PlaySceneAmbient(sceneEnum);
+    }
+
+    private void PlaySceneMusic(GameScene sceneEnum)
+    {
+        foreach (var sceneMusic in sceneMusics)
+        {
+            if (sceneMusic.scene == sceneEnum)
+            {
+                PlayMusic(sceneMusic.musicName);
+                return;
+            }
+        }
+    }
+
+    private void PlaySceneAmbient(GameScene sceneEnum)
+    {
+        foreach (var sceneAmbient in sceneAmbients)
+        {
+            if (sceneAmbient.scene == sceneEnum)
+            {
+                PlayAmbient(sceneAmbient.musicName); 
+                return;
+            }
+        }
+
+    }
+
+    private GameScene GetSceneEnum(string sceneName)
+    {
+        if (Enum.TryParse(sceneName, out GameScene parsedEnum))
+            return parsedEnum;
+
+        return (GameScene)(-1);
+    }
+
+    public void PauseMusic()
+    {
+        if (musicSource.isPlaying)
+            musicSource.Pause();
+    }
+
+    public void PlaySFXInSource(string name, AudioSource source)
+    {
+        if (source == null || string.IsNullOrEmpty(name))
             return;
 
-        int steps = Mathf.FloorToInt(prefabLifetime / shootInterval);
-        for (int i = 0; i < steps; i++)
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
-            float age = i * shootInterval; // seconds since it would have been fired
-            float remainingLife = prefabLifetime - age;
+            source.clip = clip;
+            source.loop = false;
 
-            if (remainingLife > 0f)
-            {
-                GameObject spawned = SpawnPrefabAtTimeOffset(age);
-                // Adicionar à lista de objetos gerenciados
-                spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = remainingLife });
-            }
+            float finalVolume = sfxSource.volume * masterSource.volume;
+            source.volume = finalVolume;
+
+            float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            source.pitch = randomPitch;
+
+            source.Play();
         }
-    }
-
-    private GameObject SpawnPrefabAtTimeOffset(float timeOffset)
-    {
-        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
-        if (validPrefabs.Length == 0) return null;
-
-        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
-        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
-
-        Rigidbody rb = spawned.GetComponent<Rigidbody>();
-        if (rb != null)
+        else
         {
-            // Simulate where it would be if fired 'timeOffset' seconds ago
-            Vector3 velocity = transform.forward * shootForce;
-            spawned.transform.position += velocity * timeOffset;
-
-            rb.linearVelocity = velocity;
+            Debug.LogWarning("Sound Not Found for dedicated source: " + name);
         }
-
-        return spawned;
-    }
-
-    private void ShootRandomPrefab()
-    {
-        GameObject[] validPrefabs = System.Array.FindAll(prefabs, p => p != null);
-        if (validPrefabs.Length == 0) return;
-
-        GameObject chosenPrefab = validPrefabs[Random.Range(0, validPrefabs.Length)];
-        GameObject spawned = Instantiate(chosenPrefab, transform.position, transform.rotation);
-
-        Rigidbody rb = spawned.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.AddForce(transform.forward * shootForce, ForceMode.VelocityChange);
-        }
-
-        // Adicionar à lista de objetos gerenciados com tempo de vida total
-        spawnedObjects.Add(new SpawnedObject { obj = spawned, remainingLifetime = prefabLifetime });
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawRay(transform.position, transform.forward * 2f);
     }
 }
 </file>
@@ -7416,6 +7141,29 @@ public class GameFlowManager : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/GameSceneEnum.cs">
+using System;
+
+[Serializable]
+public enum GameScene
+{
+    ARTBonesClimbGrayBox,
+    ARTBonesClimbGrayBoxCopia,
+    Basic,
+    CarLevel,
+    Hellcat,
+    HellcatCanvasHUD,
+    MainMenu,
+    SectorCore,
+    Standard,
+    Tutorial,
+    TutorialCopiaPeu,
+    VFXBonesTest,
+    VictorGraybox,
+    ViniciusLevelDesign,
+}
+</file>
+
 <file path="Assets/Scripts/GameSettingsManager.cs">
 using System;
 using UnityEngine;
@@ -7676,6 +7424,605 @@ public class LeaderboardUIController : MonoBehaviour
     {
         levelData = ScoreManager.Instance.GetCurrentLevelData();
     }
+}
+</file>
+
+<file path="Assets/Scripts/MotionBlurSlider.cs">
+// Local: Assets/Scripts/UI/MotionBlurSlider.cs
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
+using System.Collections.Generic;
+
+[RequireComponent(typeof(Slider))]
+public class MotionBlurSlider : MonoBehaviour
+{
+    [Header("Configurações de Clamp")]
+    [SerializeField] private float minClamp = 0f;
+    [SerializeField] private float maxClamp = 0.02f;
+
+    private Slider _slider;
+    private readonly List<MotionBlur> _motionBlurOverrides = new();
+
+    private void Awake()
+    {
+        _slider = GetComponent<Slider>();
+        InitializeMotionBlurReferences();
+    }
+
+    private void Start()
+    {
+        if (_motionBlurOverrides.Count == 0)
+        {
+            _slider.interactable = false;
+            return;
+        }
+
+        LoadSavedValue();
+        _slider.onValueChanged.AddListener(OnSliderValueChanged);
+    }
+
+    private void OnDestroy()
+    {
+        _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
+    }
+
+    private void InitializeMotionBlurReferences()
+    {
+        Volume[] volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        foreach (var volume in volumes)
+        {
+            if (volume.profile != null && volume.profile.TryGet(out MotionBlur motionBlur))
+            {
+                _motionBlurOverrides.Add(motionBlur);
+            }
+        }
+    }
+
+    private void LoadSavedValue()
+    {
+        float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
+        _slider.SetValueWithoutNotify(savedNormalizedValue);
+        ApplyMotionBlurToAllVolumes(savedNormalizedValue);
+    }
+
+    private void OnSliderValueChanged(float normalizedValue)
+    {
+        ApplyMotionBlurToAllVolumes(normalizedValue);
+        GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
+    }
+
+    private void ApplyMotionBlurToAllVolumes(float normalizedValue)
+    {
+        float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
+
+        foreach (var motionBlur in _motionBlurOverrides)
+        {
+            if (motionBlur != null)
+            {
+                motionBlur.clamp.Override(newValue);
+            }
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour, IResettable
+{
+    private PlayerMovementController movement;
+    private GrapplingHookController grapple;
+    private Rigidbody rb;
+
+    private bool jumpSoundPlayed = false;
+
+    [Header("Sons - Movimento")]
+    [SerializeField] private string[] footstepSfxOptions;
+    [SerializeField] private string[] jumpSfxOptions;
+    [SerializeField] private string[] doubleJumpSfxOptions;
+    [SerializeField] private string[] landSfxOptions;
+    [SerializeField] private string footstepSfx = "footstep";
+    [SerializeField] private string wallHitSfx = "WallHit";
+    [SerializeField] private string[] ringSfxOptions;
+    [SerializeField] private string[] jumpPadSfxOptions;
+
+    [Header("Sons - Estado do Player")]
+    [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string timeSkillOnSfx = "TimeOn";
+    [SerializeField] private string timeSkillOffSfx = "TimeOff";
+    [SerializeField] private string victorySfx = "Victory";
+
+    [Header("Sons - Grappling Hook")]
+    [SerializeField] private string[] grappleShootSfxOptions;
+    [SerializeField] private string[] grappleAttachSfxOptions;
+    [SerializeField] private string[] grappleReleaseSfxOptions;
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+    [SerializeField] private float wallHitMinForce = 5f;
+
+    [Header("Som - Vento")]
+    [SerializeField] private string windSfx = "Wind";
+    [SerializeField] private float windMinSpeed = 20f;
+    [SerializeField] private float windMaxSpeed = 60f;
+    [SerializeField] private float windFadeSpeed = 5f;
+
+    [Header("Sons - Dano e Laser")]
+    [SerializeField] private string[] laserHitSfxOptions;
+    [SerializeField] private string[] damageSfxOptions;
+
+    [Header("Som - Laser Barreiras")]
+    [SerializeField] private string laserLoopSfx = "LaserLoop";
+    [SerializeField] private float laserMaxDistance = 10f; // distância máxima pra ouvir o laser
+    [SerializeField] private float laserFadeSpeed = 5f;
+
+    private AudioSource laserLoopSource;
+    private LaserBarrier nearestLaser;
+    private AudioSource deathSource;
+    private bool isResetting = false;
+    private bool isPausedManual = false;
+
+
+    private bool victoryPlayed = false;
+
+    private float stepTimer;
+    private bool hasLandedOnce = false;
+    private Vector3 lastPosition;
+
+    private bool wasGrappling;
+    private bool grappleJustStarted;
+
+    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
+    private bool canDoubleJump = false; // Se double jump pode tocar
+
+    private bool doubleJumpAvailable = false;
+    private bool doubleJumpSoundPlayed = false;
+
+
+    private AudioSource windSource;
+
+    private void Awake()
+    {
+        movement = GetComponent<PlayerMovementController>();
+        grapple = GetComponent<GrapplingHookController>();
+        rb = GetComponent<Rigidbody>();
+
+        deathSource = gameObject.AddComponent<AudioSource>();
+        deathSource.playOnAwake = false;
+        deathSource.loop = false;
+        deathSource.ignoreListenerPause = false;
+
+        isResetting = false;
+
+        stepTimer = stepInterval;
+        lastPosition = transform.position;
+
+        if (AudioManager.instance != null)
+        {
+            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
+        }
+
+
+    }
+
+    private void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
+            InputManager.Instance.OnResetToCheckpoint += PlayDeathSound;
+
+            BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
+
+            // Escuta manualmente JumpPads que existirem na cena
+            foreach (var jumpPad in FindObjectsOfType<JumpPad>())
+            {
+                AddJumpPadListener(jumpPad);
+            }
+        }
+
+        movement.OnGroundLanded += PlayLand;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
+            InputManager.Instance.OnResetToCheckpoint -= PlayDeathSound;
+
+            BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
+        }
+
+        movement.OnGroundLanded -= PlayLand;
+    }
+
+    private void Update()
+    {
+
+        if (Time.timeScale == 0f)
+        {
+            if (deathSource.isPlaying)
+            {
+                deathSource.Pause();
+                isPausedManual = true; // Marca que fomos nós que pausamos
+            }
+            return;
+        }
+        else
+        {
+            // Se o jogo despausou e nós tínhamos pausado o som, solta o play
+            if (isPausedManual)
+            {
+                deathSource.UnPause();
+                isPausedManual = false;
+            }
+        }
+
+        HandleFootsteps();
+        HandleGrappleAudio();
+        HandleWindAudio();
+        HandleLaserAudio();
+
+        if (movement.isGrounded)
+        {
+            hasJumpedOnce = false;
+            canDoubleJump = false;
+            doubleJumpSoundPlayed = false;
+        }
+
+        if (isResetting && !deathSource.isPlaying)
+        {
+            isResetting = false;
+        }
+
+        lastPosition = transform.position;
+    }
+
+    
+
+    private void HandleJumpAudio()
+    {
+        if (movement.isGrounded)
+        {
+            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, jumpSfxOptions.Length);
+                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
+            }
+
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+        else
+        {
+            // Double jump: toca som apenas se ainda estiver disponível
+            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+            {
+                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+                {
+                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
+                    {
+                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
+                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
+                    }
+
+                    doubleJumpSoundPlayed = true;
+                    doubleJumpAvailable = false;
+                }
+            }
+        }
+    }
+
+
+
+
+
+    private void HandleFootsteps()
+    {
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
+        {
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            string sfxToPlay = footstepSfx;
+
+            if (footstepSfxOptions != null && footstepSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, footstepSfxOptions.Length);
+
+
+                if (!string.IsNullOrEmpty(footstepSfxOptions[idx]))
+                    sfxToPlay = footstepSfxOptions[idx];
+            }
+
+            AudioManager.instance.PlaySFX(sfxToPlay);
+            stepTimer = stepInterval;
+        }
+    }
+
+
+    private void HandleGrappleStart()
+    {
+        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleShootSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
+        }
+        grappleJustStarted = true;
+    }
+
+    private void HandleGrappleEnd()
+    {
+        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
+        }
+
+        if (wasGrappling)
+        {
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+
+        grappleJustStarted = false;
+        wasGrappling = false;
+    }
+
+    private void HandleGrappleAudio()
+    {
+        if (grapple == null || !grappleJustStarted) return;
+
+        // Som e estado só se realmente conectar
+        if (grapple.IsGrappling)
+        {
+            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
+                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
+            }
+
+            // Bloqueia double jump enquanto estiver agarrado
+            doubleJumpAvailable = false;
+            doubleJumpSoundPlayed = false;
+
+            wasGrappling = true;
+            grappleJustStarted = false;
+        }
+
+    }
+
+
+    private void HandleWindAudio()
+    {
+        if (windSource == null) return;
+
+        // Se o jogo está pausado, zera o volume
+        if (Time.timeScale == 0f)
+        {
+            windSource.volume = 0f;
+            return;
+        }
+
+        // Calcula volume base pelo movimento do player
+        float speed = rb.linearVelocity.magnitude;
+        float targetVolume = 0f;
+
+        if (speed > windMinSpeed)
+            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+
+        // Aplica SFX e Master volume, e considera muting
+        if (AudioManager.instance != null)
+        {
+            float sfxVolume = AudioManager.instance.sfxSource.volume;
+            float masterVolume = AudioManager.instance.masterSource.volume;
+            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+
+            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
+        }
+
+        // Suaviza a transição do volume
+        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+    }
+
+
+
+    private void PlayLand()
+    {
+        if (!hasLandedOnce)
+        {
+            hasLandedOnce = true;
+            return;
+        }
+
+        if (landSfxOptions != null && landSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, landSfxOptions.Length);
+            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
+        {
+            AudioManager.instance.PlaySFX(wallHitSfx);
+        }
+
+        if (!victoryPlayed && collision.gameObject.GetComponent<WinLogic>() != null)
+        {
+            victoryPlayed = true;
+            PlayVictoryAudio();
+        }
+    }
+
+
+
+    private void HandlePowerRingAudio()
+    {
+        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, ringSfxOptions.Length);
+            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
+    }
+
+    private void AddJumpPadListener(JumpPad pad)
+    {
+        var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
+        trigger.Setup(pad, this);
+    }
+
+    public void PlayJumpPadAudio()
+    {
+        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, jumpPadSfxOptions.Length);
+            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
+    }
+
+    public void PlayLaserHitAudio()
+    {
+        if (laserHitSfxOptions != null && laserHitSfxOptions.Length > 0)
+        {
+            int laserIdx = Random.Range(0, laserHitSfxOptions.Length);
+            AudioManager.instance.PlaySFX(laserHitSfxOptions[laserIdx]);
+        }
+
+        if (damageSfxOptions != null && damageSfxOptions.Length > 0)
+        {
+            int damageIdx = Random.Range(0, damageSfxOptions.Length);
+            AudioManager.instance.PlaySFX(damageSfxOptions[damageIdx]);
+        }
+    }
+
+    public void PlayVictoryAudio()
+    {
+        if (AudioManager.instance == null) return;
+
+        AudioManager.instance.PauseMusic(); // pausa a música
+        AudioManager.instance.PlaySFX(victorySfx); // toca som de vitória
+        Debug.Log("Música pausada? " + !AudioManager.instance.musicSource.isPlaying);
+    }
+
+
+    public void ResetState()
+    {
+        // Toca o som instantaneamente quando o Manager manda resetar
+        PlayDeathSound();
+    }
+    private void PlayDeathSound()
+    {
+        if (isResetting) return;
+        if ( string.IsNullOrEmpty(deathSfx) || AudioManager.instance == null)
+            return;
+
+        if (AudioManager.instance != null)
+        {
+            if (deathSource.isPlaying) deathSource.Stop();
+            // Chama a função que toca o SFX na fonte dedicada
+            AudioManager.instance.PlaySFXInSource(deathSfx, deathSource);
+            isResetting = true;
+            Debug.Log("Death sound played!");
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // Se encostar em um laser
+        if (other.GetComponent<LaserBarrier>() != null)
+        {
+            PlayLaserHitAudio();
+        }
+
+    }
+
+
+    private void HandleLaserAudio()
+    {
+        // Cria a fonte de áudio do laser se ainda não existir
+        if (laserLoopSource == null)
+            laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
+
+        float targetVolume = 0f;
+
+        if (Time.timeScale == 0f)
+        {
+            if (laserLoopSource != null)
+                laserLoopSource.volume = 0f;
+            return;
+        }
+
+        // Procura o laser mais próximo com collider ativo
+        LaserBarrier closest = null;
+        float closestDist = float.MaxValue;
+        foreach (var laser in FindObjectsOfType<LaserBarrier>())
+        {
+            Collider col = laser.GetComponent<Collider>();
+            if (!col.enabled) continue;
+
+            Vector3 closestPoint = col.ClosestPoint(transform.position);
+            float dist = Vector3.Distance(transform.position, closestPoint);
+
+            if (dist < closestDist)
+            {
+                closestDist = dist;
+                closest = laser;
+            }
+        }
+
+        nearestLaser = closest;
+
+        // Se tem laser próximo dentro da distância, volume máximo
+        if (nearestLaser != null && closestDist <= laserMaxDistance)
+        {
+            // Calcula volume baseado na distância: perto = 1, longe = 0
+            targetVolume = 1f - (closestDist / laserMaxDistance);
+            targetVolume = Mathf.Clamp01(targetVolume); // garante entre 0 e 1
+        }
+
+        // Atualiza o volume da fonte diretamente
+        if (laserLoopSource != null)
+            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, targetVolume, Time.deltaTime * laserFadeSpeed);
+
+    }
+
+
+
+
+
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
