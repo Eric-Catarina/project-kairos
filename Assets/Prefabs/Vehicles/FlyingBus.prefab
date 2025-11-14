@@ -48,6 +48,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 5ff0f79fdc7eb6f4d8e982c811100c79, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 67186c9449f66be4abdf04f6a28dc33c, type: 2}
     - target: {fileID: 919132149155446097, guid: 5ff0f79fdc7eb6f4d8e982c811100c79, type: 3}
       propertyPath: m_Name
       value: FlyingBus
@@ -160,3 +164,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1db6e23ab5bcaec89712d080a59b7ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  canBeGrappledWhileMoving: 1
+  grappleableLayerName: Grappleable
+  slowDownColor: {r: 0, g: 1, b: 1, a: 1}
