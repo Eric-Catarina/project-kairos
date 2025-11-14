@@ -1092,6 +1092,60 @@ Mesh:
     offset: 0
     size: 0
     path: 
+--- !u!1 &234772340
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 234772341}
+  - component: {fileID: 234772342}
+  m_Layer: 0
+  m_Name: CarShooter (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &234772341
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 234772340}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 70, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 860625436}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &234772342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 234772340}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 135fedc4ef4cb5a4e89243b5abd6ab5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 399371227267623753, guid: 5448dd3ba233ef24496867fdca34f33d, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 24c3d01d8983e624494df4630063ea0f, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 2c819d04f3a68bd4abcda6dd9546d3d8, type: 3}
+  shootInterval: 1
+  shootForce: 400
+  prefabLifetime: 7
+  enablePrewarm: 1
 --- !u!1 &237730305
 GameObject:
   m_ObjectHideFlags: 0
@@ -1195,12 +1249,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 237730305}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.27059808, y: -0.6532815, z: 0.6532815, w: 0.27059808}
-  m_LocalPosition: {x: 21.5, y: 8.48, z: 294.5}
-  m_LocalScale: {x: 1.6, y: 1, z: 0.9}
+  m_LocalRotation: {x: 0.5, y: -0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: -0.15481469, y: -0.002857208, z: -0.015599954}
+  m_LocalScale: {x: 0.39215693, y: 0.591716, z: 0.2571429}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1035875079}
   m_LocalEulerAnglesHint: {x: 90, y: -45, z: 90}
 --- !u!328 &237730310
 VideoPlayer:
@@ -3395,6 +3449,60 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 153081678866287066, guid: 2000f6cfee6bbb749bee40a53a2d86b9, type: 3}
   m_PrefabInstance: {fileID: 735825739}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &531178447
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 531178448}
+  - component: {fileID: 531178449}
+  m_Layer: 0
+  m_Name: CarShooter (3)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &531178448
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 531178447}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -70, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 860625436}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &531178449
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 531178447}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 135fedc4ef4cb5a4e89243b5abd6ab5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 399371227267623753, guid: 5448dd3ba233ef24496867fdca34f33d, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 24c3d01d8983e624494df4630063ea0f, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 2c819d04f3a68bd4abcda6dd9546d3d8, type: 3}
+  shootInterval: 1
+  shootForce: 400
+  prefabLifetime: 7
+  enablePrewarm: 1
 --- !u!1 &546779272
 GameObject:
   m_ObjectHideFlags: 0
@@ -5979,6 +6087,41 @@ MonoBehaviour:
   m_SelectedFaces: 
   m_SelectedEdges: []
   m_SelectedVertices: 
+--- !u!1 &860625435
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 860625436}
+  m_Layer: 0
+  m_Name: CarsScenario
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &860625436
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 860625435}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 619, y: 30, z: -600}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1588664339}
+  - {fileID: 234772341}
+  - {fileID: 1218601183}
+  - {fileID: 531178448}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &873742420
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6880,7 +7023,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 4540755355774249367, guid: 1c7249cda057d0e48a19a03d5a511b93, type: 3}
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 3882921784477890345, guid: 1c7249cda057d0e48a19a03d5a511b93, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 237730309}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1c7249cda057d0e48a19a03d5a511b93, type: 3}
 --- !u!1001 &1031300228
@@ -7045,6 +7191,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2000f6cfee6bbb749bee40a53a2d86b9, type: 3}
+--- !u!4 &1035875079 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3882921784477890345, guid: 1c7249cda057d0e48a19a03d5a511b93, type: 3}
+  m_PrefabInstance: {fileID: 1016936607}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1052544995
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8051,7 +8202,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6279997106017727753, guid: 5e2c8b951f9f49e5f84cb0d63ad57b08, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 32.8
+      value: 59.7
       objectReference: {fileID: 0}
     - target: {fileID: 6279997106017727753, guid: 5e2c8b951f9f49e5f84cb0d63ad57b08, type: 3}
       propertyPath: m_LocalPosition.z
@@ -8134,6 +8285,60 @@ Transform:
   - {fileID: 1942492978}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1218601182
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1218601183}
+  - component: {fileID: 1218601184}
+  m_Layer: 0
+  m_Name: CarShooter (2)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1218601183
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1218601182}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 860625436}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1218601184
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1218601182}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 135fedc4ef4cb5a4e89243b5abd6ab5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 399371227267623753, guid: 5448dd3ba233ef24496867fdca34f33d, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 24c3d01d8983e624494df4630063ea0f, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 2c819d04f3a68bd4abcda6dd9546d3d8, type: 3}
+  shootInterval: 1
+  shootForce: 400
+  prefabLifetime: 7
+  enablePrewarm: 1
 --- !u!1001 &1267855946
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10515,6 +10720,60 @@ MonoBehaviour:
   m_SelectedFaces: 
   m_SelectedEdges: []
   m_SelectedVertices: 
+--- !u!1 &1588664338
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1588664339}
+  - component: {fileID: 1588664340}
+  m_Layer: 0
+  m_Name: CarShooter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1588664339
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1588664338}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 860625436}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1588664340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1588664338}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 135fedc4ef4cb5a4e89243b5abd6ab5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 399371227267623753, guid: 5448dd3ba233ef24496867fdca34f33d, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 24c3d01d8983e624494df4630063ea0f, type: 3}
+  - {fileID: 9037723886243743296, guid: c3ec535f8bad3e24bb5c552c9304b559, type: 3}
+  - {fileID: 399371227267623753, guid: 2c819d04f3a68bd4abcda6dd9546d3d8, type: 3}
+  shootInterval: 1
+  shootForce: 400
+  prefabLifetime: 7
+  enablePrewarm: 1
 --- !u!1 &1641278558
 GameObject:
   m_ObjectHideFlags: 0
@@ -14807,5 +15066,5 @@ SceneRoots:
   - {fileID: 453263007}
   - {fileID: 568679478}
   - {fileID: 1272876152}
-  - {fileID: 237730309}
   - {fileID: 1016936607}
+  - {fileID: 860625436}
