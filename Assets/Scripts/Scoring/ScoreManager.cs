@@ -94,7 +94,7 @@ public class ScoreManager : MonoBehaviour
         if (!_levelStarted)
         {
             finalTime = -1f;
-            finalRank = Rank.None;
+            finalRank = Rank.NA;
             deaths = _deathCount;
             return;
         }
@@ -133,7 +133,7 @@ public class ScoreManager : MonoBehaviour
 
     public Rank GetRankForTime(float time)
     {
-        if (currentLevelData == null) return Rank.None;
+        if (currentLevelData == null) return Rank.NA;
         return currentLevelData.GetRankForTime(time);
     }
 
@@ -175,11 +175,8 @@ public class ScoreManager : MonoBehaviour
             victoryPanel.gameObject.SetActive(true);
             victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
             victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
-            victoryPanel.OnNextClicked += () =>
-            {
-                _leaderboardUIController?.ShowLeaderboard();
-            };
         }
+        _leaderboardUIController?.ShowLeaderboard();
 
         await SubmitScoreAsync(data.FinalTime);
     }

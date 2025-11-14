@@ -70,6 +70,6 @@ public void OnAfterDeserialize()
 public class LevelRecord
 {
 public float bestTime = float.MaxValue;
-public Rank bestRank = Rank.None;
+public Rank bestRank = Rank.NA;
 public int totalDeaths = 0;
 }

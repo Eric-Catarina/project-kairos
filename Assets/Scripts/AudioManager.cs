@@ -31,8 +31,16 @@ public class AudioManager : MonoBehaviour
     [Header("Ambientes por Cena (Enum)")]
     [SerializeField] private SceneMusic[] sceneAmbients;
 
+    private float masterVolumeBase = 1f;
+    private float musicVolumeBase = 1f;
+    private float sfxVolumeBase = 1f;
+    private float ambientVolumeBase = 1f;
+
+
     private float lastSFXFeedbackTime;
     private const float feedbackCooldown = 0.15f;
+
+    private bool sfxWasMutedBeforePause = false;
 
     private void Awake()
     {
@@ -44,6 +52,10 @@ public class AudioManager : MonoBehaviour
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+
+            musicSource.mute = false;
+            ambientSource.mute = false;
+            sfxSource.mute = false;
         }
         else
         {
@@ -57,21 +69,21 @@ public class AudioManager : MonoBehaviour
 
     public void SaveVolumes()
     {
-        PlayerPrefs.SetFloat("MasterVolume", masterSource.volume);
-        PlayerPrefs.SetFloat("MusicVolume", musicSource.volume);
-        PlayerPrefs.SetFloat("SFXVolume", sfxSource.volume);
+        PlayerPrefs.SetFloat("MasterVolume", masterVolumeBase);
+        PlayerPrefs.SetFloat("MusicVolume", musicVolumeBase);
+        PlayerPrefs.SetFloat("SFXVolume", sfxVolumeBase);
+        PlayerPrefs.SetFloat("AmbientVolume", ambientVolumeBase);
         PlayerPrefs.Save();
     }
 
     public void LoadVolumes()
     {
-        float master = PlayerPrefs.GetFloat("MasterVolume", 1f);
-        float music = PlayerPrefs.GetFloat("MusicVolume", 1f);
-        float sfx = PlayerPrefs.GetFloat("SFXVolume", 1f);
+        masterVolumeBase = PlayerPrefs.GetFloat("MasterVolume", 1f);
+        musicVolumeBase = PlayerPrefs.GetFloat("MusicVolume", 1f);
+        sfxVolumeBase = PlayerPrefs.GetFloat("SFXVolume", 1f);
+        ambientVolumeBase = PlayerPrefs.GetFloat("AmbientVolume", 1f);
 
-        MasterVolume(master);
-        MusicVolume(music);
-        SFXVolume(sfx);
+        MasterVolume(masterVolumeBase);
     }
 
     private void Start()
@@ -143,28 +155,42 @@ public class AudioManager : MonoBehaviour
 
     public void MasterVolume(float volume)
     {
-        masterSource.volume = volume;
+        masterVolumeBase = volume;
+        masterSource.volume = masterVolumeBase;
+
+        RecalculateMusicVolume();
+        RecalculateSFXVolume();
+        RecalculateAmbientVolume();
+
         SaveVolumes();
     }
 
     public void MusicVolume(float volume)
     {
-        musicSource.volume = volume * masterSource.volume;
+        musicVolumeBase = volume;
+        RecalculateMusicVolume();
         SaveVolumes();
     }
 
     public void SFXVolume(float volume)
     {
-        sfxSource.volume = volume * masterSource.volume;
+        sfxVolumeBase = volume;
+        RecalculateSFXVolume();
         SaveVolumes();
 
         if (Time.unscaledTime - lastSFXFeedbackTime > feedbackCooldown)
         {
-            PlaySFX("SFXFeedback");
+            PlayUnscaledSFX("SFXFeedback");
             lastSFXFeedbackTime = Time.unscaledTime;
         }
     }
 
+    public void AmbientVolume(float volume)
+    {
+        ambientVolumeBase = volume;
+        RecalculateAmbientVolume();
+        SaveVolumes();
+    }
     public void SetMasterMute(bool muteState) 
     {
     	masterSource.mute = muteState;
@@ -255,6 +281,18 @@ public class AudioManager : MonoBehaviour
             musicSource.Pause();
     }
 
+    public void PauseAmbient()
+    {
+        if (ambientSource.isPlaying)
+            ambientSource.Pause();
+    }
+
+    public void UnpauseAmbient()
+    {
+        if (ambientSource != null && !ambientSource.isPlaying && ambientSource.clip != null)
+            ambientSource.UnPause();
+    }
+
     public void PlaySFXInSource(string name, AudioSource source)
     {
         if (source == null || string.IsNullOrEmpty(name))
@@ -278,4 +316,117 @@ public class AudioManager : MonoBehaviour
             Debug.LogWarning("Sound Not Found for dedicated source: " + name);
         }
     }
+
+    public void PauseAllSFX()
+    {
+
+        foreach (var source in loopingSources.Values)
+        {
+            if (source != null && source.isPlaying)
+            {
+                source.Pause();
+            }
+        }
+
+
+        sfxWasMutedBeforePause = sfxSource.mute;
+
+
+        sfxSource.mute = true;
+    }
+
+    public void UnpauseAllSFX()
+    {
+
+        foreach (var source in loopingSources.Values)
+        {
+
+            if (source != null && !source.isPlaying)
+            {
+                source.UnPause();
+            }
+        }
+
+        sfxSource.mute = false;
+    }
+
+    /*public void PlaySFXForTransition(string name)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            AudioSource tempSource = gameObject.AddComponent<AudioSource>();
+
+            // Configura o mixer (se você usa)
+            if (sfxSource.outputAudioMixerGroup != null)
+                tempSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
+
+            tempSource.clip = clip;
+            tempSource.volume = sfxSource.volume * masterSource.volume;
+            tempSource.pitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+
+            tempSource.Play();
+            StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
+        }
+        else
+        {
+            Debug.LogWarning("Sound Not Found for transition: " + name);
+        }
+    } */
+
+    private IEnumerator CleanupTemporarySource(AudioSource source, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (source != null)
+        {
+            Destroy(source);
+        }
+    }
+
+    public void PlayUnscaledSFX(string name)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            AudioSource tempSource = gameObject.AddComponent<AudioSource>();
+
+            tempSource.ignoreListenerPause = true;
+
+            if (sfxSource.outputAudioMixerGroup != null)
+                tempSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
+
+            tempSource.clip = clip;
+
+            tempSource.volume = sfxSource.volume;
+
+            tempSource.pitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            tempSource.Play();
+
+            // 2. Limpa a fonte temporária após o clip terminar
+            StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
+        }
+        else
+        {
+            Debug.LogWarning("Unscaled Sound Not Found: " + name);
+        }
+    }
+
+
+    private void RecalculateMusicVolume()
+    {
+        musicSource.volume = musicVolumeBase * masterSource.volume;
+    }
+
+    private void RecalculateSFXVolume()
+    {
+        sfxSource.volume = sfxVolumeBase * masterSource.volume;
+    }
+
+    private void RecalculateAmbientVolume()
+    {
+        ambientSource.volume = ambientVolumeBase * masterSource.volume;
+    }
+
+    public float GetMasterVolumeBase() => masterVolumeBase;
+    public float GetMusicVolumeBase() => musicVolumeBase;
+    public float GetSFXVolumeBase() => sfxVolumeBase;
+    public float GetAmbientVolumeBase() => ambientVolumeBase;
 }
