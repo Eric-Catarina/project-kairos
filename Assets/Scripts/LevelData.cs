@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum Rank { S, A, B, C, D, None }
+public enum Rank { S, A, B, C, D, NA }
 
 [Serializable]
 public struct RankThreshold
