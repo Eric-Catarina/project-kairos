@@ -146,24 +146,37 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
     private void Update()
     {
 
+
         if (Time.timeScale == 0f)
-        {
-            if (deathSource.isPlaying)
             {
-                deathSource.Pause();
-                isPausedManual = true; // Marca que fomos nós que pausamos
+   
+                if (deathSource.isPlaying) { deathSource.Pause(); isPausedManual = true; }
+
+ 
+                if (AudioManager.instance != null)
+                {
+                    AudioManager.instance.PauseAllSFX();
+                    AudioManager.instance.PauseAmbient();
+                }
+
+
+                return;
             }
-            return;
-        }
-        else
-        {
-            // Se o jogo despausou e nós tínhamos pausado o som, solta o play
-            if (isPausedManual)
+            else
             {
-                deathSource.UnPause();
-                isPausedManual = false;
+                if (isPausedManual)
+                {
+                    deathSource.UnPause();
+                    isPausedManual = false;
+                }
+
+                if (AudioManager.instance != null)
+                {
+                    AudioManager.instance.UnpauseAllSFX(); 
+                    AudioManager.instance.UnpauseAmbient();
+                }
+
             }
-        }
 
         HandleFootsteps();
         HandleGrappleAudio();
@@ -308,12 +321,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
     {
         if (windSource == null) return;
 
-        // Se o jogo está pausado, zera o volume
-        if (Time.timeScale == 0f)
-        {
-            windSource.volume = 0f;
-            return;
-        }
 
         // Calcula volume base pelo movimento do player
         float speed = rb.linearVelocity.magnitude;
@@ -419,15 +426,16 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
     {
         if (AudioManager.instance == null) return;
 
-        AudioManager.instance.PauseMusic(); // pausa a música
-        AudioManager.instance.PlaySFX(victorySfx); // toca som de vitória
-        Debug.Log("Música pausada? " + !AudioManager.instance.musicSource.isPlaying);
+        AudioManager.instance.PauseMusic();
+        AudioManager.instance.PauseAmbient();
+        AudioManager.instance.PlayUnscaledSFX(victorySfx);
     }
 
 
     public void ResetState()
     {
-        // Toca o som instantaneamente quando o Manager manda resetar
+        if (isResetting) return;
+
         PlayDeathSound();
     }
     private void PlayDeathSound()
@@ -439,7 +447,8 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (AudioManager.instance != null)
         {
             if (deathSource.isPlaying) deathSource.Stop();
-            // Chama a função que toca o SFX na fonte dedicada
+ 
+
             AudioManager.instance.PlaySFXInSource(deathSfx, deathSource);
             isResetting = true;
             Debug.Log("Death sound played!");
@@ -448,7 +457,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
 
     private void OnTriggerEnter(Collider other)
     {
-        // Se encostar em um laser
         if (other.GetComponent<LaserBarrier>() != null)
         {
             PlayLaserHitAudio();
@@ -459,20 +467,12 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
 
     private void HandleLaserAudio()
     {
-        // Cria a fonte de áudio do laser se ainda não existir
         if (laserLoopSource == null)
             laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
 
-        float targetVolume = 0f;
 
-        if (Time.timeScale == 0f)
-        {
-            if (laserLoopSource != null)
-                laserLoopSource.volume = 0f;
-            return;
-        }
+        float targetVolumeLocal = 0f;
 
-        // Procura o laser mais próximo com collider ativo
         LaserBarrier closest = null;
         float closestDist = float.MaxValue;
         foreach (var laser in FindObjectsOfType<LaserBarrier>())
@@ -492,17 +492,26 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
 
         nearestLaser = closest;
 
-        // Se tem laser próximo dentro da distância, volume máximo
         if (nearestLaser != null && closestDist <= laserMaxDistance)
         {
-            // Calcula volume baseado na distância: perto = 1, longe = 0
-            targetVolume = 1f - (closestDist / laserMaxDistance);
-            targetVolume = Mathf.Clamp01(targetVolume); // garante entre 0 e 1
+            targetVolumeLocal = 1f - (closestDist / laserMaxDistance);
+            targetVolumeLocal = Mathf.Clamp01(targetVolumeLocal);
         }
 
-        // Atualiza o volume da fonte diretamente
+        float finalVolume = targetVolumeLocal;
+
+        if (AudioManager.instance != null && laserLoopSource != null)
+        {
+            float sfxVolume = AudioManager.instance.sfxSource.volume;
+            float masterVolume = AudioManager.instance.masterSource.volume;
+
+            finalVolume = targetVolumeLocal * sfxVolume * masterVolume;
+
+            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+            laserLoopSource.mute = isMuted;
+        }
         if (laserLoopSource != null)
-            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, targetVolume, Time.deltaTime * laserFadeSpeed);
+            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalVolume, Time.deltaTime * laserFadeSpeed);
 
     }
 

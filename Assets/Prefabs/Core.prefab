@@ -6223,22 +6223,30 @@ MonoBehaviour:
   - Jump
   doubleJumpSfxOptions:
   - DoubleJump
-  - DoubleJump2
   landSfxOptions:
   - Landing
   - Landing2
   footstepSfx: Footstep
   wallHitSfx: WallHit
-  ringSfxOptions: []
-  jumpPadSfxOptions: []
+  ringSfxOptions:
+  - Ring1
+  - Ring2
+  - Ring3
+  jumpPadSfxOptions:
+  - JumpPad1
+  - JumpPad2
   deathSfx: Death
-  deathFallSFX: DeathFall
-  respawnSfx: Respawn
   timeSkillOnSfx: TimeOn
   timeSkillOffSfx: TimeOff
-  grappleShootSfxOptions: []
-  grappleAttachSfxOptions: []
-  grappleReleaseSfxOptions: []
+  victorySfx: Victory
+  grappleShootSfxOptions:
+  - GrappleShoot
+  - GrappleShoot2
+  grappleAttachSfxOptions:
+  - GrappleAttach
+  grappleReleaseSfxOptions:
+  - GrappleRelease
+  - GrappleRelease2
   stepInterval: 0.35
   minStepSpeed: 2
   wallHitMinForce: 5
@@ -6246,6 +6254,17 @@ MonoBehaviour:
   windMinSpeed: 20
   windMaxSpeed: 60
   windFadeSpeed: 5
+  laserHitSfxOptions:
+  - LaserHit
+  - LaserHit2
+  - LaserHit3
+  damageSfxOptions:
+  - Dano
+  - Dano2
+  - Dano3
+  laserLoopSfx: LaserLoop
+  laserMaxDistance: 75
+  laserFadeSpeed: 5
 --- !u!1 &2609010015376511888
 GameObject:
   m_ObjectHideFlags: 0
@@ -22293,6 +22312,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerMovementController: {fileID: 4943271865898170268}
   grapplingHookController: {fileID: 7596768071946879737}
+  maxTurnSpeedForAnimation: 180
+  turnAnimationSmoothTime: 0.1
 --- !u!4 &2920631235451046178 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 348225913119587165, guid: 27a0e9b5e29a36a4db440326207b509f, type: 3}
