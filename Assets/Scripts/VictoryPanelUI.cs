@@ -9,19 +9,13 @@ public class VictoryPanelUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI deathsLabel;
     [SerializeField] private TextMeshProUGUI rankLabel;
     [SerializeField] private TextMeshProUGUI levelNameLabel;
-    [SerializeField] private Button nextButton;
 
-    public event System.Action OnNextClicked;
 
     private void Awake()
     {
-        nextButton.onClick.AddListener(HandleNextClicked);
         gameObject.SetActive(false);
     }
-    private void OnDestroy()
-    {
-        nextButton.onClick.RemoveListener(HandleNextClicked);
-    }
+
 
     public void ShowResults(float time, int deaths, Rank rank)
     {
@@ -33,8 +27,5 @@ public class VictoryPanelUI : MonoBehaviour
         levelNameLabel.text = SceneManagerLogic.Instance.GetCurrentLevelName().ToString();
     }
 
-    private void HandleNextClicked()
-    {
-        OnNextClicked?.Invoke();
-    }
+
 }

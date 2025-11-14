@@ -55,7 +55,7 @@ public class ScoreUIController : MonoBehaviour
 
         if (rankText != null)
         {
-            Rank rank = ScoreManager.Instance != null ? ScoreManager.Instance.GetRankForTime(newTime) : Rank.None;
+            Rank rank = ScoreManager.Instance != null ? ScoreManager.Instance.GetRankForTime(newTime) : Rank.NA;
             rankText.text = $"Rank: {rank}";
         }
     }
