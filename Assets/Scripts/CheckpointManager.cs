@@ -66,6 +66,10 @@ public class CheckpointManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         StartCoroutine(InitializeAfterSceneLoad());
+        if (initialSpawnPoint == null)
+        {
+            initialSpawnPoint = GameObject.Find("Core")?.transform;
+        }
     }
 
     private IEnumerator InitializeAfterSceneLoad()
