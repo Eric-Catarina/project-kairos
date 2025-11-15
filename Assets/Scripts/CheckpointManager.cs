@@ -163,7 +163,7 @@ public class CheckpointManager : MonoBehaviour
         }
     }
 
-    private void HardResetLevel()
+    public void HardResetLevel()
     {
         ScoreManager.Instance?.IncrementDeathCount();
         SceneManagerLogic.Instance.RestartScene();
