@@ -26,7 +26,12 @@ public class ScoreManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this) 
+        { 
+            Instance.SetCurrentLevelData(currentLevelData);
+            Destroy(gameObject); 
+            return; 
+        }
         Instance = this;
     }
 
@@ -270,5 +275,10 @@ public class ScoreManager : MonoBehaviour
     public LevelData GetCurrentLevelData()
     {
         return currentLevelData;
+    }
+
+    public void SetCurrentLevelData(LevelData data)
+    {
+        currentLevelData = data;
     }
 }
