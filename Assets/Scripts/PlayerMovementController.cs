@@ -7,451 +7,563 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovementController : MonoBehaviour
 {
-    #region Events
-    public event Action OnGroundLanded;
-    public event Action OnLeftGround;
-    public event Action OnJumped;
-    public event Action OnDoubleJumpGained;
-    public event Action OnDoubleJumpUsed;
-    public event Action<float> OnHorizontalVelocityChanged;
-    public event Action OnShocked;
-    #endregion
+	#region Events
+	public event Action OnGroundLanded;
+	public event Action OnLeftGround;
+	public event Action OnJumped;
+	public event Action OnDoubleJumpGained;
+	public event Action OnDoubleJumpUsed;
+	public event Action<float> OnHorizontalVelocityChanged;
+	public event Action OnShocked;
+	#endregion
 
-    #region State
-    [Header("Estado Atual (Debug)")]
-    public bool isGrounded;
-    public bool canDoubleJump;
-    [SerializeField] private bool isJumping;
-    private float _horizontalSpeed;
-    #endregion
+	#region State
+	[Header("Estado Atual (Debug)")]
+	public bool isGrounded;
+	public bool canDoubleJump;
+	[SerializeField] private bool isJumping;
+	private float _horizontalSpeed;
+	#endregion
 
-    #region Dependencies
-    [Header("Dependências")]
-    [SerializeField] private Transform orientation;
-    [SerializeField] private GrapplingHookController grapplingHookController;
-    [SerializeField] private TextMeshProUGUI velocityText, distanceText;
-    private Rigidbody _rigidbody;
-    private Vector2 _moveInput;
-    #endregion
+	#region Dependencies
+	[Header("Dependências")]
+	[SerializeField] private Transform orientation;
+	[SerializeField] private GrapplingHookController grapplingHookController;
+	[SerializeField] private TextMeshProUGUI velocityText, distanceText;
+	private Rigidbody _rigidbody;
+	private Vector2 _moveInput;
+	#endregion
 
-    #region Movement Settings
-    [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float maxMoveSpeed = 30f;
-    [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f;
-    [SerializeField] private float groundMultiplier = 2.0f;
-    [SerializeField] private float airControlMultiplier = 5f;
-    #endregion
+	#region Movement Settings
+	[Header("Configurações de Movimento")]
+	[SerializeField] private float moveSpeed = 7f;
+	[SerializeField] private float maxMoveSpeed = 30f;
+	[SerializeField] private float maxGrappleMoveSpeed = 150f;
+	[SerializeField] private float airMultiplier = 0.6f;
+	[SerializeField] private float groundMultiplier = 2.0f;
+	[SerializeField] private float airControlMultiplier = 5f;
+	#endregion
 
-    #region Drag Settings
-    [Header("Configurações de Atrito (Drag)")]
-    [SerializeField] private float groundDrag = 6f;
-    [SerializeField] private float airDrag = 2f;
-    [SerializeField] private float grappleAirDrag = 0.5f;
-    [SerializeField] private float highSpeedAirDragMultiplier = 1.2f;
-    [SerializeField] private float highSpeedThreshold = 55.5f;
-    private float _baseAirDrag;
-    #endregion
+	#region Drag Settings
+	[Header("Configurações de Atrito (Drag)")]
+	[SerializeField] private float groundDrag = 6f;
+	[SerializeField] private float airDrag = 2f;
+	[SerializeField] private float grappleAirDrag = 0.5f;
+	[SerializeField] private float highSpeedAirDragMultiplier = 1.2f;
+	[SerializeField] private float highSpeedThreshold = 55.5f;
+	private float _baseAirDrag;
+	#endregion
 
-    #region Jump Settings
-    [Header("Configurações de Pulo")]
-    [SerializeField] private float jumpForce = 14f;
-    [SerializeField] private float doubleJumpForce = 14f;
-    [SerializeField] private float jumpForwardBoost = 5f;
-    [SerializeField] private float jumpReleaseMultiplier = 0.5f;
-    [SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
-    #endregion
-    
-    #region Gravity
-    [Header("Gravidade")]
-    [SerializeField] private float gravityMultiplier = 2.5f;
-    #endregion
+	#region Jump Settings
+	[Header("Configurações de Pulo")]
+	[SerializeField] private float jumpForce = 14f;
+	[SerializeField] private float doubleJumpForce = 14f;
+	[SerializeField] private float jumpForwardBoost = 5f;
+	[SerializeField] private float jumpReleaseMultiplier = 0.5f;
+	[SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
+	#endregion
 
-    #region Timers & Buffers
-    [Header("Coyote Time & Jump Buffer")]
-    [SerializeField] private float coyoteTimeDuration = 0.1f;
-    [SerializeField] private float jumpBufferDuration = 0.1f;
-    [SerializeField] private float bunnyHopWindow = 0.1f;
-    private float _coyoteTimeCounter;
-    private float _jumpBufferCounter;
-    private float _timeSinceLanded;
-    #endregion
+	#region Gravity
+	[Header("Gravidade")]
+	[SerializeField] private float gravityMultiplier = 2.5f;
+	#endregion
 
-    #region Ground Check
-    [Header("Verificação de Chão")]
-    [SerializeField] private float playerHeight = 2f;
-    [SerializeField] private float groundCheckSphereRadius = 0.4f;
-    [SerializeField] private float groundCheckDistance = 0.2f;
-    [SerializeField] private LayerMask groundCheckLayer;
-    private Rigidbody _currentPlatformRb;
-    private Vector3 _lastPlatformPosition;
-    #endregion
-    
-    private const float METERS_PER_SECOND_TO_KM_PER_HOUR = 3.6f;
-    private Coroutine _resetCoroutine;
-    public Rigidbody Rb => _rigidbody;
+	#region Timers & Buffers
+	[Header("Coyote Time & Jump Buffer")]
+	[SerializeField] private float coyoteTimeDuration = 0.1f;
+	[SerializeField] private float jumpBufferDuration = 0.1f;
+	[SerializeField] private float bunnyHopWindow = 0.1f;
+	private float _coyoteTimeCounter;
+	private float _jumpBufferCounter;
+	private float _timeSinceLanded;
+	#endregion
 
-    private void Awake()
-    {
-        _rigidbody = GetComponent<Rigidbody>();
-        _rigidbody.freezeRotation = true;
-        _baseAirDrag = airDrag;
-    }
+	#region Ground Check
+	[Header("Verificação de Chão")]
+	[SerializeField] private float playerHeight = 2f;
+	[SerializeField] private float groundCheckSphereRadius = 0.4f;
+	[SerializeField] private float groundCheckDistance = 0.2f;
+	[SerializeField] private LayerMask groundCheckLayer;
+	private Rigidbody _currentPlatformRb;
+	private Vector3 _lastPlatformPosition;
+	#endregion
 
-    private void OnEnable()
-    {
-        InputManager.Instance.OnMove += SetMoveInput;
-        InputManager.Instance.OnJumpPerformed += ProcessJumpRequest;
-        InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
-    }
+	#region Double Jump Effect
+	[Header("Double Jump Burst Effect")]
+	[SerializeField] private GameObject doubleJumpEffectPrefab;
+	[SerializeField] private float doubleJumpEffectLifetime = 1.5f;
+	#endregion
 
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        InputManager.Instance.OnJumpPerformed -= ProcessJumpRequest;
-        InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
-    }
+	#region Landing Effect
+	[Header("Landing Effect")]
+	[SerializeField] private GameObject landingEffectPrefab;
+	[SerializeField] private float landingEffectLifetime = 2f;
+	[SerializeField] private float minimumAirTimeForLandingEffect = 0.4f;
+	#endregion
 
-    private void Update()
-    {
-        UpdateTimers();
-        UpdateDebugUI();
-    }
+	#region Double Jump Follow Effect
+	[Header("Double Jump Follow Effect")]
+	[SerializeField] private GameObject doubleJumpFollowPrefab;
+	[SerializeField] private float doubleJumpFollowDuration = 1.5f;
+	[SerializeField] private Vector3 followOffset = new Vector3(0, -0.8f, 0);
+	private GameObject _activeFollowEffect;
+	private Coroutine _followRoutine;
+	#endregion
 
-    private void FixedUpdate()
-    {
-        CheckGroundedStatus();
-        HandleMovement();
-        ApplyDrag();
-        ApplyExtraGravity();
-        LimitVelocity();
-        BroadcastHorizontalVelocity();
-    }
+	private const float METERS_PER_SECOND_TO_KM_PER_HOUR = 3.6f;
+	private Coroutine _resetCoroutine;
+	public Rigidbody Rb => _rigidbody;
 
-    private void SetMoveInput(Vector2 input) => _moveInput = input;
+	private void Awake()
+	{
+		_rigidbody = GetComponent<Rigidbody>();
+		_rigidbody.freezeRotation = true;
+		_baseAirDrag = airDrag;
+	}
 
-    private void UpdateTimers()
-    {
-        _coyoteTimeCounter = isGrounded && !isJumping ? coyoteTimeDuration : _coyoteTimeCounter - Time.deltaTime;
-        _jumpBufferCounter -= Time.deltaTime;
-        _timeSinceLanded += Time.deltaTime;
-    }
-    
-    private void CheckGroundedStatus()
-    {
-        bool wasGrounded = isGrounded;
-        
-        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
-        isGrounded = Physics.SphereCast(transform.position, groundCheckSphereRadius, Vector3.down, out RaycastHit hitInfo, castDistance, groundCheckLayer);
+	private void OnEnable()
+	{
+		InputManager.Instance.OnMove += SetMoveInput;
+		InputManager.Instance.OnJumpPerformed += ProcessJumpRequest;
+		InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
+	}
 
-        UpdatePlatform(hitInfo);
+	private void OnDisable()
+	{
+		if (InputManager.Instance == null) return;
+		InputManager.Instance.OnMove -= SetMoveInput;
+		InputManager.Instance.OnJumpPerformed -= ProcessJumpRequest;
+		InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
+	}
 
-        if (!wasGrounded && isGrounded) HandleLanding();
-        if (wasGrounded && !isGrounded) HandleLeavingGround();
-    }
-    
-    private void UpdatePlatform(RaycastHit hitInfo)
-    {
-        if (isGrounded && hitInfo.rigidbody != null)
-        {
-            if (_currentPlatformRb != hitInfo.rigidbody)
-            {
-                _currentPlatformRb = hitInfo.rigidbody;
-                _lastPlatformPosition = _currentPlatformRb.position;
-            }
-            ApplyPlatformMovement();
-        }
-        else
-        {
-            _currentPlatformRb = null;
-        }
-    }
+	private void Update()
+	{
+		UpdateTimers();
+		UpdateDebugUI();
+	}
 
-    private void ApplyPlatformMovement()
-    {
-        if (_currentPlatformRb == null) return;
-        
-        Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
-        if (platformDelta != Vector3.zero)
-        {
-            MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
-            float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
-            _rigidbody.position += platformDelta * playerInfluence;
-        }
-        _lastPlatformPosition = _currentPlatformRb.position;
-    }
+	private void FixedUpdate()
+	{
+		CheckGroundedStatus();
+		HandleMovement();
+		ApplyDrag();
+		ApplyExtraGravity();
+		LimitVelocity();
+		BroadcastHorizontalVelocity();
+	}
 
-    private void HandleLanding()
-    {
-        _timeSinceLanded = 0f;
-        isJumping = false;
-        
-        GainDoubleJump();
+	private void SetMoveInput(Vector2 input) => _moveInput = input;
 
-        float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
-        if (isJumping && speedInKmh <= 100f)
-        {
-            ApplyLandingDampening();
-        }
-        
-        OnGroundLanded?.Invoke();
+	private void UpdateTimers()
+	{
+		_coyoteTimeCounter = isGrounded && !isJumping ? coyoteTimeDuration : _coyoteTimeCounter - Time.deltaTime;
+		_jumpBufferCounter -= Time.deltaTime;
+		_timeSinceLanded += Time.deltaTime;
+	}
 
-        if (_jumpBufferCounter > 0f)
-        {
-            PerformJump(jumpForce, false);
-        }
-    }
-    
-    private void HandleLeavingGround()
-    {
-        if (!isJumping)
-        {
-            OnLeftGround?.Invoke();
-        }
-    }
-    
-    private void HandleMovement()
-    {
-        if (grapplingHookController.IsGrappling) return;
+	private void CheckGroundedStatus()
+	{
+		bool wasGrounded = isGrounded;
 
-        if (isGrounded) ApplyGroundMovement();
-        else ApplyAirMovement();
-    }
+		float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+		isGrounded = Physics.SphereCast(transform.position, groundCheckSphereRadius, Vector3.down, out RaycastHit hitInfo, castDistance, groundCheckLayer);
 
-    private void ApplyDrag()
-    {
-        if (grapplingHookController.IsGrappling)
-        {
-            _rigidbody.linearDamping = grappleAirDrag;
-            return;
-        }
+		UpdatePlatform(hitInfo);
 
-        if (isGrounded && _timeSinceLanded > bunnyHopWindow)
-        {
-            _rigidbody.linearDamping = groundDrag;
-        }
-        else
-        {
-            airDrag = _horizontalSpeed > highSpeedThreshold ? _baseAirDrag * highSpeedAirDragMultiplier : _baseAirDrag;
-            _rigidbody.linearDamping = airDrag;
-        }
-    }
+		if (!wasGrounded && isGrounded) HandleLanding();
+		if (wasGrounded && !isGrounded) HandleLeavingGround();
+	}
 
-    private void ApplyExtraGravity()
-    {
-        if (!isGrounded)
-        {
-            float gravity = -Physics.gravity.y * gravityMultiplier;
-            _rigidbody.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
-        }
-    }
+	private void UpdatePlatform(RaycastHit hitInfo)
+	{
+		if (isGrounded && hitInfo.rigidbody != null)
+		{
+			if (_currentPlatformRb != hitInfo.rigidbody)
+			{
+				_currentPlatformRb = hitInfo.rigidbody;
+				_lastPlatformPosition = _currentPlatformRb.position;
+			}
+			ApplyPlatformMovement();
+		}
+		else
+		{
+			_currentPlatformRb = null;
+		}
+	}
 
-    private void LimitVelocity()
-    {
-        float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
-        float maxSpeedInMps = currentMaxSpeed / METERS_PER_SECOND_TO_KM_PER_HOUR;
+	private void ApplyPlatformMovement()
+	{
+		if (_currentPlatformRb == null) return;
 
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        if (horizontalVelocity.magnitude > maxSpeedInMps)
-        {
-            Vector3 limitedVelocity = horizontalVelocity.normalized * maxSpeedInMps;
-            _rigidbody.linearVelocity = new Vector3(limitedVelocity.x, _rigidbody.linearVelocity.y, limitedVelocity.z);
-        }
-    }
+		Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
+		if (platformDelta != Vector3.zero)
+		{
+			MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
+			float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
+			_rigidbody.position += platformDelta * playerInfluence;
+		}
+		_lastPlatformPosition = _currentPlatformRb.position;
+	}
 
-    private void BroadcastHorizontalVelocity()
-    {
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        _horizontalSpeed = horizontalVelocity.magnitude;
-        OnHorizontalVelocityChanged?.Invoke(_horizontalSpeed);
-    }
-    
-    private void ApplyGroundMovement()
-    {
-        if (_moveInput.sqrMagnitude < 0.01f) return;
+	private void HandleLanding()
+	{
+		// Landing effect only if airborne long enough
+		if (_timeSinceLanded > minimumAirTimeForLandingEffect)
+			SpawnLandingEffect();
 
-        Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
-        _rigidbody.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
-    }
+		_timeSinceLanded = 0f;
+		isJumping = false;
 
-    private void ApplyAirMovement()
-    {
-        if (_moveInput.sqrMagnitude < 0.01f) return;
+		GainDoubleJump();
 
-        Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        
-        float angle = Vector3.Angle(horizontalVelocity.normalized, moveDirection);
-        float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
-        float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
+		float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
+		if (isJumping && speedInKmh <= 100f)
+		{
+			ApplyLandingDampening();
+		}
 
-        _rigidbody.AddForce(moveDirection * moveSpeed * 10f * airMultiplier * lateralInfluence, ForceMode.Force);
-    }
-    
-    private void ProcessJumpRequest()
-    {
-        _jumpBufferCounter = jumpBufferDuration;
+		OnGroundLanded?.Invoke();
 
-        if (grapplingHookController.IsGrappling) return;
+		if (_jumpBufferCounter > 0f)
+		{
+			PerformJump(jumpForce, false);
+		}
+	}
 
-        if (CanPerformJump())
-        {
-            PerformJump(jumpForce, false);
-        }
-        else if (CanPerformDoubleJump())
-        {
-            PerformJump(doubleJumpForce, true);
-        }
-    }
-    
-    private void HandleJumpRelease()
-    {
-        if (_rigidbody.linearVelocity.y > 0 && isJumping)
-        {
-            _rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, _rigidbody.linearVelocity.y * jumpReleaseMultiplier, _rigidbody.linearVelocity.z);
-        }
-    }
+	private void HandleLeavingGround()
+	{
+		if (!isJumping)
+		{
+			OnLeftGround?.Invoke();
+		}
+	}
 
-    private bool CanPerformJump() => _coyoteTimeCounter > 0f ;
-    private bool CanPerformDoubleJump() => canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive);
+	private void HandleMovement()
+	{
+		if (grapplingHookController.IsGrappling) return;
 
-    private void PerformJump(float force, bool isPerformingDoubleJump)
-    {
-        _coyoteTimeCounter = 0f;
-        _jumpBufferCounter = 0f;
-        isJumping = true;
+		if (isGrounded) ApplyGroundMovement();
+		else ApplyAirMovement();
+	}
 
-        Vector3 platformVelocity = _currentPlatformRb ? _currentPlatformRb.linearVelocity : Vector3.zero;
-        _rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z) + platformVelocity;
-        _rigidbody.AddForce(transform.up * force, ForceMode.Impulse);
+	private void ApplyDrag()
+	{
+		if (grapplingHookController.IsGrappling)
+		{
+			_rigidbody.linearDamping = grappleAirDrag;
+			return;
+		}
 
-        if (_moveInput.sqrMagnitude > 0.01f) ApplyJumpForwardBoost();
-        
-        if (isPerformingDoubleJump)
-        {
-            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
-            {
-                canDoubleJump = false;
-            }
-            OnDoubleJumpUsed?.Invoke();
-        }
-        else
-        {
-            OnJumped?.Invoke();
-        }
-    }
+		if (isGrounded && _timeSinceLanded > bunnyHopWindow)
+		{
+			_rigidbody.linearDamping = groundDrag;
+		}
+		else
+		{
+			airDrag = _horizontalSpeed > highSpeedThreshold ? _baseAirDrag * highSpeedAirDragMultiplier : _baseAirDrag;
+			_rigidbody.linearDamping = airDrag;
+		}
+	}
 
-    private void ApplyJumpForwardBoost()
-    {
-        Vector3 forwardDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
-        _rigidbody.AddForce(forwardDirection * jumpForwardBoost, ForceMode.Impulse);
-    }
-    
-    private void GainDoubleJump()
-    {
-        if (!canDoubleJump)
-        {
-            canDoubleJump = true;
-            OnDoubleJumpGained?.Invoke();
-        }
-    }
-    
-    public void ResetDoubleJump()
-    {
-        if (!isGrounded)
-        {
-            GainDoubleJump();
-        }
-    }
-    
-    public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
-    {
-        if (resetVelocity) _rigidbody.linearVelocity = Vector3.zero;
-        
-        _rigidbody.AddForce(direction * force, ForceMode.Impulse);
-        
-        GainDoubleJump();
-        isJumping = true;
-        OnLeftGround?.Invoke();
-    }
+	private void ApplyExtraGravity()
+	{
+		if (!isGrounded)
+		{
+			float gravity = -Physics.gravity.y * gravityMultiplier;
+			_rigidbody.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
+		}
+	}
 
-    public void MultiplyVelocity(float multiplier)
-    {
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        Vector3 newVelocity = horizontalVelocity * multiplier;
-        _rigidbody.linearVelocity = new Vector3(newVelocity.x, _rigidbody.linearVelocity.y, newVelocity.z);
-    }
-    
-    public Transform GetOrientation()
-    {
-        return orientation;
-    }
-    
-    private void ApplyLandingDampening()
-    {
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        Vector3 dampenedVelocity = horizontalVelocity * landingVelocityDampening;
-        _rigidbody.linearVelocity = new Vector3(dampenedVelocity.x, _rigidbody.linearVelocity.y, dampenedVelocity.z);
-    }
+	private void LimitVelocity()
+	{
+		float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+		float maxSpeedInMps = currentMaxSpeed / METERS_PER_SECOND_TO_KM_PER_HOUR;
 
-    private void UpdateDebugUI()
-    {
-        if (distanceText != null && grapplingHookController != null)
-        {
-            distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
-        }
-        
-        if (velocityText != null)
-        {
-            float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
-            velocityText.text = "Velocidade: " + speedInKmh.ToString("F2");
-        }
-    }
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		if (horizontalVelocity.magnitude > maxSpeedInMps)
+		{
+			Vector3 limitedVelocity = horizontalVelocity.normalized * maxSpeedInMps;
+			_rigidbody.linearVelocity = new Vector3(limitedVelocity.x, _rigidbody.linearVelocity.y, limitedVelocity.z);
+		}
+	}
 
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.yellow;
-        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
-        Vector3 sphereCenter = transform.position + Vector3.down * castDistance;
-        Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
-    }
+	private void BroadcastHorizontalVelocity()
+	{
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		_horizontalSpeed = horizontalVelocity.magnitude;
+		OnHorizontalVelocityChanged?.Invoke(_horizontalSpeed);
+	}
 
-    public void ResetToPosition(Vector3 position)
-    {
-        if (_resetCoroutine != null)
-        {
-            StopCoroutine(_resetCoroutine);
-        }
-        _resetCoroutine = StartCoroutine(ResetPositionRoutine(position));
-    }
+	private void ApplyGroundMovement()
+	{
+		if (_moveInput.sqrMagnitude < 0.01f) return;
 
-    private IEnumerator ResetPositionRoutine(Vector3 position)
-    {
-        grapplingHookController?.StopGrapple();
+		Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
+		_rigidbody.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
+	}
 
-        _rigidbody.isKinematic = true;
-        yield return new WaitForFixedUpdate();
+	private void ApplyAirMovement()
+	{
+		if (_moveInput.sqrMagnitude < 0.01f) return;
 
-        yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
+		Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
 
-        yield return new WaitForFixedUpdate();
-        _rigidbody.isKinematic = false;
-        
-        _rigidbody.linearVelocity = Vector3.zero;
-        _rigidbody.angularVelocity = Vector3.zero;
+		float angle = Vector3.Angle(horizontalVelocity.normalized, moveDirection);
+		float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
+		float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
 
-        isJumping = false;
-        _coyoteTimeCounter = 0f;
-        _jumpBufferCounter = 0f;
-        ResetDoubleJump();
-        
-        _resetCoroutine = null;
-    }
-    
-    public void TriggerShockEffect()
-    {
-        OnShocked?.Invoke();
-    }
+		_rigidbody.AddForce(moveDirection * moveSpeed * 10f * airMultiplier * lateralInfluence, ForceMode.Force);
+	}
+
+	private void ProcessJumpRequest()
+	{
+		_jumpBufferCounter = jumpBufferDuration;
+
+		if (grapplingHookController.IsGrappling) return;
+
+		if (CanPerformJump())
+		{
+			PerformJump(jumpForce, false);
+		}
+		else if (CanPerformDoubleJump())
+		{
+			PerformJump(doubleJumpForce, true);
+		}
+	}
+
+	private void HandleJumpRelease()
+	{
+		if (_rigidbody.linearVelocity.y > 0 && isJumping)
+		{
+			_rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, _rigidbody.linearVelocity.y * jumpReleaseMultiplier, _rigidbody.linearVelocity.z);
+		}
+	}
+
+	private bool CanPerformJump() => _coyoteTimeCounter > 0f;
+	private bool CanPerformDoubleJump() => canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive);
+
+	private void PerformJump(float force, bool isPerformingDoubleJump)
+	{
+		_coyoteTimeCounter = 0f;
+		_jumpBufferCounter = 0f;
+		isJumping = true;
+
+		Vector3 platformVelocity = _currentPlatformRb ? _currentPlatformRb.linearVelocity : Vector3.zero;
+		_rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z) + platformVelocity;
+		_rigidbody.AddForce(transform.up * force, ForceMode.Impulse);
+
+		if (_moveInput.sqrMagnitude > 0.01f) ApplyJumpForwardBoost();
+
+		if (isPerformingDoubleJump)
+		{
+			if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
+			{
+				canDoubleJump = false;
+			}
+			OnDoubleJumpUsed?.Invoke();
+
+			// Burst effect
+			SpawnDoubleJumpEffect();
+
+			// FOLLOW effect
+			SpawnDoubleJumpFollowEffect();
+		}
+		else
+		{
+			OnJumped?.Invoke();
+		}
+	}
+
+	private void ApplyJumpForwardBoost()
+	{
+		Vector3 forwardDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
+		_rigidbody.AddForce(forwardDirection * jumpForwardBoost, ForceMode.Impulse);
+	}
+
+	private void GainDoubleJump()
+	{
+		if (!canDoubleJump)
+		{
+			canDoubleJump = true;
+			OnDoubleJumpGained?.Invoke();
+		}
+	}
+
+	public void ResetDoubleJump()
+	{
+		if (!isGrounded)
+		{
+			GainDoubleJump();
+		}
+	}
+
+	public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
+	{
+		if (resetVelocity) _rigidbody.linearVelocity = Vector3.zero;
+
+		_rigidbody.AddForce(direction * force, ForceMode.Impulse);
+
+		GainDoubleJump();
+		isJumping = true;
+		OnLeftGround?.Invoke();
+	}
+
+	public void MultiplyVelocity(float multiplier)
+	{
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		Vector3 newVelocity = horizontalVelocity * multiplier;
+		_rigidbody.linearVelocity = new Vector3(newVelocity.x, _rigidbody.linearVelocity.y, newVelocity.z);
+	}
+
+	public Transform GetOrientation()
+	{
+		return orientation;
+	}
+
+	private void ApplyLandingDampening()
+	{
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		Vector3 dampenedVelocity = horizontalVelocity * landingVelocityDampening;
+		_rigidbody.linearVelocity = new Vector3(dampenedVelocity.x, _rigidbody.linearVelocity.y, dampenedVelocity.z);
+	}
+
+	private void UpdateDebugUI()
+	{
+		if (distanceText != null && grapplingHookController != null)
+		{
+			distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
+		}
+
+		if (velocityText != null)
+		{
+			float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
+			velocityText.text = "Velocidade: " + speedInKmh.ToString("F2");
+		}
+	}
+
+	private void OnDrawGizmosSelected()
+	{
+		Gizmos.color = Color.yellow;
+		float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+		Vector3 sphereCenter = transform.position + Vector3.down * castDistance;
+		Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
+	}
+
+	public void ResetToPosition(Vector3 position)
+	{
+		if (_resetCoroutine != null)
+		{
+			StopCoroutine(_resetCoroutine);
+		}
+		_resetCoroutine = StartCoroutine(ResetPositionRoutine(position));
+	}
+
+	private IEnumerator ResetPositionRoutine(Vector3 position)
+	{
+		grapplingHookController?.StopGrapple();
+
+		_rigidbody.isKinematic = true;
+		yield return new WaitForFixedUpdate();
+
+		yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
+
+		yield return new WaitForFixedUpdate();
+		_rigidbody.isKinematic = false;
+
+		_rigidbody.linearVelocity = Vector3.zero;
+		_rigidbody.angularVelocity = Vector3.zero;
+
+		isJumping = false;
+		_coyoteTimeCounter = 0f;
+		_jumpBufferCounter = 0f;
+		ResetDoubleJump();
+
+		_resetCoroutine = null;
+	}
+
+	public void TriggerShockEffect()
+	{
+		OnShocked?.Invoke();
+	}
+
+	// ===========================
+	// DOUBLE JUMP BURST
+	// ===========================
+	private void SpawnDoubleJumpEffect()
+	{
+		if (doubleJumpEffectPrefab == null) return;
+
+		Vector3 feetPos;
+		Collider col = GetComponent<Collider>();
+
+		if (col != null)
+			feetPos = new Vector3(transform.position.x, col.bounds.min.y, transform.position.z);
+		else
+			feetPos = transform.position + Vector3.down * 1f;
+
+		Quaternion spawnRot = doubleJumpEffectPrefab.transform.rotation;
+
+		GameObject fx = Instantiate(doubleJumpEffectPrefab, feetPos, spawnRot);
+		Destroy(fx, doubleJumpEffectLifetime);
+	}
+
+	// ===========================
+	// LANDING EFFECT (RAYCAST)
+	// ===========================
+	private void SpawnLandingEffect()
+	{
+		if (landingEffectPrefab == null) return;
+
+		if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, 5f, groundCheckLayer))
+		{
+			Vector3 spawnPos = hit.point;
+			GameObject fx = Instantiate(landingEffectPrefab, spawnPos, landingEffectPrefab.transform.rotation);
+			Destroy(fx, landingEffectLifetime);
+		}
+		else
+		{
+			Vector3 fallback = transform.position + Vector3.down * 1f;
+			GameObject fx = Instantiate(landingEffectPrefab, fallback, landingEffectPrefab.transform.rotation);
+			Destroy(fx, landingEffectLifetime);
+		}
+	}
+
+	// ===========================
+	// DOUBLE JUMP FOLLOW EFFECT
+	// ===========================
+	private void SpawnDoubleJumpFollowEffect()
+	{
+		if (doubleJumpFollowPrefab == null) return;
+
+		if (_activeFollowEffect != null)
+			Destroy(_activeFollowEffect);
+
+		_activeFollowEffect = Instantiate(doubleJumpFollowPrefab, transform.position + followOffset, doubleJumpFollowPrefab.transform.rotation);
+
+		if (_followRoutine != null)
+			StopCoroutine(_followRoutine);
+
+		_followRoutine = StartCoroutine(FollowEffectRoutine());
+	}
+
+	private IEnumerator FollowEffectRoutine()
+	{
+		float timer = 0f;
+
+		while (timer < doubleJumpFollowDuration)
+		{
+			if (_activeFollowEffect != null)
+				_activeFollowEffect.transform.position = transform.position + followOffset;
+
+			timer += Time.deltaTime;
+			yield return null;
+		}
+
+		if (_activeFollowEffect != null)
+			Destroy(_activeFollowEffect);
+
+		_activeFollowEffect = null;
+		_followRoutine = null;
+	}
 }
