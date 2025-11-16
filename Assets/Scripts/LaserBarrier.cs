@@ -71,7 +71,7 @@ public class LaserBarrier : MonoBehaviour, ITimeSlowable, IResettable
     
     private void OnTriggerEnter(Collider other)
     {
-        if (!_isCurrentlyActive || _isTimeSlowed) return;
+        if (!_isCurrentlyActive) return;
         if (other.CompareTag(PlayerTag)) RepelPlayer(other.gameObject);
     }
 
