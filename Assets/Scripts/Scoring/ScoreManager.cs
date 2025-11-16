@@ -29,6 +29,7 @@ public class ScoreManager : MonoBehaviour
         if (Instance != null && Instance != this)
         {
             Instance.SetCurrentLevelData(currentLevelData);
+            Instance.startLevelOnFirstMoveInput = startLevelOnFirstMoveInput;
             Destroy(gameObject);
             return;
         }
@@ -263,7 +264,7 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
-    private void SubscribeToFirstInputEvents()
+    public void SubscribeToFirstInputEvents()
     {
         if (InputManager.Instance != null && startLevelOnFirstMoveInput)
         {
