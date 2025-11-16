@@ -64,6 +64,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 7b110a50e7115694aa305886cd739bf3, type: 2}
+    - target: {fileID: -1526509560930016547, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 813a65984a0d94143b2a1f3bc9b10d9b, type: 2}
     - target: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       propertyPath: m_Name
       value: CyberpunkBlimpR
@@ -71,6 +75,30 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       propertyPath: m_Layer
       value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6609493762104327279, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6609493762104327279, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6609493762104327279, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6609493762104327279, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6609493762104327279, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 6609493762104327279, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: 7180377363380089321, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       propertyPath: m_LocalRotation.w
@@ -121,6 +149,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: -4853047252662918979}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3987694756692684779}
   m_SourcePrefab: {fileID: 100100000, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
 --- !u!1 &3953714868489903040 stripped
 GameObject:
@@ -274,3 +305,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1db6e23ab5bcaec89712d080a59b7ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  canBeGrappledWhileMoving: 1
+  grappleableLayerName: Grappleable
+  slowDownColor: {r: 0, g: 1, b: 1, a: 1}
+--- !u!114 &3987694756692684779
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3953714868489903040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95de90c575552364eb1952b2e5b4af3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  telaRenderer: {fileID: 5823080428127323212}
+  habilitarFlicker: 1
+  intensidadeMinima: 0.8
+  velocidadeFlicker: 15
+  habilitarTrocaCanal: 1
+  canais:
+  - {fileID: 2100000, guid: bedb81f14d3de8f429d3343352d627c4, type: 2}
+  - {fileID: 2100000, guid: 813a65984a0d94143b2a1f3bc9b10d9b, type: 2}
+  - {fileID: 2100000, guid: 274acec0787d4184688bd84646536bf6, type: 2}
+  tempoPorCanal: 5
+--- !u!23 &5823080428127323212 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -1526509560930016547, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+  m_PrefabInstance: {fileID: 4188069924822345361}
+  m_PrefabAsset: {fileID: 0}

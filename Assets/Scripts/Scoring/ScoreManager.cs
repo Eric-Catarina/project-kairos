@@ -26,7 +26,12 @@ public class ScoreManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Instance.SetCurrentLevelData(currentLevelData);
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
     }
 
@@ -176,9 +181,12 @@ public class ScoreManager : MonoBehaviour
             victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
             victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
         }
-        _leaderboardUIController?.ShowLeaderboard();
 
         await SubmitScoreAsync(data.FinalTime);
+
+        await Task.Delay(System.TimeSpan.FromSeconds(0.75));
+
+        _leaderboardUIController?.ShowLeaderboard();
     }
 
     private void SaveLevelStats(float finalTime, int totalDeathsForLevel)
@@ -270,5 +278,10 @@ public class ScoreManager : MonoBehaviour
     public LevelData GetCurrentLevelData()
     {
         return currentLevelData;
+    }
+    
+    public void SetCurrentLevelData(LevelData data)
+    {
+        currentLevelData = data;
     }
 }
