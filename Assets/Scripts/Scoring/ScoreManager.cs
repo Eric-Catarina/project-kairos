@@ -66,6 +66,7 @@ public class ScoreManager : MonoBehaviour
         LoadDeathCountForLevel();
         _levelCompleted = false;
         SubscribeToFirstInputEvents();
+        AsyncFindSceneReferences();
     }
 
     private void FindSceneReferences()
@@ -74,6 +75,13 @@ public class ScoreManager : MonoBehaviour
         _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
         _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
         _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
+    }
+
+    // Wait 1 frame and FindSceneReferences again (in case objects are initialized after scene load)
+    private async void AsyncFindSceneReferences()
+    {
+        await Task.Yield();
+        FindSceneReferences();
     }
 
     private void Update()
