@@ -78,6 +78,7 @@ public class AudioManager : MonoBehaviour
         PlayerPrefs.SetFloat("MusicVolume", musicVolumeBase);
         PlayerPrefs.SetFloat("SFXVolume", sfxVolumeBase);
         PlayerPrefs.SetFloat("AmbientVolume", ambientVolumeBase);
+        PlayerPrefs.SetInt("MasterMuteState", isMasterMuted ? 1 : 0);
         PlayerPrefs.Save();
     }
 
@@ -89,6 +90,9 @@ public class AudioManager : MonoBehaviour
         ambientVolumeBase = PlayerPrefs.GetFloat("AmbientVolume", 1f);
 
         MasterVolume(masterVolumeBase);
+
+        bool masterMutedState = PlayerPrefs.GetInt("MasterMuteState", 0) == 1;
+        SetMasterMute(masterMutedState);
     }
 
     private void Start()
@@ -134,7 +138,7 @@ public class AudioManager : MonoBehaviour
         else
         {
             ambientSource.clip = s.clip;
-            //ambientSource.volume = ambientVolumeBase * masterSource.volume;
+            ambientSource.volume = ambientVolumeBase * masterSource.volume;
             ambientSource.loop = true;
             ambientSource.Play();
             StartCoroutine(ApplyAmbientFixNextFrame());
@@ -163,7 +167,10 @@ public class AudioManager : MonoBehaviour
     public void MasterVolume(float volume)
     {
         masterVolumeBase = volume;
-        masterSource.volume = masterVolumeBase;
+        //masterSource.volume = masterVolumeBase;
+        float min = 0.0001f;
+        float v = Mathf.Clamp(masterVolumeBase, min, 1f);
+        audioMixer.SetFloat("MasterVolume", Mathf.Log10(masterVolumeBase) * 20f);
 
         RecalculateMusicVolume();
         RecalculateSFXVolume();
@@ -201,46 +208,45 @@ public class AudioManager : MonoBehaviour
     public void SetMasterMute(bool muteState) 
     {
         isMasterMuted = muteState;
+        float newMixerVolume;
 
         if (muteState)
         {
-            musicWasMutedBeforeMaster = musicSource.mute;
-            ambientWasMutedBeforeMaster = ambientSource.mute;
-            sfxWasMutedBeforeMaster = isSFXMuted;
-
-
-            SetMusicMute(true);
-            SetAmbientMute(true);
-            SetSFXMute(true);
+            masterSource.volume = 0f;
+            newMixerVolume = -80f;
         }
         else
         {
-            SetMusicMute(musicWasMutedBeforeMaster);
-            SetAmbientMute(ambientWasMutedBeforeMaster);
-            SetSFXMute(sfxWasMutedBeforeMaster);
+            masterSource.volume = masterVolumeBase;
+            newMixerVolume = Mathf.Log10(Mathf.Max(0.0001f, masterVolumeBase)) * 20f;
+
         }
 
+        audioMixer.SetFloat("MasterVolume", newMixerVolume);
 
+        RecalculateMusicVolume();
+        RecalculateSFXVolume();
+        RecalculateAmbientVolume();
+
+        SaveVolumes();
     }
 
     public void SetMusicMute(bool muteState)
     {
-        if (isMasterMuted && muteState == false) return;
-
         musicSource.mute = muteState;
     }
 
     public void SetAmbientMute(bool muteState)
     {
-        if (isMasterMuted && muteState == false) return;
-
+        //if (isMasterMuted && muteState == false) return;
+        //if (isMasterMuted && !muteState) return;
         ambientSource.mute = muteState;
     }
 
     public void SetSFXMute(bool muteState)
     {
-        if (isMasterMuted && muteState == false) return;
-
+        //if (isMasterMuted && muteState == false) return;
+        //if (isMasterMuted && !muteState) return;
         isSFXMuted = muteState;
         sfxSource.mute = muteState;
 
@@ -466,8 +472,9 @@ public class AudioManager : MonoBehaviour
 
     private void RecalculateAmbientVolume()
     {
-        //ambientSource.volume = ambientVolumeBase * masterSource.volume;
-        audioMixer.SetFloat("AmbientVolume", Mathf.Log10(ambientVolumeBase * masterSource.volume) * 20f);
+        float min = 0.0001f;
+        float v = Mathf.Clamp(ambientVolumeBase, min, 1f);
+        audioMixer.SetFloat("AmbientVolume", Mathf.Log10(v) * 20f);
     }
 
     public float GetMasterVolumeBase() => masterVolumeBase;
