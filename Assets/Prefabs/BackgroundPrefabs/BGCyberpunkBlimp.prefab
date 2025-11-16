@@ -79,6 +79,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1324770438359625697}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6277973974064500905}
   m_SourcePrefab: {fileID: 100100000, guid: 4c3410710efed6b4ba151d43c81121bb, type: 3}
 --- !u!1 &3953714868489903040 stripped
 GameObject:
@@ -107,3 +110,25 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &6277973974064500905
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3953714868489903040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95de90c575552364eb1952b2e5b4af3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  telaRenderer: {fileID: 0}
+  habilitarFlicker: 1
+  intensidadeMinima: 0.8
+  velocidadeFlicker: 15
+  habilitarTrocaCanal: 1
+  canais:
+  - {fileID: 2100000, guid: bedb81f14d3de8f429d3343352d627c4, type: 2}
+  - {fileID: 2100000, guid: 813a65984a0d94143b2a1f3bc9b10d9b, type: 2}
+  - {fileID: 2100000, guid: 274acec0787d4184688bd84646536bf6, type: 2}
+  tempoPorCanal: 5

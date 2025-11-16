@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 3482533235837193893}
   - component: {fileID: 1168660089877499163}
   m_Layer: 6
-  m_Name: Cube (13)
+  m_Name: Column
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -367,7 +367,7 @@ GameObject:
   - component: {fileID: 1233363837813988501}
   - component: {fileID: 3522981977634236459}
   m_Layer: 6
-  m_Name: Cube (12)
+  m_Name: Column
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -798,6 +798,9 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1104203087367628714}
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 75324226037326088}
     - targetCorrespondingSourceObject: {fileID: -6508321507660357649, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4616342798313996304}
@@ -805,6 +808,11 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 518420595115720000}
   m_SourcePrefab: {fileID: 100100000, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
+--- !u!23 &704872106821248683 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -1526509560930016547, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
+  m_PrefabInstance: {fileID: 7140609861757043830}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5095056362987101081 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -6508321507660357649, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
@@ -864,3 +872,30 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -1875780437015597444, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
+--- !u!1 &8059722630944733479 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 6c7434a41bb6564409d17de088bb2021, type: 3}
+  m_PrefabInstance: {fileID: 7140609861757043830}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &75324226037326088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8059722630944733479}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95de90c575552364eb1952b2e5b4af3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  telaRenderer: {fileID: 704872106821248683}
+  habilitarFlicker: 1
+  intensidadeMinima: 0.8
+  velocidadeFlicker: 15
+  habilitarTrocaCanal: 1
+  canais:
+  - {fileID: 2100000, guid: 813a65984a0d94143b2a1f3bc9b10d9b, type: 2}
+  - {fileID: 2100000, guid: bedb81f14d3de8f429d3343352d627c4, type: 2}
+  - {fileID: 2100000, guid: 274acec0787d4184688bd84646536bf6, type: 2}
+  tempoPorCanal: 5
