@@ -169,7 +169,7 @@ public class AudioManager : MonoBehaviour
         masterVolumeBase = volume;
         //masterSource.volume = masterVolumeBase;
         float min = 0.0001f;
-        float v = Mathf.Clamp(masterVolumeBase, min, 1f);
+        float v = Mathf.Clamp(masterVolumeBase, 0, 1f);
         audioMixer.SetFloat("MasterVolume", Mathf.Log10(masterVolumeBase) * 20f);
 
         RecalculateMusicVolume();
