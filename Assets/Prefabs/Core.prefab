@@ -5909,6 +5909,14 @@ MonoBehaviour:
   groundCheckLayer:
     serializedVersion: 2
     m_Bits: 192
+  doubleJumpEffectPrefab: {fileID: 4561970090258446263, guid: f880df76501640f498c75824cbd1dc26, type: 3}
+  doubleJumpEffectLifetime: 0.2
+  landingEffectPrefab: {fileID: 3435094922473973220, guid: 166fd8c6b8ee4de41b2d4ed0d037d288, type: 3}
+  landingEffectLifetime: 0.25
+  minimumAirTimeForLandingEffect: 1.5
+  doubleJumpFollowPrefab: {fileID: 6493543792364962129, guid: 80487f9b366dfd94c97a8f59dc46f198, type: 3}
+  doubleJumpFollowDuration: 0.4
+  followOffset: {x: 0, y: 0, z: 0}
 --- !u!114 &7596768071946879737
 MonoBehaviour:
   m_ObjectHideFlags: 0
