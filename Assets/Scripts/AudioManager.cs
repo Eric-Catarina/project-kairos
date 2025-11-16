@@ -35,7 +35,12 @@ public class AudioManager : MonoBehaviour
     private float musicVolumeBase = 1f;
     private float sfxVolumeBase = 1f;
     private float ambientVolumeBase = 1f;
+    private bool isSFXMuted = false;
 
+    private bool musicWasMutedBeforeMaster = false;
+    private bool ambientWasMutedBeforeMaster = false;
+    private bool sfxWasMutedBeforeMaster = false;
+    private bool isMasterMuted = false;
 
     private float lastSFXFeedbackTime;
     private const float feedbackCooldown = 0.15f;
@@ -129,14 +134,16 @@ public class AudioManager : MonoBehaviour
         else
         {
             ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            //ambientSource.volume = ambientVolumeBase * masterSource.volume;
             ambientSource.loop = true;
             ambientSource.Play();
+            StartCoroutine(ApplyAmbientFixNextFrame());
         }
     }
 
     public void PlaySFX(string name)
     {
+        if (isSFXMuted) return;
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
             float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
@@ -149,9 +156,9 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    public void ToggleMusic() => musicSource.mute = !musicSource.mute;
-    public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
-    public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
+    public void ToggleMusic() => SetMusicMute(!musicSource.mute); //musicSource.mute = !musicSource.mute;
+    public void ToggleSFX() => SetSFXMute(!isSFXMuted); //sfxSource.mute = !sfxSource.mute;
+    public void ToggleAmbient() => SetAmbientMute(!ambientSource.mute);
 
     public void MasterVolume(float volume)
     {
@@ -193,16 +200,58 @@ public class AudioManager : MonoBehaviour
     }
     public void SetMasterMute(bool muteState) 
     {
-    	masterSource.mute = muteState;
-    	musicSource.mute = muteState;
-    	sfxSource.mute = muteState;
+        isMasterMuted = muteState;
+
+        if (muteState)
+        {
+            musicWasMutedBeforeMaster = musicSource.mute;
+            ambientWasMutedBeforeMaster = ambientSource.mute;
+            sfxWasMutedBeforeMaster = isSFXMuted;
+
+
+            SetMusicMute(true);
+            SetAmbientMute(true);
+            SetSFXMute(true);
+        }
+        else
+        {
+            SetMusicMute(musicWasMutedBeforeMaster);
+            SetAmbientMute(ambientWasMutedBeforeMaster);
+            SetSFXMute(sfxWasMutedBeforeMaster);
+        }
+
+
     }
 
-    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
+    public void SetMusicMute(bool muteState)
+    {
+        if (isMasterMuted && muteState == false) return;
 
-    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
+        musicSource.mute = muteState;
+    }
 
-    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
+    public void SetAmbientMute(bool muteState)
+    {
+        if (isMasterMuted && muteState == false) return;
+
+        ambientSource.mute = muteState;
+    }
+
+    public void SetSFXMute(bool muteState)
+    {
+        if (isMasterMuted && muteState == false) return;
+
+        isSFXMuted = muteState;
+        sfxSource.mute = muteState;
+
+        foreach (var source in loopingSources.Values)
+        {
+            if (source != null)
+            {
+                source.mute = muteState;
+            }
+        }
+    }
 
     private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
     private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -295,6 +344,8 @@ public class AudioManager : MonoBehaviour
 
     public void PlaySFXInSource(string name, AudioSource source)
     {
+        if (isSFXMuted) return;
+
         if (source == null || string.IsNullOrEmpty(name))
             return;
 
@@ -350,28 +401,6 @@ public class AudioManager : MonoBehaviour
         sfxSource.mute = false;
     }
 
-    /*public void PlaySFXForTransition(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            AudioSource tempSource = gameObject.AddComponent<AudioSource>();
-
-            // Configura o mixer (se você usa)
-            if (sfxSource.outputAudioMixerGroup != null)
-                tempSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
-
-            tempSource.clip = clip;
-            tempSource.volume = sfxSource.volume * masterSource.volume;
-            tempSource.pitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-
-            tempSource.Play();
-            StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
-        }
-        else
-        {
-            Debug.LogWarning("Sound Not Found for transition: " + name);
-        }
-    } */
 
     private IEnumerator CleanupTemporarySource(AudioSource source, float delay)
     {
@@ -382,8 +411,16 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    private IEnumerator ApplyAmbientFixNextFrame()
+    {
+        yield return null; // espera 1 frame
+        RecalculateAmbientVolume();
+    }
+
     public void PlayUnscaledSFX(string name)
     {
+        if (isSFXMuted) return;
+
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
             AudioSource tempSource = gameObject.AddComponent<AudioSource>();
@@ -397,10 +434,9 @@ public class AudioManager : MonoBehaviour
 
             tempSource.volume = sfxSource.volume;
 
-            tempSource.pitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            tempSource.pitch = 1f;
             tempSource.Play();
 
-            // 2. Limpa a fonte temporária após o clip terminar
             StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
         }
         else
@@ -418,11 +454,20 @@ public class AudioManager : MonoBehaviour
     private void RecalculateSFXVolume()
     {
         sfxSource.volume = sfxVolumeBase * masterSource.volume;
+
+        foreach (var source in loopingSources.Values)
+        {
+            if (source != null)
+            {
+                source.volume = sfxVolumeBase * masterSource.volume;
+            }
+        }
     }
 
     private void RecalculateAmbientVolume()
     {
-        ambientSource.volume = ambientVolumeBase * masterSource.volume;
+        //ambientSource.volume = ambientVolumeBase * masterSource.volume;
+        audioMixer.SetFloat("AmbientVolume", Mathf.Log10(ambientVolumeBase * masterSource.volume) * 20f);
     }
 
     public float GetMasterVolumeBase() => masterVolumeBase;
