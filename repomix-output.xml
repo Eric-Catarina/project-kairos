@@ -81,6 +81,7 @@ Assets/
     DontDestroyOnLoad.cs
     DoubleJumpResetRing.cs
     DoubleJumpUIController.cs
+    DoubleJumpVFX.cs
     FlyingDroneEnemy.cs
     GameFlowManager.cs
     GameSceneEnum.cs
@@ -130,6 +131,7 @@ Assets/
     ShadowFollow.cs
     Sound.cs
     SpeedBoostRing.cs
+    TelaControlador.cs
     TemporaryBGmusic.cs
     TimeStopChanger.cs
     TimeStopUIController.cs
@@ -242,6 +244,71 @@ public class ResetTrigger : MonoBehaviour
             {
                 memory.ResetPosition();
             }
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
+// Assets/Scripts/Scoring/ScoreUIController.cs
+using TMPro;
+using UnityEngine;
+
+public class ScoreUIController : MonoBehaviour
+{
+    [Header("Referências da UI")]
+    [SerializeField] private TextMeshProUGUI finalTimeText;
+    [SerializeField] private TextMeshProUGUI rankText;
+    [SerializeField] private GameObject resultsPanel; // Desativado: VictoryPanel o substitui
+
+    private void OnEnable()
+    {
+        GameFlowManager.Instance.OnLevelCompleted += HandleLevelCompleted;
+    }
+
+    private void OnDisable()
+    {
+        GameFlowManager.Instance.OnLevelCompleted -= HandleLevelCompleted;
+    }
+
+    private void HandleLevelCompleted(LevelCompletionData data)
+    {
+        Debug.Log("ScoreUIController: HandleLevelCompleted called - updating UI.");
+        if (finalTimeText != null)
+        {
+            System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(data.FinalTime);
+            finalTimeText.text = $"{timeSpan:mm\\:ss\\.ff}";
+        }
+
+        if (rankText != null)
+        {
+            rankText.text = $"Rank: {data.FinalRank}";
+        }
+
+        // Removido: resultsPanel.SetActive(true); // Não ativar, pois VictoryPanel o substitui
+    }
+
+    public void UpdateTime(float newTime)
+    {
+        if (finalTimeText != null)
+        {
+            System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(newTime);
+            finalTimeText.text = $"{timeSpan:mm\\:ss\\.ff}";
+        }
+    }
+
+    public void UpdateTimeAndRank(float newTime)
+    {
+        if (finalTimeText != null)
+        {
+            System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(newTime);
+            finalTimeText.text = $"{timeSpan:mm\\:ss\\.ff}";
+        }
+
+        if (rankText != null)
+        {
+            Rank rank = ScoreManager.Instance != null ? ScoreManager.Instance.GetRankForTime(newTime) : Rank.NA;
+            rankText.text = $"Rank: {rank}";
         }
     }
 }
@@ -868,6 +935,94 @@ public class BackButton : MonoBehaviour, IPointerClickHandler
 }
 </file>
 
+<file path="Assets/Scripts/BasePowerRing.cs">
+// Local: Assets/Scripts/PowerUps/BasePowerUpRing.cs
+using DG.Tweening;
+using System;
+using UnityEngine;
+
+[RequireComponent(typeof(Collider))]
+public abstract class BasePowerUpRing : MonoBehaviour
+{
+    [Header("Configurações Base do Anel")]
+    private string playerTag = "Player";
+    [SerializeField] private bool disableOnUse = true;
+
+    [Header("Efeitos")]
+    private GameObject effectOnUse;
+    private string sfxOnUse;
+
+    public static Action OnPowerRingActivated;
+
+    private void Awake()
+    {
+        // Garante que o collider seja um trigger
+        var colliders = GetComponents<Collider>();
+        foreach (var col in colliders)
+        {
+            if (!col.isTrigger)
+            {
+                col.isTrigger = true;
+            }
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag(playerTag))
+        {
+            OnPowerRingActivated?.Invoke();
+            ApplyEffect(other.gameObject);
+            TriggerEffects();
+        }
+    }
+
+    /// <summary>
+    /// Lógica específica do power-up a ser implementada pelas classes filhas.
+    /// </summary>
+    /// <param name="playerObject">O GameObject do jogador que ativou o anel.</param>
+    protected abstract void ApplyEffect(GameObject playerObject);
+
+    /// <summary>
+    /// Aciona os efeitos visuais, sonoros e desativa o objeto, se configurado.
+    /// </summary>
+    private void TriggerEffects()
+    {
+        if (AudioManager.instance != null)
+        {
+            AudioManager.instance.PlaySFX("PowerRing");
+        }
+
+        RotateRing();
+
+        if (effectOnUse != null)
+        {
+            Instantiate(effectOnUse, transform.position, transform.rotation);
+        }
+
+        if (disableOnUse)
+        {
+            // Desativa o collider para evitar múltiplas ativações
+            var colliders = GetComponents<Collider>();
+            foreach (var col in colliders)
+            {
+                col.enabled = false;
+            }
+            Destroy(gameObject, 2f); // Destrói o anel após 1 segundo para permitir a animação de rotação
+        }
+    }
+
+    // Uses Dotween to rotate the ring when activated
+    private void RotateRing()
+    {
+        return;
+        transform.DORotate(new Vector3(90, 0, 360), 1f, RotateMode.FastBeyond360)
+                 .SetLoops(-1, LoopType.Restart)
+                 .SetEase(Ease.Linear);
+    }
+}
+</file>
+
 <file path="Assets/Scripts/BuildingShooter.cs">
 using System.Collections;
 using System.Collections.Generic;
@@ -1007,6 +1162,109 @@ public class RandomPrefabShooter : MonoBehaviour
     {
         Gizmos.color = Color.cyan;
         Gizmos.DrawRay(transform.position, transform.forward * 2f);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/ButtonJuice.cs">
+using UnityEngine;
+using UnityEngine.UI;
+using DG.Tweening;
+using UnityEngine.EventSystems;
+
+public class ButtonJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+{
+    [SerializeField] private Image targetImage;
+    [Space]
+    [Header("Hover Settings")]
+    [SerializeField] private Color hoverColor = Color.magenta;
+    [SerializeField] private float hoverScaleFactor = 1.1f;
+    [SerializeField] private float hoverDuration = 0.2f;
+
+    [Header("Click Settings")]
+    [SerializeField] private float punchScaleFactor = -0.1f; // Um valor negativo cria um efeito de "pressionar"
+    [SerializeField] private float punchDuration = 0.1f;
+
+    private Color normalColor;
+    private Vector3 initialScale;
+    private Sequence hoverSequence;
+    private Sequence clickSequence;
+    private Image selfImage;
+
+    void Start()
+    {
+        // Garante que o targetImage foi atribuído para evitar erros
+        if (targetImage == null)
+        {
+            Debug.LogError("Target Image não foi atribuída no Inspector!", this);
+            return;
+        }
+        selfImage = GetComponent<Image>();
+
+        // Armazena os valores iniciais
+        normalColor = targetImage.color;
+        initialScale = targetImage.transform.localScale;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        // Mata a animação anterior para evitar conflitos e executa a nova
+        CreateHoverSequence(true).Play();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        // Mata a animação anterior e executa a de retorno
+        CreateHoverSequence(false).Play();
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // Executa a animação de clique
+        CreateClickSequence().Play();
+    }
+
+    // Cria a sequência de animação para o hover (entrar e sair)
+    private Sequence CreateHoverSequence(bool isEntering)
+    {
+        // DOKill() mata qualquer tween em andamento no objeto, garantindo uma transição limpa
+        if (hoverSequence != null && hoverSequence.IsActive())
+        {
+            hoverSequence.Kill();
+        }
+
+        hoverSequence = DOTween.Sequence();
+
+        // Define a cor e escala de destino com base em se o mouse está entrando ou saindo
+        Color targetColor = isEntering ? hoverColor : normalColor;
+        Vector3 targetScale = isEntering ? initialScale * hoverScaleFactor : initialScale;
+
+        // 'Join' faz com que ambas as animações rodem ao mesmo tempo
+        hoverSequence.Join(targetImage.DOColor(targetColor, hoverDuration))
+                     .Join(selfImage.transform.DOScale(targetScale, hoverDuration));
+
+        
+        // A MÁGICA ACONTECE AQUI:
+        // Define a sequência para usar tempo não escalado, então funciona mesmo com Time.timeScale = 0
+        hoverSequence.SetUpdate(UpdateType.Normal, true);
+
+        return hoverSequence;
+    }
+
+    // Cria a sequência para o efeito de "punch" no clique
+    private Sequence CreateClickSequence()
+    {
+        if (clickSequence != null && clickSequence.IsActive())
+        {
+            clickSequence.Kill();
+        }
+
+        clickSequence = DOTween.Sequence();
+        
+        clickSequence.Append(targetImage.transform.DOPunchScale(Vector3.one * punchScaleFactor, punchDuration, 0))
+                     .SetUpdate(UpdateType.Normal, true);
+
+        return clickSequence;
     }
 }
 </file>
@@ -1440,6 +1698,29 @@ public class DashForwardInputSystem : MonoBehaviour
 		isDashing = false;
 		rb.linearVelocity = Vector3.zero;
 	}
+}
+</file>
+
+<file path="Assets/Scripts/DeathFogLogic.cs">
+using UnityEngine;
+
+public class DeathFogLogic : MonoBehaviour
+{
+    private void OnTriggerEnter(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            if (CheckpointManager.Instance != null)
+            {
+                CheckpointManager.Instance.SoftResetToCheckpoint();
+            }
+            else
+            {
+                ScoreManager.Instance?.IncrementDeathCount();
+                SceneManagerLogic.Instance.RestartScene();
+            }
+        }
+    }
 }
 </file>
 
@@ -2020,6 +2301,29 @@ public class GameFlowManager : MonoBehaviour
         InputStateManager.Instance.SwitchState(InputState.Gameplay);
         OnGameResumed?.Invoke();
     }
+}
+</file>
+
+<file path="Assets/Scripts/GameSceneEnum.cs">
+using System;
+
+[Serializable]
+public enum GameScene
+{
+    ARTBonesClimbGrayBox,
+    ARTBonesClimbGrayBoxCopia,
+    Basic,
+    CarLevel,
+    Hellcat,
+    HellcatCanvasHUD,
+    MainMenu,
+    SectorCore,
+    Standard,
+    Tutorial,
+    TutorialCopiaPeu,
+    VFXBonesTest,
+    VictorGraybox,
+    ViniciusLevelDesign,
 }
 </file>
 
@@ -3290,6 +3594,41 @@ public interface IResettable
 }
 </file>
 
+<file path="Assets/Scripts/JiggleEffect.cs">
+using UnityEngine;
+using DG.Tweening;
+
+public class JiggleEffect : MonoBehaviour
+{
+    [Header("Configuração do Jiggle")]
+    public float scaleAmount = 0.05f;       // Quanto a escala oscila
+    public float positionAmount = 0.05f;    // Quanto a posição oscila
+    public float duration = 0.3f;           // Duração de cada fase
+
+    private Vector3 originalScale;
+    private Vector3 originalPos;
+
+    void Start()
+    {
+        originalScale = transform.localScale;
+        originalPos = transform.localPosition;
+
+        StartJiggle();
+    }
+
+    void StartJiggle()
+    {
+        Sequence seq = DOTween.Sequence().SetLoops(-1, LoopType.Yoyo);
+
+        seq.Append(transform.DOScale(originalScale + new Vector3(scaleAmount, -scaleAmount, 0), duration).SetEase(Ease.InOutSine));
+        seq.Join(transform.DOLocalMove(originalPos + new Vector3(positionAmount, positionAmount, 0), duration).SetEase(Ease.InOutSine));
+
+        seq.Append(transform.DOScale(originalScale + new Vector3(-scaleAmount, scaleAmount, 0), duration).SetEase(Ease.InOutSine));
+        seq.Join(transform.DOLocalMove(originalPos + new Vector3(-positionAmount, -positionAmount, 0), duration).SetEase(Ease.InOutSine));
+    }
+}
+</file>
+
 <file path="Assets/Scripts/JumpPad.cs">
 // Local: Assets/Scripts/JumpPad.cs
 
@@ -3375,131 +3714,6 @@ public class JumpPad : MonoBehaviour
         Vector3 launchDirection = rotation * forwardDirection;
         
         Gizmos.DrawRay(transform.position, launchDirection * 5f);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/LaserBarrier.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(Collider))]
-public class LaserBarrier : MonoBehaviour, ITimeSlowable, IResettable
-{
-    [Header("Componentes")]
-    [SerializeField] private Renderer laserRenderer;
-    [SerializeField] private SpriteRenderer laserSpriteRenderer;
-    private Collider _collider;
-
-    [Header("Comportamento do Ciclo")]
-    [SerializeField] private float activeDuration = 5f;
-    [SerializeField] private float inactiveDuration = 3f;
-    [SerializeField] private float cycleOffset = 0f;
-    private float _timer;
-    private bool _isCurrentlyActive;
-
-    [Header("Interação com o Jogador")]
-    [SerializeField] private float repulsionForce = 50f;
-    [SerializeField] private float upwardForceMultiplier = 0.3f;
-    [SerializeField] private bool resetPlayerMomentum = true;
-
-    [Header("Efeitos")]
-    [SerializeField] private string repulsionSfx = "LaserRepulsion";
-    [SerializeField] private string deactivateSfx = "LaserDeactivate";
-    [SerializeField] private string reactivateSfx = "LaserReactivate";
-
-    private bool _isTimeSlowed = false;
-    private const string PlayerTag = "Player";
-
-    private void Awake()
-    {
-        _collider = GetComponent<Collider>();
-        _collider.isTrigger = true;
-        if (laserRenderer == null) laserRenderer = GetComponentInChildren<Renderer>();
-    }
-
-    private void Start()
-    {
-        TimeManipulationManager.Instance?.Register(this);
-        ResetState();
-    }
-
-    private void OnDisable()
-    {
-        TimeManipulationManager.Instance?.Unregister(this);
-    }
-
-    private void Update()
-    {
-        if (_isTimeSlowed) return;
-        _timer += Time.deltaTime;
-        float currentCycleDuration = _isCurrentlyActive ? activeDuration : inactiveDuration;
-        if (_timer >= currentCycleDuration)
-        {
-            _timer = 0f;
-            _isCurrentlyActive = !_isCurrentlyActive;
-            UpdateLaserState(true);
-        }
-    }
-
-    private void UpdateLaserState(bool playSfx)
-    {
-        SetLaserActive(_isCurrentlyActive);
-
-        if (!playSfx) return;
-
-        if (_isCurrentlyActive) AudioManager.instance?.PlaySFX(reactivateSfx);
-        else AudioManager.instance?.PlaySFX(deactivateSfx);
-    }
-    
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!_isCurrentlyActive || _isTimeSlowed) return;
-        if (other.CompareTag(PlayerTag)) RepelPlayer(other.gameObject);
-    }
-
-    private void RepelPlayer(GameObject playerObject)
-    {
-        var playerMovement = playerObject.GetComponent<PlayerMovementController>();
-        if (playerMovement == null) return;
-
-        playerMovement.TriggerShockEffect();
-        
-        Vector3 repulsionDirection = (playerObject.transform.position - transform.position);
-        repulsionDirection.y = 0;
-        repulsionDirection.Normalize();
-        Vector3 finalDirection = (repulsionDirection + Vector3.up * upwardForceMultiplier).normalized;
-        playerMovement.ApplyExternalForce(finalDirection, repulsionForce, resetPlayerMomentum);
-        AudioManager.instance?.PlaySFX(repulsionSfx);
-    }
-
-    private void SetLaserActive(bool isActive)
-    {
-        if (laserRenderer != null) laserRenderer.enabled = isActive;
-        if (laserSpriteRenderer != null) laserSpriteRenderer.enabled = isActive;
-        _collider.enabled = isActive;
-    }
-
-    public void SlowDown(float slowPercentage) => _isTimeSlowed = true;
-    public void RestoreNormalTime() => _isTimeSlowed = false;
-    public void SetSlowDownColor(Color newColor) { }
-
-    public void ResetState()
-    {
-        _timer = cycleOffset;
-        _isCurrentlyActive = true;
-        float effectiveTime = 0f;
-        while(effectiveTime < cycleOffset)
-        {
-            float duration = _isCurrentlyActive ? activeDuration : inactiveDuration;
-            if (effectiveTime + duration > cycleOffset)
-            {
-                _timer = cycleOffset - effectiveTime;
-                break;
-            }
-            effectiveTime += duration;
-            _isCurrentlyActive = !_isCurrentlyActive;
-        }
-        UpdateLaserState(false);
     }
 }
 </file>
@@ -3699,6 +3913,52 @@ public class LeaderboardUIController : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/LevelData.cs">
+// Local: Assets/Scripts/LevelData.cs
+
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public enum Rank { S, A, B, C, D, NA }
+
+[Serializable]
+public struct RankThreshold
+{
+    public Rank rank;
+    [Tooltip("Tempo máximo em segundos para alcançar este ranque.")]
+    public float timeRequired;
+}
+
+[CreateAssetMenu(fileName = "LevelData", menuName = "Scoring/Level Data", order = 1)]
+public class LevelData : ScriptableObject
+{
+    [Header("Identificação do Nível")]
+    [Tooltip("Identificador único para este nível (ex: 'City_Dash_01').")]
+    [SerializeField] private string levelId = "Level_01";
+    [Tooltip("Versão do nível. Aumente se fizer mudanças que afetem os tempos.")]
+    [SerializeField] private int levelVersion = 1;
+
+    [Header("Configuração de Ranques")]
+    [Tooltip("Lista de tempos para cada ranque. Ordene do melhor (S) para o pior (D).")]
+    [SerializeField] private List<RankThreshold> rankThresholds = new List<RankThreshold>();
+
+    public string GetFullLevelId() => $"{levelId}_v{levelVersion}";
+    
+    public Rank GetRankForTime(float playerTime)
+    {
+        foreach (var threshold in rankThresholds)
+        {
+            if (playerTime <= threshold.timeRequired)
+            {
+                return threshold.rank;
+            }
+        }
+        return Rank.D; 
+    }
+}
+</file>
+
 <file path="Assets/Scripts/LevelSelectLogic.cs">
 using NUnit.Framework;
 using System.Collections.Generic;
@@ -3888,6 +4148,87 @@ public class MainMenu : UIPanel
         // Implemente aqui a lógica para o botão "Extra"
         Debug.Log("Botão Extra clicado! (Implemente a funcionalidade aqui)");
         // Exemplo: UIManager.Instance.ShowPanel(UIPanelType.Extras);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/MotionBlurSlider.cs">
+// Local: Assets/Scripts/UI/MotionBlurSlider.cs
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
+using System.Collections.Generic;
+
+[RequireComponent(typeof(Slider))]
+public class MotionBlurSlider : MonoBehaviour
+{
+    [Header("Configurações de Clamp")]
+    [SerializeField] private float minClamp = 0f;
+    [SerializeField] private float maxClamp = 0.02f;
+
+    private Slider _slider;
+    private readonly List<MotionBlur> _motionBlurOverrides = new();
+
+    private void Awake()
+    {
+        _slider = GetComponent<Slider>();
+        InitializeMotionBlurReferences();
+    }
+
+    private void Start()
+    {
+        if (_motionBlurOverrides.Count == 0)
+        {
+            _slider.interactable = false;
+            return;
+        }
+
+        LoadSavedValue();
+        _slider.onValueChanged.AddListener(OnSliderValueChanged);
+    }
+
+    private void OnDestroy()
+    {
+        _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
+    }
+
+    private void InitializeMotionBlurReferences()
+    {
+        Volume[] volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        foreach (var volume in volumes)
+        {
+            if (volume.profile != null && volume.profile.TryGet(out MotionBlur motionBlur))
+            {
+                _motionBlurOverrides.Add(motionBlur);
+            }
+        }
+    }
+
+    private void LoadSavedValue()
+    {
+        float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
+        _slider.SetValueWithoutNotify(savedNormalizedValue);
+        ApplyMotionBlurToAllVolumes(savedNormalizedValue);
+    }
+
+    private void OnSliderValueChanged(float normalizedValue)
+    {
+        ApplyMotionBlurToAllVolumes(normalizedValue);
+        GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
+    }
+
+    private void ApplyMotionBlurToAllVolumes(float normalizedValue)
+    {
+        float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
+
+        foreach (var motionBlur in _motionBlurOverrides)
+        {
+            if (motionBlur != null)
+            {
+                motionBlur.clamp.Override(newValue);
+            }
+        }
     }
 }
 </file>
@@ -4305,6 +4646,533 @@ public class PlayerAnimationController : MonoBehaviour
         _animator.SetTrigger(_hashGrappleStop);
         _animator.SetBool(_hashIsGrappling, false);
     }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerAudioHandler.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(PlayerMovementController))]
+public class PlayerAudioHandler : MonoBehaviour, IResettable
+{
+    private PlayerMovementController movement;
+    private GrapplingHookController grapple;
+    private Rigidbody rb;
+
+    private bool jumpSoundPlayed = false;
+
+    [Header("Sons - Movimento")]
+    [SerializeField] private string[] footstepSfxOptions;
+    [SerializeField] private string[] jumpSfxOptions;
+    [SerializeField] private string[] doubleJumpSfxOptions;
+    [SerializeField] private string[] landSfxOptions;
+    [SerializeField] private string footstepSfx = "footstep";
+    [SerializeField] private string wallHitSfx = "WallHit";
+    [SerializeField] private string[] ringSfxOptions;
+    [SerializeField] private string[] jumpPadSfxOptions;
+
+    [Header("Sons - Estado do Player")]
+    [SerializeField] private string deathSfx = "Death";
+    [SerializeField] private string timeSkillOnSfx = "TimeOn";
+    [SerializeField] private string timeSkillOffSfx = "TimeOff";
+    [SerializeField] private string victorySfx = "Victory";
+
+    [Header("Sons - Grappling Hook")]
+    [SerializeField] private string[] grappleShootSfxOptions;
+    [SerializeField] private string[] grappleAttachSfxOptions;
+    [SerializeField] private string[] grappleReleaseSfxOptions;
+
+    [Header("Parâmetros")]
+    [SerializeField] private float stepInterval = 0.35f;
+    [SerializeField] private float minStepSpeed = 2f;
+    [SerializeField] private float wallHitMinForce = 5f;
+
+    [Header("Som - Vento")]
+    [SerializeField] private string windSfx = "Wind";
+    [SerializeField] private float windMinSpeed = 20f;
+    [SerializeField] private float windMaxSpeed = 60f;
+    [SerializeField] private float windFadeSpeed = 5f;
+
+    [Header("Sons - Dano e Laser")]
+    [SerializeField] private string[] laserHitSfxOptions;
+    [SerializeField] private string[] damageSfxOptions;
+
+    [Header("Som - Laser Barreiras")]
+    [SerializeField] private string laserLoopSfx = "LaserLoop";
+    [SerializeField] private float laserMaxDistance = 10f; // distância máxima pra ouvir o laser
+    [SerializeField] private float laserFadeSpeed = 5f;
+
+    private AudioSource laserLoopSource;
+    private LaserBarrier nearestLaser;
+    private AudioSource deathSource;
+    private bool isResetting = false;
+    private bool isPausedManual = false;
+
+
+    private bool victoryPlayed = false;
+
+    private float stepTimer;
+    private bool hasLandedOnce = false;
+    private Vector3 lastPosition;
+
+    private bool wasGrappling;
+    private bool grappleJustStarted;
+
+    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
+    private bool canDoubleJump = false; // Se double jump pode tocar
+
+    private bool doubleJumpAvailable = false;
+    private bool doubleJumpSoundPlayed = false;
+
+
+    private AudioSource windSource;
+
+    private void Awake()
+    {
+        movement = GetComponent<PlayerMovementController>();
+        grapple = GetComponent<GrapplingHookController>();
+        rb = GetComponent<Rigidbody>();
+
+        deathSource = gameObject.AddComponent<AudioSource>();
+        deathSource.playOnAwake = false;
+        deathSource.loop = false;
+        deathSource.ignoreListenerPause = false;
+
+        isResetting = false;
+
+        stepTimer = stepInterval;
+        lastPosition = transform.position;
+
+        if (AudioManager.instance != null)
+        {
+            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
+        }
+
+
+    }
+
+    private void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
+            InputManager.Instance.OnResetToCheckpoint += PlayDeathSound;
+
+            BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
+
+            // Escuta manualmente JumpPads que existirem na cena
+            foreach (var jumpPad in FindObjectsOfType<JumpPad>())
+            {
+                AddJumpPadListener(jumpPad);
+            }
+        }
+
+        movement.OnGroundLanded += PlayLand;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
+            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
+            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
+            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
+            InputManager.Instance.OnResetToCheckpoint -= PlayDeathSound;
+
+            BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
+        }
+
+        movement.OnGroundLanded -= PlayLand;
+    }
+
+    private void Update()
+    {
+
+
+        if (Time.timeScale == 0f)
+            {
+   
+                if (deathSource.isPlaying) { deathSource.Pause(); isPausedManual = true; }
+
+ 
+                if (AudioManager.instance != null)
+                {
+                    AudioManager.instance.PauseAllSFX();
+                    AudioManager.instance.PauseAmbient();
+                }
+
+
+                return;
+            }
+            else
+            {
+                if (isPausedManual)
+                {
+                    deathSource.UnPause();
+                    isPausedManual = false;
+                }
+
+                if (AudioManager.instance != null)
+                {
+                    AudioManager.instance.UnpauseAllSFX(); 
+                    AudioManager.instance.UnpauseAmbient();
+                }
+
+            }
+
+        HandleFootsteps();
+        HandleGrappleAudio();
+        HandleWindAudio();
+        HandleLaserAudio();
+
+        if (movement.isGrounded)
+        {
+            hasJumpedOnce = false;
+            canDoubleJump = false;
+            doubleJumpSoundPlayed = false;
+        }
+
+        if (isResetting && !deathSource.isPlaying)
+        {
+            isResetting = false;
+        }
+
+        lastPosition = transform.position;
+    }
+
+    
+
+    private void HandleJumpAudio()
+    {
+        if (movement.isGrounded)
+        {
+            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, jumpSfxOptions.Length);
+                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
+            }
+
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+        else
+        {
+            // Double jump: toca som apenas se ainda estiver disponível
+            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+            {
+                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
+                {
+                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
+                    {
+                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
+                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
+                    }
+
+                    doubleJumpSoundPlayed = true;
+                    doubleJumpAvailable = false;
+                }
+            }
+        }
+    }
+
+
+
+
+
+    private void HandleFootsteps()
+    {
+        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
+        {
+            stepTimer = stepInterval;
+            return;
+        }
+
+        stepTimer -= Time.deltaTime;
+        if (stepTimer <= 0f)
+        {
+            string sfxToPlay = footstepSfx;
+
+            if (footstepSfxOptions != null && footstepSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, footstepSfxOptions.Length);
+
+
+                if (!string.IsNullOrEmpty(footstepSfxOptions[idx]))
+                    sfxToPlay = footstepSfxOptions[idx];
+            }
+
+            AudioManager.instance.PlaySFX(sfxToPlay);
+            stepTimer = stepInterval;
+        }
+    }
+
+
+    private void HandleGrappleStart()
+    {
+        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleShootSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
+        }
+        grappleJustStarted = true;
+    }
+
+    private void HandleGrappleEnd()
+    {
+        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
+        }
+
+        if (wasGrappling)
+        {
+            doubleJumpAvailable = true;
+            doubleJumpSoundPlayed = false;
+        }
+
+        grappleJustStarted = false;
+        wasGrappling = false;
+    }
+
+    private void HandleGrappleAudio()
+    {
+        if (grapple == null || !grappleJustStarted) return;
+
+        // Som e estado só se realmente conectar
+        if (grapple.IsGrappling)
+        {
+            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
+            {
+                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
+                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
+            }
+
+            // Bloqueia double jump enquanto estiver agarrado
+            doubleJumpAvailable = false;
+            doubleJumpSoundPlayed = false;
+
+            wasGrappling = true;
+            grappleJustStarted = false;
+        }
+
+    }
+
+
+    private void HandleWindAudio()
+    {
+        if (windSource == null) return;
+
+
+        // Calcula volume base pelo movimento do player
+        float speed = rb.linearVelocity.magnitude;
+        float targetVolume = 0f;
+
+        if (speed > windMinSpeed)
+            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+
+        // Aplica SFX e Master volume, e considera muting
+        if (AudioManager.instance != null)
+        {
+            float sfxVolume = AudioManager.instance.sfxSource.volume;
+            float masterVolume = AudioManager.instance.masterSource.volume;
+            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+
+            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
+        }
+
+        // Suaviza a transição do volume
+        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+    }
+
+
+
+    private void PlayLand()
+    {
+        if (!hasLandedOnce)
+        {
+            hasLandedOnce = true;
+            return;
+        }
+
+        if (landSfxOptions != null && landSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, landSfxOptions.Length);
+            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
+        {
+            AudioManager.instance.PlaySFX(wallHitSfx);
+        }
+
+        if (!victoryPlayed && collision.gameObject.GetComponent<WinLogic>() != null)
+        {
+            victoryPlayed = true;
+            PlayVictoryAudio();
+        }
+    }
+
+
+
+    private void HandlePowerRingAudio()
+    {
+        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, ringSfxOptions.Length);
+            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
+    }
+
+    private void AddJumpPadListener(JumpPad pad)
+    {
+        var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
+        trigger.Setup(pad, this);
+    }
+
+    public void PlayJumpPadAudio()
+    {
+        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, jumpPadSfxOptions.Length);
+            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = true;
+        doubleJumpSoundPlayed = false;
+    }
+
+    public void PlayLaserHitAudio()
+    {
+        if (laserHitSfxOptions != null && laserHitSfxOptions.Length > 0)
+        {
+            int laserIdx = Random.Range(0, laserHitSfxOptions.Length);
+            AudioManager.instance.PlaySFX(laserHitSfxOptions[laserIdx]);
+        }
+
+        if (damageSfxOptions != null && damageSfxOptions.Length > 0)
+        {
+            int damageIdx = Random.Range(0, damageSfxOptions.Length);
+            AudioManager.instance.PlaySFX(damageSfxOptions[damageIdx]);
+        }
+    }
+
+    public void PlayVictoryAudio()
+    {
+        if (AudioManager.instance == null) return;
+
+        AudioManager.instance.PauseMusic();
+        AudioManager.instance.PauseAmbient();
+        AudioManager.instance.PlayUnscaledSFX(victorySfx);
+    }
+
+
+    public void ResetState()
+    {
+        if (isResetting) return;
+
+        PlayDeathSound();
+    }
+    private void PlayDeathSound()
+    {
+        if (isResetting) return;
+        if ( string.IsNullOrEmpty(deathSfx) || AudioManager.instance == null)
+            return;
+
+        if (AudioManager.instance != null)
+        {
+            if (deathSource.isPlaying) deathSource.Stop();
+ 
+
+            AudioManager.instance.PlaySFXInSource(deathSfx, deathSource);
+            isResetting = true;
+            Debug.Log("Death sound played!");
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.GetComponent<LaserBarrier>() != null)
+        {
+            PlayLaserHitAudio();
+        }
+
+    }
+
+
+    private void HandleLaserAudio()
+    {
+        if (laserLoopSource == null)
+            laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
+
+
+        float targetVolumeLocal = 0f;
+
+        LaserBarrier closest = null;
+        float closestDist = float.MaxValue;
+        foreach (var laser in FindObjectsOfType<LaserBarrier>())
+        {
+            Collider col = laser.GetComponent<Collider>();
+            if (!col.enabled) continue;
+
+            Vector3 closestPoint = col.ClosestPoint(transform.position);
+            float dist = Vector3.Distance(transform.position, closestPoint);
+
+            if (dist < closestDist)
+            {
+                closestDist = dist;
+                closest = laser;
+            }
+        }
+
+        nearestLaser = closest;
+
+        if (nearestLaser != null && closestDist <= laserMaxDistance)
+        {
+            targetVolumeLocal = 1f - (closestDist / laserMaxDistance);
+            targetVolumeLocal = Mathf.Clamp01(targetVolumeLocal);
+        }
+
+        float finalVolume = targetVolumeLocal;
+
+        if (AudioManager.instance != null && laserLoopSource != null)
+        {
+            float sfxVolume = AudioManager.instance.sfxSource.volume;
+            float masterVolume = AudioManager.instance.masterSource.volume;
+
+            finalVolume = targetVolumeLocal * sfxVolume * masterVolume;
+
+            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+            laserLoopSource.mute = isMuted;
+        }
+        if (laserLoopSource != null)
+            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalVolume, Time.deltaTime * laserFadeSpeed);
+
+    }
+
+
+
+
+
+    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
+    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
@@ -4732,466 +5600,6 @@ public class PlayerLookController : MonoBehaviour
             _cameraNoise.AmplitudeGain = 0;
             _cameraNoise.FrequencyGain = 0;
         }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/PlayerMovementController.cs">
-using System;
-using System.Collections;
-using TMPro;
-using DG.Tweening;
-using UnityEngine;
-
-[RequireComponent(typeof(Rigidbody))]
-public class PlayerMovementController : MonoBehaviour
-{
-    #region Events
-    public event Action OnGroundLanded;
-    public event Action OnLeftGround;
-    public event Action OnJumped;
-    public event Action OnDoubleJumpGained;
-    public event Action OnDoubleJumpUsed;
-    public event Action<float> OnHorizontalVelocityChanged;
-    public event Action OnShocked;
-    #endregion
-
-    #region State
-    [Header("Estado Atual (Debug)")]
-    public bool isGrounded;
-    public bool canDoubleJump;
-    [SerializeField] private bool isJumping;
-    private float _horizontalSpeed;
-    #endregion
-
-    #region Dependencies
-    [Header("Dependências")]
-    [SerializeField] private Transform orientation;
-    [SerializeField] private GrapplingHookController grapplingHookController;
-    [SerializeField] private TextMeshProUGUI velocityText, distanceText;
-    private Rigidbody _rigidbody;
-    private Vector2 _moveInput;
-    #endregion
-
-    #region Movement Settings
-    [Header("Configurações de Movimento")]
-    [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float maxMoveSpeed = 30f;
-    [SerializeField] private float maxGrappleMoveSpeed = 150f;
-    [SerializeField] private float airMultiplier = 0.6f;
-    [SerializeField] private float groundMultiplier = 2.0f;
-    [SerializeField] private float airControlMultiplier = 5f;
-    #endregion
-
-    #region Drag Settings
-    [Header("Configurações de Atrito (Drag)")]
-    [SerializeField] private float groundDrag = 6f;
-    [SerializeField] private float airDrag = 2f;
-    [SerializeField] private float grappleAirDrag = 0.5f;
-    [SerializeField] private float highSpeedAirDragMultiplier = 1.2f;
-    [SerializeField] private float highSpeedThreshold = 55.5f;
-    private float _baseAirDrag;
-    #endregion
-
-    #region Jump Settings
-    [Header("Configurações de Pulo")]
-    [SerializeField] private float jumpForce = 14f;
-    [SerializeField] private float doubleJumpForce = 14f;
-    [SerializeField] private float jumpForwardBoost = 5f;
-    [SerializeField] private float jumpReleaseMultiplier = 0.5f;
-    [SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
-    #endregion
-    
-    #region Gravity
-    [Header("Gravidade")]
-    [SerializeField] private float gravityMultiplier = 2.5f;
-    #endregion
-
-    #region Timers & Buffers
-    [Header("Coyote Time & Jump Buffer")]
-    [SerializeField] private float coyoteTimeDuration = 0.1f;
-    [SerializeField] private float jumpBufferDuration = 0.1f;
-    [SerializeField] private float bunnyHopWindow = 0.1f;
-    private float _coyoteTimeCounter;
-    private float _jumpBufferCounter;
-    private float _timeSinceLanded;
-    #endregion
-
-    #region Ground Check
-    [Header("Verificação de Chão")]
-    [SerializeField] private float playerHeight = 2f;
-    [SerializeField] private float groundCheckSphereRadius = 0.4f;
-    [SerializeField] private float groundCheckDistance = 0.2f;
-    [SerializeField] private LayerMask groundCheckLayer;
-    private Rigidbody _currentPlatformRb;
-    private Vector3 _lastPlatformPosition;
-    #endregion
-    
-    private const float METERS_PER_SECOND_TO_KM_PER_HOUR = 3.6f;
-    private Coroutine _resetCoroutine;
-    public Rigidbody Rb => _rigidbody;
-
-    private void Awake()
-    {
-        _rigidbody = GetComponent<Rigidbody>();
-        _rigidbody.freezeRotation = true;
-        _baseAirDrag = airDrag;
-    }
-
-    private void OnEnable()
-    {
-        InputManager.Instance.OnMove += SetMoveInput;
-        InputManager.Instance.OnJumpPerformed += ProcessJumpRequest;
-        InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
-    }
-
-    private void OnDisable()
-    {
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.OnMove -= SetMoveInput;
-        InputManager.Instance.OnJumpPerformed -= ProcessJumpRequest;
-        InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
-    }
-
-    private void Update()
-    {
-        UpdateTimers();
-        UpdateDebugUI();
-    }
-
-    private void FixedUpdate()
-    {
-        CheckGroundedStatus();
-        HandleMovement();
-        ApplyDrag();
-        ApplyExtraGravity();
-        LimitVelocity();
-        BroadcastHorizontalVelocity();
-    }
-
-    private void SetMoveInput(Vector2 input) => _moveInput = input;
-
-    private void UpdateTimers()
-    {
-        _coyoteTimeCounter = isGrounded && !isJumping ? coyoteTimeDuration : _coyoteTimeCounter - Time.deltaTime;
-        _jumpBufferCounter -= Time.deltaTime;
-        _timeSinceLanded += Time.deltaTime;
-    }
-    
-    private void CheckGroundedStatus()
-    {
-        bool wasGrounded = isGrounded;
-        
-        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
-        isGrounded = Physics.SphereCast(transform.position, groundCheckSphereRadius, Vector3.down, out RaycastHit hitInfo, castDistance, groundCheckLayer);
-
-        UpdatePlatform(hitInfo);
-
-        if (!wasGrounded && isGrounded) HandleLanding();
-        if (wasGrounded && !isGrounded) HandleLeavingGround();
-    }
-    
-    private void UpdatePlatform(RaycastHit hitInfo)
-    {
-        if (isGrounded && hitInfo.rigidbody != null)
-        {
-            if (_currentPlatformRb != hitInfo.rigidbody)
-            {
-                _currentPlatformRb = hitInfo.rigidbody;
-                _lastPlatformPosition = _currentPlatformRb.position;
-            }
-            ApplyPlatformMovement();
-        }
-        else
-        {
-            _currentPlatformRb = null;
-        }
-    }
-
-    private void ApplyPlatformMovement()
-    {
-        if (_currentPlatformRb == null) return;
-        
-        Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
-        if (platformDelta != Vector3.zero)
-        {
-            MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
-            float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
-            _rigidbody.position += platformDelta * playerInfluence;
-        }
-        _lastPlatformPosition = _currentPlatformRb.position;
-    }
-
-    private void HandleLanding()
-    {
-        _timeSinceLanded = 0f;
-        isJumping = false;
-        
-        GainDoubleJump();
-
-        float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
-        if (isJumping && speedInKmh <= 100f)
-        {
-            ApplyLandingDampening();
-        }
-        
-        OnGroundLanded?.Invoke();
-
-        if (_jumpBufferCounter > 0f)
-        {
-            PerformJump(jumpForce, false);
-        }
-    }
-    
-    private void HandleLeavingGround()
-    {
-        if (!isJumping)
-        {
-            OnLeftGround?.Invoke();
-        }
-    }
-    
-    private void HandleMovement()
-    {
-        if (grapplingHookController.IsGrappling) return;
-
-        if (isGrounded) ApplyGroundMovement();
-        else ApplyAirMovement();
-    }
-
-    private void ApplyDrag()
-    {
-        if (grapplingHookController.IsGrappling)
-        {
-            _rigidbody.linearDamping = grappleAirDrag;
-            return;
-        }
-
-        if (isGrounded && _timeSinceLanded > bunnyHopWindow)
-        {
-            _rigidbody.linearDamping = groundDrag;
-        }
-        else
-        {
-            airDrag = _horizontalSpeed > highSpeedThreshold ? _baseAirDrag * highSpeedAirDragMultiplier : _baseAirDrag;
-            _rigidbody.linearDamping = airDrag;
-        }
-    }
-
-    private void ApplyExtraGravity()
-    {
-        if (!isGrounded)
-        {
-            float gravity = -Physics.gravity.y * gravityMultiplier;
-            _rigidbody.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
-        }
-    }
-
-    private void LimitVelocity()
-    {
-        float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
-        float maxSpeedInMps = currentMaxSpeed / METERS_PER_SECOND_TO_KM_PER_HOUR;
-
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        if (horizontalVelocity.magnitude > maxSpeedInMps)
-        {
-            Vector3 limitedVelocity = horizontalVelocity.normalized * maxSpeedInMps;
-            _rigidbody.linearVelocity = new Vector3(limitedVelocity.x, _rigidbody.linearVelocity.y, limitedVelocity.z);
-        }
-    }
-
-    private void BroadcastHorizontalVelocity()
-    {
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        _horizontalSpeed = horizontalVelocity.magnitude;
-        OnHorizontalVelocityChanged?.Invoke(_horizontalSpeed);
-    }
-    
-    private void ApplyGroundMovement()
-    {
-        if (_moveInput.sqrMagnitude < 0.01f) return;
-
-        Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
-        _rigidbody.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
-    }
-
-    private void ApplyAirMovement()
-    {
-        if (_moveInput.sqrMagnitude < 0.01f) return;
-
-        Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        
-        float angle = Vector3.Angle(horizontalVelocity.normalized, moveDirection);
-        float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
-        float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
-
-        _rigidbody.AddForce(moveDirection * moveSpeed * 10f * airMultiplier * lateralInfluence, ForceMode.Force);
-    }
-    
-    private void ProcessJumpRequest()
-    {
-        _jumpBufferCounter = jumpBufferDuration;
-
-        if (grapplingHookController.IsGrappling) return;
-
-        if (CanPerformJump())
-        {
-            PerformJump(jumpForce, false);
-        }
-        else if (CanPerformDoubleJump())
-        {
-            PerformJump(doubleJumpForce, true);
-        }
-    }
-    
-    private void HandleJumpRelease()
-    {
-        if (_rigidbody.linearVelocity.y > 0 && isJumping)
-        {
-            _rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, _rigidbody.linearVelocity.y * jumpReleaseMultiplier, _rigidbody.linearVelocity.z);
-        }
-    }
-
-    private bool CanPerformJump() => _coyoteTimeCounter > 0f ;
-    private bool CanPerformDoubleJump() => canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive);
-
-    private void PerformJump(float force, bool isPerformingDoubleJump)
-    {
-        _coyoteTimeCounter = 0f;
-        _jumpBufferCounter = 0f;
-        isJumping = true;
-
-        Vector3 platformVelocity = _currentPlatformRb ? _currentPlatformRb.linearVelocity : Vector3.zero;
-        _rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z) + platformVelocity;
-        _rigidbody.AddForce(transform.up * force, ForceMode.Impulse);
-
-        if (_moveInput.sqrMagnitude > 0.01f) ApplyJumpForwardBoost();
-        
-        if (isPerformingDoubleJump)
-        {
-            if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
-            {
-                canDoubleJump = false;
-            }
-            OnDoubleJumpUsed?.Invoke();
-        }
-        else
-        {
-            OnJumped?.Invoke();
-        }
-    }
-
-    private void ApplyJumpForwardBoost()
-    {
-        Vector3 forwardDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
-        _rigidbody.AddForce(forwardDirection * jumpForwardBoost, ForceMode.Impulse);
-    }
-    
-    private void GainDoubleJump()
-    {
-        if (!canDoubleJump)
-        {
-            canDoubleJump = true;
-            OnDoubleJumpGained?.Invoke();
-        }
-    }
-    
-    public void ResetDoubleJump()
-    {
-        if (!isGrounded)
-        {
-            GainDoubleJump();
-        }
-    }
-    
-    public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
-    {
-        if (resetVelocity) _rigidbody.linearVelocity = Vector3.zero;
-        
-        _rigidbody.AddForce(direction * force, ForceMode.Impulse);
-        
-        GainDoubleJump();
-        isJumping = true;
-        OnLeftGround?.Invoke();
-    }
-
-    public void MultiplyVelocity(float multiplier)
-    {
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        Vector3 newVelocity = horizontalVelocity * multiplier;
-        _rigidbody.linearVelocity = new Vector3(newVelocity.x, _rigidbody.linearVelocity.y, newVelocity.z);
-    }
-    
-    public Transform GetOrientation()
-    {
-        return orientation;
-    }
-    
-    private void ApplyLandingDampening()
-    {
-        Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
-        Vector3 dampenedVelocity = horizontalVelocity * landingVelocityDampening;
-        _rigidbody.linearVelocity = new Vector3(dampenedVelocity.x, _rigidbody.linearVelocity.y, dampenedVelocity.z);
-    }
-
-    private void UpdateDebugUI()
-    {
-        if (distanceText != null && grapplingHookController != null)
-        {
-            distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
-        }
-        
-        if (velocityText != null)
-        {
-            float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
-            velocityText.text = "Velocidade: " + speedInKmh.ToString("F2");
-        }
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.yellow;
-        float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
-        Vector3 sphereCenter = transform.position + Vector3.down * castDistance;
-        Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
-    }
-
-    public void ResetToPosition(Vector3 position)
-    {
-        if (_resetCoroutine != null)
-        {
-            StopCoroutine(_resetCoroutine);
-        }
-        _resetCoroutine = StartCoroutine(ResetPositionRoutine(position));
-    }
-
-    private IEnumerator ResetPositionRoutine(Vector3 position)
-    {
-        grapplingHookController?.StopGrapple();
-
-        _rigidbody.isKinematic = true;
-        yield return new WaitForFixedUpdate();
-
-        yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
-
-        yield return new WaitForFixedUpdate();
-        _rigidbody.isKinematic = false;
-        
-        _rigidbody.linearVelocity = Vector3.zero;
-        _rigidbody.angularVelocity = Vector3.zero;
-
-        isJumping = false;
-        _coyoteTimeCounter = 0f;
-        _jumpBufferCounter = 0f;
-        ResetDoubleJump();
-        
-        _resetCoroutine = null;
-    }
-    
-    public void TriggerShockEffect()
-    {
-        OnShocked?.Invoke();
     }
 }
 </file>
@@ -5631,6 +6039,84 @@ public class PostGamePanel : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/SaveDataModels.cs">
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+[Serializable]
+public class GameData
+{
+public GameSettings settings = new GameSettings();
+public List<UserProfile> profiles = new List<UserProfile>();
+public string activeProfileId = "";
+}
+
+[Serializable]
+public class GameSettings
+{
+public float masterVolume = 1f;
+public float musicVolume = 1f;
+public float sfxVolume = 1f;
+public bool isMasterMuted = false;
+public bool isMusicMuted = false;
+public bool isSfxMuted = false;
+public float mouseSensitivityX = 0.5f;
+public float mouseSensitivityY = 0.5f;
+public bool invertMouseX = false;
+public bool invertMouseY = false;
+
+public float motionBlurIntensity = 0.5f;
+public bool checkpointsEnabled = true;
+
+}
+
+[Serializable]
+public class UserProfile : ISerializationCallbackReceiver
+{
+public string profileId;
+public string profileName;
+
+
+[NonSerialized]
+public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
+
+[SerializeField] private List<string> _levelIds = new List<string>();
+[SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
+
+public void OnBeforeSerialize()
+{
+    _levelIds.Clear();
+    _records.Clear();
+    foreach (var kvp in levelRecords)
+    {
+        _levelIds.Add(kvp.Key);
+        _records.Add(kvp.Value);
+    }
+}
+
+public void OnAfterDeserialize()
+{
+    levelRecords = new Dictionary<string, LevelRecord>();
+    for (int i = 0; i < _levelIds.Count; i++)
+    {
+        levelRecords.Add(_levelIds[i], _records[i]);
+    }
+}
+
+  
+
+}
+
+[Serializable]
+public class LevelRecord
+{
+public float bestTime = float.MaxValue;
+public Rank bestRank = Rank.NA;
+public int totalDeaths = 0;
+}
+</file>
+
 <file path="Assets/Scripts/SaveManager.cs">
 // Local: Assets/Scripts/Core/SaveManager.cs
 
@@ -5893,6 +6379,157 @@ public class ScoreUIEntry : MonoBehaviour
         if (background != null)
         {
             background.color = isLocalPlayer ? highlightColor : _defaultColor;
+        }
+    }
+}
+</file>
+
+<file path="Assets/Scripts/SettingsPanel.cs">
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SettingsPanel : UIPanel
+{
+    [Header("Referências Internas")]
+    [SerializeField] private Button backButton;
+    [Header("Referências Sliders")]
+    [SerializeField] private Slider masterSlider;
+    [SerializeField] private Slider musicSlider;
+    [SerializeField] private Slider sfxSlider;
+    [SerializeField] private Slider ambientSlider;
+    [Header("Referências Toggles")]
+    [SerializeField] private Toggle masterToggle;
+    [SerializeField] private Toggle musicToggle;
+    [SerializeField] private Toggle sfxToggle;
+    [SerializeField] private Toggle ambientToggle;
+    [SerializeField] private Toggle checkpointsToggle;
+
+    private void Awake()
+    {
+        base.Awake();
+        SetupButtonListeners();
+        SetupVolumeListeners();
+        SetupToggleListeners();
+        InitializeSliders();
+    }
+
+    private void OnEnable()
+    {
+        LoadToggleStates();
+    }
+
+    private void LoadToggleStates()
+    {
+        if (GameSettingsManager.Instance != null && checkpointsToggle != null)
+        {
+            checkpointsToggle.isOn = GameSettingsManager.Instance.CheckpointsEnabled;
+        }
+    }
+
+    private void SetupVolumeListeners()
+    {
+        if (AudioManager.instance == null)
+        {
+            Debug.LogError("AudioManager.instance não foi encontrado. Os sliders de volume não funcionarão.");
+            return;
+        }
+
+        masterSlider?.onValueChanged.RemoveAllListeners();
+        musicSlider?.onValueChanged.RemoveAllListeners();
+        sfxSlider?.onValueChanged.RemoveAllListeners();
+        ambientSlider?.onValueChanged.RemoveAllListeners();
+
+        masterSlider?.onValueChanged.AddListener(AudioManager.instance.MasterVolume);
+        musicSlider?.onValueChanged.AddListener(AudioManager.instance.MusicVolume);
+        sfxSlider?.onValueChanged.AddListener(AudioManager.instance.SFXVolume);
+        ambientSlider?.onValueChanged.AddListener(AudioManager.instance.AmbientVolume);
+    }
+
+    private void SetupToggleListeners()
+    {
+        if (AudioManager.instance != null)
+        {
+            masterToggle?.onValueChanged.RemoveAllListeners();
+            musicToggle?.onValueChanged.RemoveAllListeners();
+            sfxToggle?.onValueChanged.RemoveAllListeners();
+            ambientToggle?.onValueChanged.RemoveAllListeners();
+
+            masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
+            musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
+            sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
+            ambientToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetAmbientMute(!value));
+        }
+
+        if (GameSettingsManager.Instance != null)
+        {
+            checkpointsToggle?.onValueChanged.RemoveAllListeners();
+            checkpointsToggle?.onValueChanged.AddListener(GameSettingsManager.Instance.SetCheckpointsEnabled);
+        }
+    }
+
+    private void SetupButtonListeners()
+    {
+        backButton?.onClick.RemoveAllListeners();
+
+        if (UIManager.Instance != null)
+        {
+            if (PanelType == UIPanelType.Settings)
+            {
+                backButton?.onClick.AddListener(UIManager.Instance.CloseSettingsPanel);
+            }
+            else
+            {
+                backButton?.onClick.AddListener(UIManager.Instance.CloseLevelSelectPanel);
+            }
+        }
+        else
+        {
+            Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
+        }
+    }
+    
+    private void InitializeSliders()
+    {
+        if (AudioManager.instance == null) return;
+
+        if (masterSlider != null)
+        {
+            masterSlider.value = AudioManager.instance.GetMasterVolumeBase();
+        }
+
+        if (musicSlider != null)
+        {
+            musicSlider.value = AudioManager.instance.GetMusicVolumeBase();
+        }
+
+        if (sfxSlider != null)
+        {
+            sfxSlider.value = AudioManager.instance.GetSFXVolumeBase();
+        }
+
+        if (ambientSlider != null)
+        {
+            ambientSlider.value = AudioManager.instance.GetAmbientVolumeBase();
+        }
+
+        if (masterToggle != null)
+        {
+            masterToggle.isOn = !AudioManager.instance.masterSource.mute;
+        }
+
+        if (musicToggle != null)
+        {
+            musicToggle.isOn = !AudioManager.instance.musicSource.mute;
+        }
+
+        if (sfxToggle != null)
+        {
+            sfxToggle.isOn = !AudioManager.instance.sfxSource.mute;
+        }
+
+        if (ambientToggle != null)
+        {
+            ambientToggle.isOn = !AudioManager.instance.ambientSource.mute;
         }
     }
 }
@@ -6555,6 +7192,157 @@ public class UIJuice : MonoBehaviour
 }
 </file>
 
+<file path="Assets/Scripts/UIManager.cs">
+// Local: Assets/Scripts/UI/UIManager.cs
+
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class UIManager : MonoBehaviour
+{
+    public static UIManager Instance { get; private set; }
+
+    public event Action<UIPanelType, bool> OnPanelStateChanged; // bool: true para mostrado, false para escondido
+
+    private readonly Dictionary<UIPanelType, UIPanel> _registeredPanels = new Dictionary<UIPanelType, UIPanel>();
+    
+    [Header("Debug Info")]
+    [SerializeField] private List<string> _registeredPanelNames = new List<string>();
+
+    private bool _isInitialized = false;
+
+    // ... (Awake, OnEnable, OnDisable, OnSceneLoaded, FindAndRegisterAllPanels, RegisterPanel, UnregisterPanel permanecem os mesmos) ...
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        if (!_isInitialized)
+        {
+            FindAndRegisterAllPanels();
+        }
+    }
+    
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindAndRegisterAllPanels();
+    }
+
+    private void FindAndRegisterAllPanels()
+    {
+        _registeredPanels.Clear();
+        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (UIPanel panel in allPanels)
+        {
+            RegisterPanel(panel);
+        }
+        _isInitialized = true;
+        UpdateDebugList();
+    }
+
+    public void RegisterPanel(UIPanel panel)
+    {
+        if (panel == null) return;
+        if (!_registeredPanels.ContainsKey(panel.PanelType)) { _registeredPanels.Add(panel.PanelType, panel); }
+        else { _registeredPanels[panel.PanelType] = panel; }
+        UpdateDebugList();
+    }
+
+    public void UnregisterPanel(UIPanel panel)
+    {
+        if (panel != null && _registeredPanels.ContainsKey(panel.PanelType))
+        {
+            _registeredPanels.Remove(panel.PanelType);
+            UpdateDebugList();
+        }
+    }
+    
+    public void ShowPanel(UIPanelType panelType)
+    {
+        FindAndRegisterAllPanels();
+        if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
+        {
+            panel.Show();
+            OnPanelStateChanged?.Invoke(panelType, true); // Dispara o evento
+        }
+    }
+
+    public void ClosePanel(UIPanelType panelType)
+    {
+        if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
+        {
+            panel.Hide();
+            OnPanelStateChanged?.Invoke(panelType, false); // Dispara o evento
+        }
+    }
+
+    public bool IsPanelActive(UIPanelType panelType)
+    {
+        if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
+        {
+            return panel.gameObject.activeInHierarchy;
+        }
+        return false;
+    }
+    
+    private void UpdateDebugList()
+    {
+        _registeredPanelNames.Clear();
+        foreach (var pair in _registeredPanels)
+        {
+            //_registeredPanelNames.Add($"[{pair.Key}] -> {pair.Value?.gameObject.name ?? "REFERÊNCIA NULA"}");
+        }
+    }
+
+    public void OpenSettingsPanel()
+    {
+        ShowPanel(UIPanelType.Settings);
+    }
+
+    public void CloseSettingsPanel()
+    {
+        ClosePanel(UIPanelType.Settings);
+    }
+
+    //public void OpenPausePanel()
+    //{
+    //    ShowPanel(UIPanelType.Pause);
+    //}
+
+    //public void ClosePausePanel()
+    //{
+    //    ClosePanel(UIPanelType.Pause);
+    //}
+
+    public void OpenLevelSelectPanel()
+    {
+        ShowPanel(UIPanelType.LevelSelect);
+    }
+
+    public void CloseLevelSelectPanel()
+    {
+        ClosePanel(UIPanelType.LevelSelect);
+    }
+
+}
+</file>
+
 <file path="Assets/Scripts/UIPanel.cs">
 // Local: Assets/Scripts/UI/UIPanel.cs
 
@@ -6630,6 +7418,105 @@ public enum UIPanelType
     // Painéis que NÃO bloqueiam o input (HUD)
     HUD,
     MainMenu
+}
+</file>
+
+<file path="Assets/Scripts/UIWobble.cs">
+// Assets/Scripts/UI/UIWobbleEffect.cs
+using UnityEngine;
+using DG.Tweening; // Não se esqueça de importar o DOTween
+
+public class UIWobbleEffect : MonoBehaviour
+{
+    [Header("Configuração do Movimento")]
+    [Tooltip("Distância máxima que o elemento se moverá no eixo X (esquerda/direita).")]
+    public float moveDistanceX = 10f;
+
+    [Tooltip("Distância máxima que o elemento se moverá no eixo Y (cima/baixo).")]
+    public float moveDistanceY = 15f;
+
+    [Header("Configuração de Tempo e Aleatoriedade")]
+    [Tooltip("A duração base para cada movimento de 'onda'.")]
+    public float baseDuration = 1.5f;
+
+    [Tooltip("Controla o quão aleatório será o movimento. 0 = sem aleatoriedade (onda perfeita), 1 = muito aleatório.")]
+    [Range(0f, 1f)]
+    public float randomness = 0.5f;
+
+    [Header("Controle")]
+    [Tooltip("Se marcado, o efeito começa a tocar assim que o objeto for ativado.")]
+    public bool playOnAwake = true;
+
+    // --- Variáveis Privadas ---
+    private Vector3 originalPosition;
+    private Sequence mainSequence;
+
+    private void Awake()
+    {
+        // Guarda a posição inicial para que o efeito seja sempre relativo a ela
+        originalPosition = transform.localPosition;
+    }
+
+    private void OnEnable()
+    {
+        // Reinicia o efeito se o objeto for reativado
+        if (playOnAwake)
+        {
+            Play();
+        }
+    }
+
+    private void OnDisable()
+    {
+        // Para a animação quando o objeto é desativado para evitar erros
+        Stop();
+    }
+
+    /// <summary>
+    /// Inicia o efeito de ondulação.
+    /// </summary>
+    public void Play()
+    {
+        // Garante que não haja sequências antigas rodando
+        if (mainSequence != null && mainSequence.IsActive())
+        {
+            mainSequence.Kill();
+        }
+
+        // Inicia o primeiro movimento
+        StartWobble();
+    }
+
+    /// <summary>
+    /// Para o efeito e retorna o elemento à sua posição original.
+    /// </summary>
+    public void Stop()
+    {
+        mainSequence?.Kill();
+        // Opcional: Anima suavemente de volta à posição original
+        transform.DOLocalMove(originalPosition, 0.2f).SetEase(Ease.OutCubic);
+    }
+    
+    /// <summary>
+    /// O coração do efeito. Esta função se chama recursivamente
+    /// ao final de cada movimento para criar um loop infinito e aleatório.
+    /// </summary>
+    private void StartWobble()
+    {
+        // Calcula parâmetros aleatórios para ESTE movimento específico
+        float randomDurationFactor = Random.Range(1f - randomness, 1f + randomness);
+        float currentDuration = baseDuration * randomDurationFactor;
+
+        // Calcula um ponto alvo aleatório dentro dos limites definidos
+        float targetX = originalPosition.x + Random.Range(-moveDistanceX, moveDistanceX);
+        float targetY = originalPosition.y + Random.Range(-moveDistanceY, moveDistanceY);
+
+        // Cria a sequência de animação
+        mainSequence = DOTween.Sequence(true).SetUpdate(UpdateType.Normal, true);
+        mainSequence.Append(transform.DOLocalMove(new Vector3(targetX, targetY, originalPosition.z), currentDuration)
+                .SetEase(Ease.InOutSine)) // Ease.InOutSine cria a sensação suave de "onda"
+            .OnComplete(StartWobble); // Magia! Ao completar, chama a si mesma para o próximo movimento.
+    }
 }
 </file>
 
@@ -6809,1269 +7696,6 @@ public class VFXFovScaler : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/WinLogic.cs">
-// Local: Assets/Scripts/WinLogic.cs
-
-using UnityEngine;
-
-public class WinLogic : MonoBehaviour
-{
-    private bool _levelFinished = false;
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (_levelFinished || !collision.gameObject.CompareTag("Player")) return;
-
-        _levelFinished = true;
-        
-        GameFlowManager.Instance.CompleteLevel();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreManager.cs">
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
-
-public class ScoreManager : MonoBehaviour
-{
-    public static ScoreManager Instance { get; private set; }
-
-    [Header("Configuração do Nível")]
-    [SerializeField] private LevelData currentLevelData;
-    [SerializeField] private bool startLevelOnFirstMoveInput = false;
-
-    private ScoreUIController _scoreUIController;
-    private LeaderboardUIController _leaderboardUIController;
-    private PlayerMovementController _playerMovementController;
-    private GrapplingHookController _grapplingHookController;
-
-    private float _levelTimer;
-    private bool _isTimerRunning = false;
-    private bool _levelStarted = false;
-    private int _deathCount = 0;
-    private bool _levelCompleted = false;
-
-    public float CurrentTime => _levelTimer;
-    public int DeathCount => _deathCount;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
-            GameFlowManager.Instance.OnGamePaused += PauseTimer;
-            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
-        }
-        SubscribeToFirstInputEvents();
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        if (GameFlowManager.Instance != null)
-        {
-            GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
-            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
-            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
-        }
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindSceneReferences();
-        ResetLevelTimer();
-        LoadDeathCountForLevel();
-        _levelCompleted = false;
-        SubscribeToFirstInputEvents();
-    }
-
-    private void FindSceneReferences()
-    {
-        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
-        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
-        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
-        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
-    }
-
-    private void Update()
-    {
-        if (_isTimerRunning)
-        {
-            _levelTimer += Time.deltaTime;
-            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-        }
-    }
-
-    public void StartLevelTimer()
-    {
-        if (_levelStarted) return;
-        _levelTimer = 0f;
-        _levelStarted = true;
-        _isTimerRunning = true;
-        UnsubscribeFromFirstInputEvents();
-    }
-
-    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths)
-    {
-        if (!_levelStarted)
-        {
-            finalTime = -1f;
-            finalRank = Rank.NA;
-            deaths = _deathCount;
-            return;
-        }
-        _isTimerRunning = false;
-        finalTime = _levelTimer;
-        finalRank = currentLevelData.GetRankForTime(finalTime);
-        deaths = _deathCount;
-    }
-
-    private void PauseTimer() { _isTimerRunning = false; }
-    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
-
-    public void ResetLevelTimer()
-    {
-        _levelTimer = 0f;
-        _isTimerRunning = false;
-        _levelStarted = false;
-        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
-    }
-
-    public void SetCurrentTime(float newTime)
-    {
-        if (_levelStarted)
-        {
-            _levelTimer = Mathf.Max(0f, newTime);
-        }
-    }
-
-    public void AddPenalty(float penaltySeconds)
-    {
-        if (_levelStarted)
-        {
-            _levelTimer += penaltySeconds;
-        }
-    }
-
-    public Rank GetRankForTime(float time)
-    {
-        if (currentLevelData == null) return Rank.NA;
-        return currentLevelData.GetRankForTime(time);
-    }
-
-    public void IncrementDeathCount()
-    {
-        _deathCount++;
-    }
-
-    private void LoadDeathCountForLevel()
-    {
-        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
-        if (activeProfile == null || currentLevelData == null)
-        {
-            _deathCount = 0;
-            return;
-        }
-
-        string levelId = currentLevelData.GetFullLevelId();
-        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
-        {
-            _deathCount = record.totalDeaths;
-        }
-        else
-        {
-            _deathCount = 0;
-        }
-    }
-
-    private async void ProcessLevelCompletion(LevelCompletionData data)
-    {
-        if (_levelCompleted) return;
-        _levelCompleted = true;
-
-        SaveLevelStats(data.FinalTime, data.Deaths);
-
-        VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
-        if (victoryPanel != null)
-        {
-            victoryPanel.gameObject.SetActive(true);
-            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
-            victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
-        }
-        _leaderboardUIController?.ShowLeaderboard();
-
-        await SubmitScoreAsync(data.FinalTime);
-    }
-
-    private void SaveLevelStats(float finalTime, int totalDeathsForLevel)
-    {
-        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
-        if (activeProfile == null || currentLevelData == null)
-        {
-            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
-            return;
-        }
-
-        string levelId = currentLevelData.GetFullLevelId();
-
-        if (!activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
-        {
-            record = new LevelRecord();
-            activeProfile.levelRecords.Add(levelId, record);
-        }
-        
-        if (finalTime < record.bestTime)
-        {
-            record.bestTime = finalTime;
-            record.bestRank = GetRankForTime(finalTime);
-        }
-        
-        record.totalDeaths = totalDeathsForLevel;
-        SaveManager.Instance.SaveGame();
-    }
-
-    private async Task<bool> SubmitScoreAsync(float finalTime)
-    {
-        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
-        {
-            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
-            return false;
-        }
-
-        var scoreEntry = new ScoreEntry(
-            PlayerProfile.Instance.CurrentProfile.profileId,
-            PlayerProfile.Instance.CurrentProfile.profileName,
-            finalTime,
-            currentLevelData.GetFullLevelId()
-        );
-
-        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
-
-        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
-        else { Debug.LogWarning("Falha ao submeter pontuação."); }
-
-        return success;
-    }
-
-    private void HandleFirstInput()
-    {
-        if (startLevelOnFirstMoveInput && !_levelStarted)
-        {
-            StartLevelTimer();
-        }
-    }
-
-    private void HandleFirstMoveInput(Vector2 moveValue)
-    {
-        if (moveValue.sqrMagnitude > 0.1f)
-        {
-            HandleFirstInput();
-        }
-    }
-
-    private void SubscribeToFirstInputEvents()
-    {
-        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
-        {
-            InputManager.Instance.OnMove += HandleFirstMoveInput;
-            if (_playerMovementController != null) _playerMovementController.OnJumped += HandleFirstInput;
-            if (_grapplingHookController != null) _grapplingHookController.OnGrappleStarted += HandleFirstInput;
-        }
-    }
-
-    private void UnsubscribeFromFirstInputEvents()
-    {
-        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
-        {
-            InputManager.Instance.OnMove -= HandleFirstMoveInput;
-            _playerMovementController.OnJumped -= HandleFirstInput;
-            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
-        }
-    }
-
-    public LevelData GetCurrentLevelData()
-    {
-        return currentLevelData;
-    }
-}
-</file>
-
-<file path="Assets/Scripts/Scoring/ScoreUIController.cs">
-// Assets/Scripts/Scoring/ScoreUIController.cs
-using TMPro;
-using UnityEngine;
-
-public class ScoreUIController : MonoBehaviour
-{
-    [Header("Referências da UI")]
-    [SerializeField] private TextMeshProUGUI finalTimeText;
-    [SerializeField] private TextMeshProUGUI rankText;
-    [SerializeField] private GameObject resultsPanel; // Desativado: VictoryPanel o substitui
-
-    private void OnEnable()
-    {
-        GameFlowManager.Instance.OnLevelCompleted += HandleLevelCompleted;
-    }
-
-    private void OnDisable()
-    {
-        GameFlowManager.Instance.OnLevelCompleted -= HandleLevelCompleted;
-    }
-
-    private void HandleLevelCompleted(LevelCompletionData data)
-    {
-        Debug.Log("ScoreUIController: HandleLevelCompleted called - updating UI.");
-        if (finalTimeText != null)
-        {
-            System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(data.FinalTime);
-            finalTimeText.text = $"{timeSpan:mm\\:ss\\.ff}";
-        }
-
-        if (rankText != null)
-        {
-            rankText.text = $"Rank: {data.FinalRank}";
-        }
-
-        // Removido: resultsPanel.SetActive(true); // Não ativar, pois VictoryPanel o substitui
-    }
-
-    public void UpdateTime(float newTime)
-    {
-        if (finalTimeText != null)
-        {
-            System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(newTime);
-            finalTimeText.text = $"{timeSpan:mm\\:ss\\.ff}";
-        }
-    }
-
-    public void UpdateTimeAndRank(float newTime)
-    {
-        if (finalTimeText != null)
-        {
-            System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(newTime);
-            finalTimeText.text = $"{timeSpan:mm\\:ss\\.ff}";
-        }
-
-        if (rankText != null)
-        {
-            Rank rank = ScoreManager.Instance != null ? ScoreManager.Instance.GetRankForTime(newTime) : Rank.NA;
-            rankText.text = $"Rank: {rank}";
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/BasePowerRing.cs">
-// Local: Assets/Scripts/PowerUps/BasePowerUpRing.cs
-using DG.Tweening;
-using System;
-using UnityEngine;
-
-[RequireComponent(typeof(Collider))]
-public abstract class BasePowerUpRing : MonoBehaviour
-{
-    [Header("Configurações Base do Anel")]
-    private string playerTag = "Player";
-    [SerializeField] private bool disableOnUse = true;
-
-    [Header("Efeitos")]
-    private GameObject effectOnUse;
-    private string sfxOnUse;
-
-    public static Action OnPowerRingActivated;
-
-    private void Awake()
-    {
-        // Garante que o collider seja um trigger
-        var colliders = GetComponents<Collider>();
-        foreach (var col in colliders)
-        {
-            if (!col.isTrigger)
-            {
-                col.isTrigger = true;
-            }
-        }
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag(playerTag))
-        {
-            OnPowerRingActivated?.Invoke();
-            ApplyEffect(other.gameObject);
-            TriggerEffects();
-        }
-    }
-
-    /// <summary>
-    /// Lógica específica do power-up a ser implementada pelas classes filhas.
-    /// </summary>
-    /// <param name="playerObject">O GameObject do jogador que ativou o anel.</param>
-    protected abstract void ApplyEffect(GameObject playerObject);
-
-    /// <summary>
-    /// Aciona os efeitos visuais, sonoros e desativa o objeto, se configurado.
-    /// </summary>
-    private void TriggerEffects()
-    {
-        if (AudioManager.instance != null)
-        {
-            AudioManager.instance.PlaySFX("PowerRing");
-        }
-
-        RotateRing();
-
-        if (effectOnUse != null)
-        {
-            Instantiate(effectOnUse, transform.position, transform.rotation);
-        }
-
-        if (disableOnUse)
-        {
-            // Desativa o collider para evitar múltiplas ativações
-            var colliders = GetComponents<Collider>();
-            foreach (var col in colliders)
-            {
-                col.enabled = false;
-            }
-            Destroy(gameObject, 2f); // Destrói o anel após 1 segundo para permitir a animação de rotação
-        }
-    }
-
-    // Uses Dotween to rotate the ring when activated
-    private void RotateRing()
-    {
-        return;
-        transform.DORotate(new Vector3(90, 0, 360), 1f, RotateMode.FastBeyond360)
-                 .SetLoops(-1, LoopType.Restart)
-                 .SetEase(Ease.Linear);
-    }
-}
-</file>
-
-<file path="Assets/Scripts/ButtonJuice.cs">
-using UnityEngine;
-using UnityEngine.UI;
-using DG.Tweening;
-using UnityEngine.EventSystems;
-
-public class ButtonJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
-{
-    [SerializeField] private Image targetImage;
-    [Space]
-    [Header("Hover Settings")]
-    [SerializeField] private Color hoverColor = Color.magenta;
-    [SerializeField] private float hoverScaleFactor = 1.1f;
-    [SerializeField] private float hoverDuration = 0.2f;
-
-    [Header("Click Settings")]
-    [SerializeField] private float punchScaleFactor = -0.1f; // Um valor negativo cria um efeito de "pressionar"
-    [SerializeField] private float punchDuration = 0.1f;
-
-    private Color normalColor;
-    private Vector3 initialScale;
-    private Sequence hoverSequence;
-    private Sequence clickSequence;
-    private Image selfImage;
-
-    void Start()
-    {
-        // Garante que o targetImage foi atribuído para evitar erros
-        if (targetImage == null)
-        {
-            Debug.LogError("Target Image não foi atribuída no Inspector!", this);
-            return;
-        }
-        selfImage = GetComponent<Image>();
-
-        // Armazena os valores iniciais
-        normalColor = targetImage.color;
-        initialScale = targetImage.transform.localScale;
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        // Mata a animação anterior para evitar conflitos e executa a nova
-        CreateHoverSequence(true).Play();
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        // Mata a animação anterior e executa a de retorno
-        CreateHoverSequence(false).Play();
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        // Executa a animação de clique
-        CreateClickSequence().Play();
-    }
-
-    // Cria a sequência de animação para o hover (entrar e sair)
-    private Sequence CreateHoverSequence(bool isEntering)
-    {
-        // DOKill() mata qualquer tween em andamento no objeto, garantindo uma transição limpa
-        if (hoverSequence != null && hoverSequence.IsActive())
-        {
-            hoverSequence.Kill();
-        }
-
-        hoverSequence = DOTween.Sequence();
-
-        // Define a cor e escala de destino com base em se o mouse está entrando ou saindo
-        Color targetColor = isEntering ? hoverColor : normalColor;
-        Vector3 targetScale = isEntering ? initialScale * hoverScaleFactor : initialScale;
-
-        // 'Join' faz com que ambas as animações rodem ao mesmo tempo
-        hoverSequence.Join(targetImage.DOColor(targetColor, hoverDuration))
-                     .Join(selfImage.transform.DOScale(targetScale, hoverDuration));
-
-        
-        // A MÁGICA ACONTECE AQUI:
-        // Define a sequência para usar tempo não escalado, então funciona mesmo com Time.timeScale = 0
-        hoverSequence.SetUpdate(UpdateType.Normal, true);
-
-        return hoverSequence;
-    }
-
-    // Cria a sequência para o efeito de "punch" no clique
-    private Sequence CreateClickSequence()
-    {
-        if (clickSequence != null && clickSequence.IsActive())
-        {
-            clickSequence.Kill();
-        }
-
-        clickSequence = DOTween.Sequence();
-        
-        clickSequence.Append(targetImage.transform.DOPunchScale(Vector3.one * punchScaleFactor, punchDuration, 0))
-                     .SetUpdate(UpdateType.Normal, true);
-
-        return clickSequence;
-    }
-}
-</file>
-
-<file path="Assets/Scripts/CheckpointManager.cs">
-using UnityEngine;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine.SceneManagement;
-using System.Collections;
-
-public class CheckpointManager : MonoBehaviour
-{
-    public static CheckpointManager Instance { get; private set; }
-    
-    [Header("Configuração de Spawn")]
-    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
-    [SerializeField] private Transform initialSpawnPoint;
-
-    [Header("Configuração de Penalidade")]
-    [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
-    [SerializeField] private float penaltyPerCheckpoint = 5f;
-
-    private List<Checkpoint> _checkpointsInLevel;
-    private List<IResettable> _resettableObjects;
-    private Checkpoint _lastActivatedCheckpoint;
-    private PlayerMovementController _player;
-    private bool _areCheckpointsEnabled;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
-            InputManager.Instance.OnFullLevelReset += HardResetLevel;
-        }
-        if (GameSettingsManager.Instance != null)
-        {
-            GameSettingsManager.OnCheckpointsEnabledChanged += UpdateCheckpointSetting;
-        }
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
-            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
-        }
-        if (GameSettingsManager.Instance != null)
-        {
-            GameSettingsManager.OnCheckpointsEnabledChanged -= UpdateCheckpointSetting;
-        }
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        StartCoroutine(InitializeAfterSceneLoad());
-    }
-
-    private IEnumerator InitializeAfterSceneLoad()
-    {
-        yield return null;
-
-        _player = FindObjectOfType<PlayerMovementController>();
-        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
-        
-        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
-
-        _lastActivatedCheckpoint = null;
-        
-        if (GameSettingsManager.Instance != null)
-        {
-            _areCheckpointsEnabled = GameSettingsManager.Instance.CheckpointsEnabled;
-        }
-        else
-        {
-            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
-            _areCheckpointsEnabled = false;
-        }
-    }
-
-    private void UpdateCheckpointSetting(bool isEnabled)
-    {
-        _areCheckpointsEnabled = isEnabled;
-    }
-
-    private void HandleCheckpointActivated(Checkpoint activatedCheckpoint)
-    {
-        if (!_areCheckpointsEnabled) return;
-
-        int newIndex = _checkpointsInLevel.IndexOf(activatedCheckpoint);
-        int currentIndex = _lastActivatedCheckpoint != null ? _checkpointsInLevel.IndexOf(_lastActivatedCheckpoint) : -1;
-
-        if (newIndex > currentIndex)
-        {
-            _lastActivatedCheckpoint = activatedCheckpoint;
-        }
-    }
-    
-    public void SoftResetToCheckpoint()
-    {
-        ScoreManager.Instance?.IncrementDeathCount();
-        TimeManipulationManager.Instance?.ResetCharge();
-
-        if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
-        {
-            SoftResetToStart();
-            return;
-        }
-
-        ResetWorldState();
-        ApplyTimePenaltyAndReset();
-
-        if (_player != null)
-        {
-            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
-        }
-    }
-
-    private void ApplyTimePenaltyAndReset()
-    {
-        if (ScoreManager.Instance == null || _lastActivatedCheckpoint.ActivationTime < 0) return;
-
-        float stampedTime = _lastActivatedCheckpoint.ActivationTime;
-        ScoreManager.Instance.SetCurrentTime(stampedTime);
-        ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
-    }
-
-    private void ResetWorldState()
-    {
-        foreach (var resettable in _resettableObjects)
-        {
-            resettable.ResetState();
-        }
-    }
-    
-    private void SoftResetToStart()
-    {
-        if (initialSpawnPoint == null)
-        {
-            HardResetLevel();
-            return;
-        }
-
-        ResetWorldState();
-        ScoreManager.Instance?.ResetLevelTimer();
-        _lastActivatedCheckpoint = null;
-
-        if (_player != null)
-        {
-            _player.ResetToPosition(initialSpawnPoint.position);
-        }
-    }
-
-    public void HardResetLevel()
-    {
-        ScoreManager.Instance?.IncrementDeathCount();
-        SceneManagerLogic.Instance.RestartScene();
-    }
-}
-</file>
-
-<file path="Assets/Scripts/DeathFogLogic.cs">
-using UnityEngine;
-
-public class DeathFogLogic : MonoBehaviour
-{
-    private void OnTriggerEnter(Collider collision)
-    {
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            if (CheckpointManager.Instance != null)
-            {
-                CheckpointManager.Instance.SoftResetToCheckpoint();
-            }
-            else
-            {
-                ScoreManager.Instance?.IncrementDeathCount();
-                SceneManagerLogic.Instance.RestartScene();
-            }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/GameSceneEnum.cs">
-using System;
-
-[Serializable]
-public enum GameScene
-{
-    ARTBonesClimbGrayBox,
-    ARTBonesClimbGrayBoxCopia,
-    Basic,
-    CarLevel,
-    Hellcat,
-    HellcatCanvasHUD,
-    MainMenu,
-    SectorCore,
-    Standard,
-    Tutorial,
-    TutorialCopiaPeu,
-    VFXBonesTest,
-    VictorGraybox,
-    ViniciusLevelDesign,
-}
-</file>
-
-<file path="Assets/Scripts/JiggleEffect.cs">
-using UnityEngine;
-using DG.Tweening;
-
-public class JiggleEffect : MonoBehaviour
-{
-    [Header("Configuração do Jiggle")]
-    public float scaleAmount = 0.05f;       // Quanto a escala oscila
-    public float positionAmount = 0.05f;    // Quanto a posição oscila
-    public float duration = 0.3f;           // Duração de cada fase
-
-    private Vector3 originalScale;
-    private Vector3 originalPos;
-
-    void Start()
-    {
-        originalScale = transform.localScale;
-        originalPos = transform.localPosition;
-
-        StartJiggle();
-    }
-
-    void StartJiggle()
-    {
-        Sequence seq = DOTween.Sequence().SetLoops(-1, LoopType.Yoyo);
-
-        seq.Append(transform.DOScale(originalScale + new Vector3(scaleAmount, -scaleAmount, 0), duration).SetEase(Ease.InOutSine));
-        seq.Join(transform.DOLocalMove(originalPos + new Vector3(positionAmount, positionAmount, 0), duration).SetEase(Ease.InOutSine));
-
-        seq.Append(transform.DOScale(originalScale + new Vector3(-scaleAmount, scaleAmount, 0), duration).SetEase(Ease.InOutSine));
-        seq.Join(transform.DOLocalMove(originalPos + new Vector3(-positionAmount, -positionAmount, 0), duration).SetEase(Ease.InOutSine));
-    }
-}
-</file>
-
-<file path="Assets/Scripts/LevelData.cs">
-// Local: Assets/Scripts/LevelData.cs
-
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
-public enum Rank { S, A, B, C, D, NA }
-
-[Serializable]
-public struct RankThreshold
-{
-    public Rank rank;
-    [Tooltip("Tempo máximo em segundos para alcançar este ranque.")]
-    public float timeRequired;
-}
-
-[CreateAssetMenu(fileName = "LevelData", menuName = "Scoring/Level Data", order = 1)]
-public class LevelData : ScriptableObject
-{
-    [Header("Identificação do Nível")]
-    [Tooltip("Identificador único para este nível (ex: 'City_Dash_01').")]
-    [SerializeField] private string levelId = "Level_01";
-    [Tooltip("Versão do nível. Aumente se fizer mudanças que afetem os tempos.")]
-    [SerializeField] private int levelVersion = 1;
-
-    [Header("Configuração de Ranques")]
-    [Tooltip("Lista de tempos para cada ranque. Ordene do melhor (S) para o pior (D).")]
-    [SerializeField] private List<RankThreshold> rankThresholds = new List<RankThreshold>();
-
-    public string GetFullLevelId() => $"{levelId}_v{levelVersion}";
-    
-    public Rank GetRankForTime(float playerTime)
-    {
-        foreach (var threshold in rankThresholds)
-        {
-            if (playerTime <= threshold.timeRequired)
-            {
-                return threshold.rank;
-            }
-        }
-        return Rank.D; 
-    }
-}
-</file>
-
-<file path="Assets/Scripts/MotionBlurSlider.cs">
-// Local: Assets/Scripts/UI/MotionBlurSlider.cs
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-using UnityEngine.UI;
-using System.Collections.Generic;
-
-[RequireComponent(typeof(Slider))]
-public class MotionBlurSlider : MonoBehaviour
-{
-    [Header("Configurações de Clamp")]
-    [SerializeField] private float minClamp = 0f;
-    [SerializeField] private float maxClamp = 0.02f;
-
-    private Slider _slider;
-    private readonly List<MotionBlur> _motionBlurOverrides = new();
-
-    private void Awake()
-    {
-        _slider = GetComponent<Slider>();
-        InitializeMotionBlurReferences();
-    }
-
-    private void Start()
-    {
-        if (_motionBlurOverrides.Count == 0)
-        {
-            _slider.interactable = false;
-            return;
-        }
-
-        LoadSavedValue();
-        _slider.onValueChanged.AddListener(OnSliderValueChanged);
-    }
-
-    private void OnDestroy()
-    {
-        _slider.onValueChanged.RemoveListener(OnSliderValueChanged);
-    }
-
-    private void InitializeMotionBlurReferences()
-    {
-        Volume[] volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
-        foreach (var volume in volumes)
-        {
-            if (volume.profile != null && volume.profile.TryGet(out MotionBlur motionBlur))
-            {
-                _motionBlurOverrides.Add(motionBlur);
-            }
-        }
-    }
-
-    private void LoadSavedValue()
-    {
-        float savedNormalizedValue = GameSettingsManager.Instance.MotionBlurIntensity;
-        _slider.SetValueWithoutNotify(savedNormalizedValue);
-        ApplyMotionBlurToAllVolumes(savedNormalizedValue);
-    }
-
-    private void OnSliderValueChanged(float normalizedValue)
-    {
-        ApplyMotionBlurToAllVolumes(normalizedValue);
-        GameSettingsManager.Instance.SetMotionBlur(normalizedValue);
-    }
-
-    private void ApplyMotionBlurToAllVolumes(float normalizedValue)
-    {
-        float newValue = Mathf.Lerp(minClamp, maxClamp, normalizedValue);
-
-        foreach (var motionBlur in _motionBlurOverrides)
-        {
-            if (motionBlur != null)
-            {
-                motionBlur.clamp.Override(newValue);
-            }
-        }
-    }
-}
-</file>
-
-<file path="Assets/Scripts/SaveDataModels.cs">
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
-[Serializable]
-public class GameData
-{
-public GameSettings settings = new GameSettings();
-public List<UserProfile> profiles = new List<UserProfile>();
-public string activeProfileId = "";
-}
-
-[Serializable]
-public class GameSettings
-{
-public float masterVolume = 1f;
-public float musicVolume = 1f;
-public float sfxVolume = 1f;
-public bool isMasterMuted = false;
-public bool isMusicMuted = false;
-public bool isSfxMuted = false;
-public float mouseSensitivityX = 0.5f;
-public float mouseSensitivityY = 0.5f;
-public bool invertMouseX = false;
-public bool invertMouseY = false;
-
-public float motionBlurIntensity = 0.5f;
-public bool checkpointsEnabled = true;
-
-}
-
-[Serializable]
-public class UserProfile : ISerializationCallbackReceiver
-{
-public string profileId;
-public string profileName;
-
-
-[NonSerialized]
-public Dictionary<string, LevelRecord> levelRecords = new Dictionary<string, LevelRecord>();
-
-[SerializeField] private List<string> _levelIds = new List<string>();
-[SerializeField] private List<LevelRecord> _records = new List<LevelRecord>();
-
-public void OnBeforeSerialize()
-{
-    _levelIds.Clear();
-    _records.Clear();
-    foreach (var kvp in levelRecords)
-    {
-        _levelIds.Add(kvp.Key);
-        _records.Add(kvp.Value);
-    }
-}
-
-public void OnAfterDeserialize()
-{
-    levelRecords = new Dictionary<string, LevelRecord>();
-    for (int i = 0; i < _levelIds.Count; i++)
-    {
-        levelRecords.Add(_levelIds[i], _records[i]);
-    }
-}
-
-  
-
-}
-
-[Serializable]
-public class LevelRecord
-{
-public float bestTime = float.MaxValue;
-public Rank bestRank = Rank.NA;
-public int totalDeaths = 0;
-}
-</file>
-
-<file path="Assets/Scripts/UIManager.cs">
-// Local: Assets/Scripts/UI/UIManager.cs
-
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.SceneManagement;
-
-public class UIManager : MonoBehaviour
-{
-    public static UIManager Instance { get; private set; }
-
-    public event Action<UIPanelType, bool> OnPanelStateChanged; // bool: true para mostrado, false para escondido
-
-    private readonly Dictionary<UIPanelType, UIPanel> _registeredPanels = new Dictionary<UIPanelType, UIPanel>();
-    
-    [Header("Debug Info")]
-    [SerializeField] private List<string> _registeredPanelNames = new List<string>();
-
-    private bool _isInitialized = false;
-
-    // ... (Awake, OnEnable, OnDisable, OnSceneLoaded, FindAndRegisterAllPanels, RegisterPanel, UnregisterPanel permanecem os mesmos) ...
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        if (!_isInitialized)
-        {
-            FindAndRegisterAllPanels();
-        }
-    }
-    
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindAndRegisterAllPanels();
-    }
-
-    private void FindAndRegisterAllPanels()
-    {
-        _registeredPanels.Clear();
-        UIPanel[] allPanels = FindObjectsByType<UIPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (UIPanel panel in allPanels)
-        {
-            RegisterPanel(panel);
-        }
-        _isInitialized = true;
-        UpdateDebugList();
-    }
-
-    public void RegisterPanel(UIPanel panel)
-    {
-        if (panel == null) return;
-        if (!_registeredPanels.ContainsKey(panel.PanelType)) { _registeredPanels.Add(panel.PanelType, panel); }
-        else { _registeredPanels[panel.PanelType] = panel; }
-        UpdateDebugList();
-    }
-
-    public void UnregisterPanel(UIPanel panel)
-    {
-        if (panel != null && _registeredPanels.ContainsKey(panel.PanelType))
-        {
-            _registeredPanels.Remove(panel.PanelType);
-            UpdateDebugList();
-        }
-    }
-    
-    public void ShowPanel(UIPanelType panelType)
-    {
-        FindAndRegisterAllPanels();
-        if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
-        {
-            panel.Show();
-            OnPanelStateChanged?.Invoke(panelType, true); // Dispara o evento
-        }
-    }
-
-    public void ClosePanel(UIPanelType panelType)
-    {
-        if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
-        {
-            panel.Hide();
-            OnPanelStateChanged?.Invoke(panelType, false); // Dispara o evento
-        }
-    }
-
-    public bool IsPanelActive(UIPanelType panelType)
-    {
-        if (_registeredPanels.TryGetValue(panelType, out UIPanel panel) && panel != null)
-        {
-            return panel.gameObject.activeInHierarchy;
-        }
-        return false;
-    }
-    
-    private void UpdateDebugList()
-    {
-        _registeredPanelNames.Clear();
-        foreach (var pair in _registeredPanels)
-        {
-            //_registeredPanelNames.Add($"[{pair.Key}] -> {pair.Value?.gameObject.name ?? "REFERÊNCIA NULA"}");
-        }
-    }
-
-    public void OpenSettingsPanel()
-    {
-        ShowPanel(UIPanelType.Settings);
-    }
-
-    public void CloseSettingsPanel()
-    {
-        ClosePanel(UIPanelType.Settings);
-    }
-
-    //public void OpenPausePanel()
-    //{
-    //    ShowPanel(UIPanelType.Pause);
-    //}
-
-    //public void ClosePausePanel()
-    //{
-    //    ClosePanel(UIPanelType.Pause);
-    //}
-
-    public void OpenLevelSelectPanel()
-    {
-        ShowPanel(UIPanelType.LevelSelect);
-    }
-
-    public void CloseLevelSelectPanel()
-    {
-        ClosePanel(UIPanelType.LevelSelect);
-    }
-
-}
-</file>
-
-<file path="Assets/Scripts/UIWobble.cs">
-// Assets/Scripts/UI/UIWobbleEffect.cs
-using UnityEngine;
-using DG.Tweening; // Não se esqueça de importar o DOTween
-
-public class UIWobbleEffect : MonoBehaviour
-{
-    [Header("Configuração do Movimento")]
-    [Tooltip("Distância máxima que o elemento se moverá no eixo X (esquerda/direita).")]
-    public float moveDistanceX = 10f;
-
-    [Tooltip("Distância máxima que o elemento se moverá no eixo Y (cima/baixo).")]
-    public float moveDistanceY = 15f;
-
-    [Header("Configuração de Tempo e Aleatoriedade")]
-    [Tooltip("A duração base para cada movimento de 'onda'.")]
-    public float baseDuration = 1.5f;
-
-    [Tooltip("Controla o quão aleatório será o movimento. 0 = sem aleatoriedade (onda perfeita), 1 = muito aleatório.")]
-    [Range(0f, 1f)]
-    public float randomness = 0.5f;
-
-    [Header("Controle")]
-    [Tooltip("Se marcado, o efeito começa a tocar assim que o objeto for ativado.")]
-    public bool playOnAwake = true;
-
-    // --- Variáveis Privadas ---
-    private Vector3 originalPosition;
-    private Sequence mainSequence;
-
-    private void Awake()
-    {
-        // Guarda a posição inicial para que o efeito seja sempre relativo a ela
-        originalPosition = transform.localPosition;
-    }
-
-    private void OnEnable()
-    {
-        // Reinicia o efeito se o objeto for reativado
-        if (playOnAwake)
-        {
-            Play();
-        }
-    }
-
-    private void OnDisable()
-    {
-        // Para a animação quando o objeto é desativado para evitar erros
-        Stop();
-    }
-
-    /// <summary>
-    /// Inicia o efeito de ondulação.
-    /// </summary>
-    public void Play()
-    {
-        // Garante que não haja sequências antigas rodando
-        if (mainSequence != null && mainSequence.IsActive())
-        {
-            mainSequence.Kill();
-        }
-
-        // Inicia o primeiro movimento
-        StartWobble();
-    }
-
-    /// <summary>
-    /// Para o efeito e retorna o elemento à sua posição original.
-    /// </summary>
-    public void Stop()
-    {
-        mainSequence?.Kill();
-        // Opcional: Anima suavemente de volta à posição original
-        transform.DOLocalMove(originalPosition, 0.2f).SetEase(Ease.OutCubic);
-    }
-    
-    /// <summary>
-    /// O coração do efeito. Esta função se chama recursivamente
-    /// ao final de cada movimento para criar um loop infinito e aleatório.
-    /// </summary>
-    private void StartWobble()
-    {
-        // Calcula parâmetros aleatórios para ESTE movimento específico
-        float randomDurationFactor = Random.Range(1f - randomness, 1f + randomness);
-        float currentDuration = baseDuration * randomDurationFactor;
-
-        // Calcula um ponto alvo aleatório dentro dos limites definidos
-        float targetX = originalPosition.x + Random.Range(-moveDistanceX, moveDistanceX);
-        float targetY = originalPosition.y + Random.Range(-moveDistanceY, moveDistanceY);
-
-        // Cria a sequência de animação
-        mainSequence = DOTween.Sequence(true).SetUpdate(UpdateType.Normal, true);
-        mainSequence.Append(transform.DOLocalMove(new Vector3(targetX, targetY, originalPosition.z), currentDuration)
-                .SetEase(Ease.InOutSine)) // Ease.InOutSine cria a sensação suave de "onda"
-            .OnComplete(StartWobble); // Magia! Ao completar, chama a si mesma para o próximo movimento.
-    }
-}
-</file>
-
 <file path="Assets/Scripts/VictoryPanelUI.cs">
 using UnityEngine;
 using TMPro;
@@ -8103,6 +7727,26 @@ public class VictoryPanelUI : MonoBehaviour
     }
 
 
+}
+</file>
+
+<file path="Assets/Scripts/WinLogic.cs">
+// Local: Assets/Scripts/WinLogic.cs
+
+using UnityEngine;
+
+public class WinLogic : MonoBehaviour
+{
+    private bool _levelFinished = false;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (_levelFinished || !collision.gameObject.CompareTag("Player")) return;
+
+        _levelFinished = true;
+        
+        GameFlowManager.Instance.CompleteLevel();
+    }
 }
 </file>
 
@@ -10160,6 +9804,883 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
 }
 </file>
 
+<file path="Assets/Scripts/BottomButtonsPanel.cs">
+using UnityEngine.UI;
+using UnityEngine;
+
+public class BottomButtonsPanel : MonoBehaviour
+{
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+  [Header("Referências dos Botões")]
+    [SerializeField] private Button mainMenuButton;
+    [SerializeField] private Button restartButton;
+    [SerializeField] private Button resumeButton;
+
+    private void OnEnable()
+    {
+        InitializeButtons();
+    }
+
+    void Start()
+    {
+        InitializeButtons();
+    }
+    private void InitializeButtons()
+    {
+        mainMenuButton?.onClick.RemoveAllListeners();
+        resumeButton?.onClick.RemoveAllListeners();
+        restartButton?.onClick.RemoveAllListeners();
+
+
+        // Adiciona os listeners via código, garantindo que a referência ao Singleton seja sempre a mais recente
+        if (SceneManagerLogic.Instance != null)
+        {
+            mainMenuButton?.onClick.AddListener(SceneManagerLogic.Instance.LoadMainMenu);
+            restartButton?.onClick.AddListener(CheckpointManager.Instance.HardResetLevel);
+            resumeButton?.onClick.AddListener(GameFlowManager.Instance.ResumeGame);
+        }
+        else
+        {
+            Debug.LogError("SceneManagerLogic.Instance não foi encontrado. Os botões do PostGamePanel não funcionarão.");
+        }
+    }
+
+}
+</file>
+
+<file path="Assets/Scripts/DoubleJumpVFX.cs">
+using UnityEngine;
+
+public class DoubleJumpEffectSpawner : MonoBehaviour
+{
+	[Header("Prefab to Spawn on Double Jump")]
+	public GameObject jumpEffectPrefab;
+
+	[Header("Lifetime of the Effect")]
+	public float effectLifetime = 1.5f;
+
+	/// <summary>
+	/// Call this function exactly when you perform the double jump.
+	/// </summary>
+	public void SpawnDoubleJumpEffect()
+	{
+		if (jumpEffectPrefab == null)
+		{
+			Debug.LogWarning("DoubleJumpEffectSpawner: No prefab assigned!");
+			return;
+		}
+
+		// Feet position = player position minus half height
+		Vector3 feetPos = GetFeetPosition();
+
+		GameObject effect = Instantiate(jumpEffectPrefab, feetPos, Quaternion.identity);
+
+		Destroy(effect, effectLifetime);
+	}
+
+	private Vector3 GetFeetPosition()
+	{
+		// Try to use a collider to get the real bottom of the player
+		Collider col = GetComponent<Collider>();
+		if (col != null)
+		{
+			return new Vector3(transform.position.x, transform.position.y - col.bounds.extents.y, transform.position.z);
+		}
+
+		// Fallback: simple offset
+		return transform.position + Vector3.down * 1f;
+	}
+}
+</file>
+
+<file path="Assets/Scripts/LaserBarrier.cs">
+using UnityEngine;
+
+[RequireComponent(typeof(Collider))]
+public class LaserBarrier : MonoBehaviour, ITimeSlowable, IResettable
+{
+    [Header("Componentes")]
+    [SerializeField] private Renderer laserRenderer;
+    [SerializeField] private SpriteRenderer laserSpriteRenderer;
+    private Collider _collider;
+
+    [Header("Comportamento do Ciclo")]
+    [SerializeField] private float activeDuration = 5f;
+    [SerializeField] private float inactiveDuration = 3f;
+    [SerializeField] private float cycleOffset = 0f;
+    private float _timer;
+    private bool _isCurrentlyActive;
+
+    [Header("Interação com o Jogador")]
+    [SerializeField] private float repulsionForce = 50f;
+    [SerializeField] private float upwardForceMultiplier = 0.3f;
+    [SerializeField] private bool resetPlayerMomentum = true;
+
+    [Header("Efeitos")]
+    [SerializeField] private string repulsionSfx = "LaserRepulsion";
+    [SerializeField] private string deactivateSfx = "LaserDeactivate";
+    [SerializeField] private string reactivateSfx = "LaserReactivate";
+
+    private bool _isTimeSlowed = false;
+    private const string PlayerTag = "Player";
+
+    private void Awake()
+    {
+        _collider = GetComponent<Collider>();
+        _collider.isTrigger = true;
+        if (laserRenderer == null) laserRenderer = GetComponentInChildren<Renderer>();
+    }
+
+    private void Start()
+    {
+        TimeManipulationManager.Instance?.Register(this);
+        ResetState();
+    }
+
+    private void OnDisable()
+    {
+        TimeManipulationManager.Instance?.Unregister(this);
+    }
+
+    private void Update()
+    {
+        if (_isTimeSlowed) return;
+        _timer += Time.deltaTime;
+        float currentCycleDuration = _isCurrentlyActive ? activeDuration : inactiveDuration;
+        if (_timer >= currentCycleDuration)
+        {
+            _timer = 0f;
+            _isCurrentlyActive = !_isCurrentlyActive;
+            UpdateLaserState(true);
+        }
+    }
+
+    private void UpdateLaserState(bool playSfx)
+    {
+        SetLaserActive(_isCurrentlyActive);
+
+        if (!playSfx) return;
+
+        if (_isCurrentlyActive) AudioManager.instance?.PlaySFX(reactivateSfx);
+        else AudioManager.instance?.PlaySFX(deactivateSfx);
+    }
+    
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!_isCurrentlyActive) return;
+        if (other.CompareTag(PlayerTag)) RepelPlayer(other.gameObject);
+    }
+
+    private void RepelPlayer(GameObject playerObject)
+    {
+        var playerMovement = playerObject.GetComponent<PlayerMovementController>();
+        if (playerMovement == null) return;
+
+        playerMovement.TriggerShockEffect();
+        
+        Vector3 repulsionDirection = (playerObject.transform.position - transform.position);
+        repulsionDirection.y = 0;
+        repulsionDirection.Normalize();
+        Vector3 finalDirection = (repulsionDirection + Vector3.up * upwardForceMultiplier).normalized;
+        playerMovement.ApplyExternalForce(finalDirection, repulsionForce, resetPlayerMomentum);
+        AudioManager.instance?.PlaySFX(repulsionSfx);
+    }
+
+    private void SetLaserActive(bool isActive)
+    {
+        if (laserRenderer != null) laserRenderer.enabled = isActive;
+        if (laserSpriteRenderer != null) laserSpriteRenderer.enabled = isActive;
+        _collider.enabled = isActive;
+    }
+
+    public void SlowDown(float slowPercentage) => _isTimeSlowed = true;
+    public void RestoreNormalTime() => _isTimeSlowed = false;
+    public void SetSlowDownColor(Color newColor) { }
+
+    public void ResetState()
+    {
+        _timer = cycleOffset;
+        _isCurrentlyActive = true;
+        float effectiveTime = 0f;
+        while(effectiveTime < cycleOffset)
+        {
+            float duration = _isCurrentlyActive ? activeDuration : inactiveDuration;
+            if (effectiveTime + duration > cycleOffset)
+            {
+                _timer = cycleOffset - effectiveTime;
+                break;
+            }
+            effectiveTime += duration;
+            _isCurrentlyActive = !_isCurrentlyActive;
+        }
+        UpdateLaserState(false);
+    }
+}
+</file>
+
+<file path="Assets/Scripts/PlayerMovementController.cs">
+using System;
+using System.Collections;
+using TMPro;
+using DG.Tweening;
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class PlayerMovementController : MonoBehaviour
+{
+	#region Events
+	public event Action OnGroundLanded;
+	public event Action OnLeftGround;
+	public event Action OnJumped;
+	public event Action OnDoubleJumpGained;
+	public event Action OnDoubleJumpUsed;
+	public event Action<float> OnHorizontalVelocityChanged;
+	public event Action OnShocked;
+	#endregion
+
+	#region State
+	[Header("Estado Atual (Debug)")]
+	public bool isGrounded;
+	public bool canDoubleJump;
+	[SerializeField] private bool isJumping;
+	private float _horizontalSpeed;
+	#endregion
+
+	#region Dependencies
+	[Header("Dependências")]
+	[SerializeField] private Transform orientation;
+	[SerializeField] private GrapplingHookController grapplingHookController;
+	[SerializeField] private TextMeshProUGUI velocityText, distanceText;
+	private Rigidbody _rigidbody;
+	private Vector2 _moveInput;
+	#endregion
+
+	#region Movement Settings
+	[Header("Configurações de Movimento")]
+	[SerializeField] private float moveSpeed = 7f;
+	[SerializeField] private float maxMoveSpeed = 30f;
+	[SerializeField] private float maxGrappleMoveSpeed = 150f;
+	[SerializeField] private float airMultiplier = 0.6f;
+	[SerializeField] private float groundMultiplier = 2.0f;
+	[SerializeField] private float airControlMultiplier = 5f;
+	#endregion
+
+	#region Drag Settings
+	[Header("Configurações de Atrito (Drag)")]
+	[SerializeField] private float groundDrag = 6f;
+	[SerializeField] private float airDrag = 2f;
+	[SerializeField] private float grappleAirDrag = 0.5f;
+	[SerializeField] private float highSpeedAirDragMultiplier = 1.2f;
+	[SerializeField] private float highSpeedThreshold = 55.5f;
+	private float _baseAirDrag;
+	#endregion
+
+	#region Jump Settings
+	[Header("Configurações de Pulo")]
+	[SerializeField] private float jumpForce = 14f;
+	[SerializeField] private float doubleJumpForce = 14f;
+	[SerializeField] private float jumpForwardBoost = 5f;
+	[SerializeField] private float jumpReleaseMultiplier = 0.5f;
+	[SerializeField, Range(0f, 1f)] private float landingVelocityDampening = 0.9f;
+	#endregion
+
+	#region Gravity
+	[Header("Gravidade")]
+	[SerializeField] private float gravityMultiplier = 2.5f;
+	#endregion
+
+	#region Timers & Buffers
+	[Header("Coyote Time & Jump Buffer")]
+	[SerializeField] private float coyoteTimeDuration = 0.1f;
+	[SerializeField] private float jumpBufferDuration = 0.1f;
+	[SerializeField] private float bunnyHopWindow = 0.1f;
+	private float _coyoteTimeCounter;
+	private float _jumpBufferCounter;
+	private float _timeSinceLanded;
+	#endregion
+
+	#region Ground Check
+	[Header("Verificação de Chão")]
+	[SerializeField] private float playerHeight = 2f;
+	[SerializeField] private float groundCheckSphereRadius = 0.4f;
+	[SerializeField] private float groundCheckDistance = 0.2f;
+	[SerializeField] private LayerMask groundCheckLayer;
+	private Rigidbody _currentPlatformRb;
+	private Vector3 _lastPlatformPosition;
+	#endregion
+
+	#region Double Jump Effect
+	[Header("Double Jump Burst Effect")]
+	[SerializeField] private GameObject doubleJumpEffectPrefab;
+	[SerializeField] private float doubleJumpEffectLifetime = 1.5f;
+	#endregion
+
+	#region Landing Effect
+	[Header("Landing Effect")]
+	[SerializeField] private GameObject landingEffectPrefab;
+	[SerializeField] private float landingEffectLifetime = 2f;
+	[SerializeField] private float minimumAirTimeForLandingEffect = 0.4f;
+	#endregion
+
+	#region Double Jump Follow Effect
+	[Header("Double Jump Follow Effect")]
+	[SerializeField] private GameObject doubleJumpFollowPrefab;
+	[SerializeField] private float doubleJumpFollowDuration = 1.5f;
+	[SerializeField] private Vector3 followOffset = new Vector3(0, -0.8f, 0);
+	private GameObject _activeFollowEffect;
+	private Coroutine _followRoutine;
+	#endregion
+
+	private const float METERS_PER_SECOND_TO_KM_PER_HOUR = 3.6f;
+	private Coroutine _resetCoroutine;
+	public Rigidbody Rb => _rigidbody;
+
+	private void Awake()
+	{
+		_rigidbody = GetComponent<Rigidbody>();
+		_rigidbody.freezeRotation = true;
+		_baseAirDrag = airDrag;
+	}
+
+	private void OnEnable()
+	{
+		InputManager.Instance.OnMove += SetMoveInput;
+		InputManager.Instance.OnJumpPerformed += ProcessJumpRequest;
+		InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
+	}
+
+	private void OnDisable()
+	{
+		if (InputManager.Instance == null) return;
+		InputManager.Instance.OnMove -= SetMoveInput;
+		InputManager.Instance.OnJumpPerformed -= ProcessJumpRequest;
+		InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
+	}
+
+	private void Update()
+	{
+		UpdateTimers();
+		UpdateDebugUI();
+	}
+
+	private void FixedUpdate()
+	{
+		CheckGroundedStatus();
+		HandleMovement();
+		ApplyDrag();
+		ApplyExtraGravity();
+		LimitVelocity();
+		BroadcastHorizontalVelocity();
+	}
+
+	private void SetMoveInput(Vector2 input) => _moveInput = input;
+
+	private void UpdateTimers()
+	{
+		_coyoteTimeCounter = isGrounded && !isJumping ? coyoteTimeDuration : _coyoteTimeCounter - Time.deltaTime;
+		_jumpBufferCounter -= Time.deltaTime;
+		_timeSinceLanded += Time.deltaTime;
+	}
+
+	private void CheckGroundedStatus()
+	{
+		bool wasGrounded = isGrounded;
+
+		float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+		isGrounded = Physics.SphereCast(transform.position, groundCheckSphereRadius, Vector3.down, out RaycastHit hitInfo, castDistance, groundCheckLayer);
+
+		UpdatePlatform(hitInfo);
+
+		if (!wasGrounded && isGrounded) HandleLanding();
+		if (wasGrounded && !isGrounded) HandleLeavingGround();
+	}
+
+	private void UpdatePlatform(RaycastHit hitInfo)
+	{
+		if (isGrounded && hitInfo.rigidbody != null)
+		{
+			if (_currentPlatformRb != hitInfo.rigidbody)
+			{
+				_currentPlatformRb = hitInfo.rigidbody;
+				_lastPlatformPosition = _currentPlatformRb.position;
+			}
+			ApplyPlatformMovement();
+		}
+		else
+		{
+			_currentPlatformRb = null;
+		}
+	}
+
+	private void ApplyPlatformMovement()
+	{
+		if (_currentPlatformRb == null) return;
+
+		Vector3 platformDelta = _currentPlatformRb.position - _lastPlatformPosition;
+		if (platformDelta != Vector3.zero)
+		{
+			MovingPlatform mp = _currentPlatformRb.GetComponent<MovingPlatform>();
+			float playerInfluence = mp != null ? mp.playerInfluence : 0.69f;
+			_rigidbody.position += platformDelta * playerInfluence;
+		}
+		_lastPlatformPosition = _currentPlatformRb.position;
+	}
+
+	private void HandleLanding()
+	{
+		// Landing effect only if airborne long enough
+		if (_timeSinceLanded > minimumAirTimeForLandingEffect)
+			SpawnLandingEffect();
+
+		_timeSinceLanded = 0f;
+		isJumping = false;
+
+		GainDoubleJump();
+
+		float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
+		if (isJumping && speedInKmh <= 100f)
+		{
+			ApplyLandingDampening();
+		}
+
+		OnGroundLanded?.Invoke();
+
+		if (_jumpBufferCounter > 0f)
+		{
+			PerformJump(jumpForce, false);
+		}
+	}
+
+	private void HandleLeavingGround()
+	{
+		if (!isJumping)
+		{
+			OnLeftGround?.Invoke();
+		}
+	}
+
+	private void HandleMovement()
+	{
+		if (grapplingHookController.IsGrappling) return;
+
+		if (isGrounded) ApplyGroundMovement();
+		else ApplyAirMovement();
+	}
+
+	private void ApplyDrag()
+	{
+		if (grapplingHookController.IsGrappling)
+		{
+			_rigidbody.linearDamping = grappleAirDrag;
+			return;
+		}
+
+		if (isGrounded && _timeSinceLanded > bunnyHopWindow)
+		{
+			_rigidbody.linearDamping = groundDrag;
+		}
+		else
+		{
+			airDrag = _horizontalSpeed > highSpeedThreshold ? _baseAirDrag * highSpeedAirDragMultiplier : _baseAirDrag;
+			_rigidbody.linearDamping = airDrag;
+		}
+	}
+
+	private void ApplyExtraGravity()
+	{
+		if (!isGrounded)
+		{
+			float gravity = -Physics.gravity.y * gravityMultiplier;
+			_rigidbody.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
+		}
+	}
+
+	private void LimitVelocity()
+	{
+		float currentMaxSpeed = grapplingHookController.IsGrappling ? maxGrappleMoveSpeed : maxMoveSpeed;
+		float maxSpeedInMps = currentMaxSpeed / METERS_PER_SECOND_TO_KM_PER_HOUR;
+
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		if (horizontalVelocity.magnitude > maxSpeedInMps)
+		{
+			Vector3 limitedVelocity = horizontalVelocity.normalized * maxSpeedInMps;
+			_rigidbody.linearVelocity = new Vector3(limitedVelocity.x, _rigidbody.linearVelocity.y, limitedVelocity.z);
+		}
+	}
+
+	private void BroadcastHorizontalVelocity()
+	{
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		_horizontalSpeed = horizontalVelocity.magnitude;
+		OnHorizontalVelocityChanged?.Invoke(_horizontalSpeed);
+	}
+
+	private void ApplyGroundMovement()
+	{
+		if (_moveInput.sqrMagnitude < 0.01f) return;
+
+		Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
+		_rigidbody.AddForce(moveDirection * moveSpeed * 10f * groundMultiplier, ForceMode.Force);
+	}
+
+	private void ApplyAirMovement()
+	{
+		if (_moveInput.sqrMagnitude < 0.01f) return;
+
+		Vector3 moveDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+
+		float angle = Vector3.Angle(horizontalVelocity.normalized, moveDirection);
+		float angleBoost = Mathf.InverseLerp(0f, 90f, angle);
+		float lateralInfluence = Mathf.Lerp(1f, airControlMultiplier, angleBoost);
+
+		_rigidbody.AddForce(moveDirection * moveSpeed * 10f * airMultiplier * lateralInfluence, ForceMode.Force);
+	}
+
+	private void ProcessJumpRequest()
+	{
+		_jumpBufferCounter = jumpBufferDuration;
+
+		if (grapplingHookController.IsGrappling) return;
+
+		if (CanPerformJump())
+		{
+			PerformJump(jumpForce, false);
+		}
+		else if (CanPerformDoubleJump())
+		{
+			PerformJump(doubleJumpForce, true);
+		}
+	}
+
+	private void HandleJumpRelease()
+	{
+		if (_rigidbody.linearVelocity.y > 0 && isJumping)
+		{
+			_rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, _rigidbody.linearVelocity.y * jumpReleaseMultiplier, _rigidbody.linearVelocity.z);
+		}
+	}
+
+	private bool CanPerformJump() => _coyoteTimeCounter > 0f;
+	private bool CanPerformDoubleJump() => canDoubleJump || (CheatManager.Instance != null && CheatManager.Instance.IsInfiniteDoubleJumpActive);
+
+	private void PerformJump(float force, bool isPerformingDoubleJump)
+	{
+		_coyoteTimeCounter = 0f;
+		_jumpBufferCounter = 0f;
+		isJumping = true;
+
+		Vector3 platformVelocity = _currentPlatformRb ? _currentPlatformRb.linearVelocity : Vector3.zero;
+		_rigidbody.linearVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z) + platformVelocity;
+		_rigidbody.AddForce(transform.up * force, ForceMode.Impulse);
+
+		if (_moveInput.sqrMagnitude > 0.01f) ApplyJumpForwardBoost();
+
+		if (isPerformingDoubleJump)
+		{
+			if (CheatManager.Instance == null || !CheatManager.Instance.IsInfiniteDoubleJumpActive)
+			{
+				canDoubleJump = false;
+			}
+			OnDoubleJumpUsed?.Invoke();
+
+			// Burst effect
+			SpawnDoubleJumpEffect();
+
+			// FOLLOW effect
+			SpawnDoubleJumpFollowEffect();
+		}
+		else
+		{
+			OnJumped?.Invoke();
+		}
+	}
+
+	private void ApplyJumpForwardBoost()
+	{
+		Vector3 forwardDirection = (orientation.forward * _moveInput.y + orientation.right * _moveInput.x).normalized;
+		_rigidbody.AddForce(forwardDirection * jumpForwardBoost, ForceMode.Impulse);
+	}
+
+	private void GainDoubleJump()
+	{
+		if (!canDoubleJump)
+		{
+			canDoubleJump = true;
+			OnDoubleJumpGained?.Invoke();
+		}
+	}
+
+	public void ResetDoubleJump()
+	{
+		if (!isGrounded)
+		{
+			GainDoubleJump();
+		}
+	}
+
+	public void ApplyExternalForce(Vector3 direction, float force, bool resetVelocity)
+	{
+		if (resetVelocity) _rigidbody.linearVelocity = Vector3.zero;
+
+		_rigidbody.AddForce(direction * force, ForceMode.Impulse);
+
+		GainDoubleJump();
+		isJumping = true;
+		OnLeftGround?.Invoke();
+	}
+
+	public void MultiplyVelocity(float multiplier)
+	{
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		Vector3 newVelocity = horizontalVelocity * multiplier;
+		_rigidbody.linearVelocity = new Vector3(newVelocity.x, _rigidbody.linearVelocity.y, newVelocity.z);
+	}
+
+	public Transform GetOrientation()
+	{
+		return orientation;
+	}
+
+	private void ApplyLandingDampening()
+	{
+		Vector3 horizontalVelocity = new Vector3(_rigidbody.linearVelocity.x, 0f, _rigidbody.linearVelocity.z);
+		Vector3 dampenedVelocity = horizontalVelocity * landingVelocityDampening;
+		_rigidbody.linearVelocity = new Vector3(dampenedVelocity.x, _rigidbody.linearVelocity.y, dampenedVelocity.z);
+	}
+
+	private void UpdateDebugUI()
+	{
+		if (distanceText != null && grapplingHookController != null)
+		{
+			distanceText.text = "Distancia: " + grapplingHookController.grappleDistance.ToString("F2");
+		}
+
+		if (velocityText != null)
+		{
+			float speedInKmh = _horizontalSpeed * METERS_PER_SECOND_TO_KM_PER_HOUR;
+			velocityText.text = "Velocidade: " + speedInKmh.ToString("F2");
+		}
+	}
+
+	private void OnDrawGizmosSelected()
+	{
+		Gizmos.color = Color.yellow;
+		float castDistance = (playerHeight / 2f) - groundCheckSphereRadius + groundCheckDistance;
+		Vector3 sphereCenter = transform.position + Vector3.down * castDistance;
+		Gizmos.DrawWireSphere(sphereCenter, groundCheckSphereRadius);
+	}
+
+	public void ResetToPosition(Vector3 position)
+	{
+		if (_resetCoroutine != null)
+		{
+			StopCoroutine(_resetCoroutine);
+		}
+		_resetCoroutine = StartCoroutine(ResetPositionRoutine(position));
+	}
+
+	private IEnumerator ResetPositionRoutine(Vector3 position)
+	{
+		grapplingHookController?.StopGrapple();
+
+		_rigidbody.isKinematic = true;
+		yield return new WaitForFixedUpdate();
+
+		yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
+
+		yield return new WaitForFixedUpdate();
+		_rigidbody.isKinematic = false;
+
+		_rigidbody.linearVelocity = Vector3.zero;
+		_rigidbody.angularVelocity = Vector3.zero;
+
+		isJumping = false;
+		_coyoteTimeCounter = 0f;
+		_jumpBufferCounter = 0f;
+		ResetDoubleJump();
+
+		_resetCoroutine = null;
+	}
+
+	public void TriggerShockEffect()
+	{
+		OnShocked?.Invoke();
+	}
+
+	// ===========================
+	// DOUBLE JUMP BURST
+	// ===========================
+	private void SpawnDoubleJumpEffect()
+	{
+		if (doubleJumpEffectPrefab == null) return;
+
+		Vector3 feetPos;
+		Collider col = GetComponent<Collider>();
+
+		if (col != null)
+			feetPos = new Vector3(transform.position.x, col.bounds.min.y, transform.position.z);
+		else
+			feetPos = transform.position + Vector3.down * 1f;
+
+		Quaternion spawnRot = doubleJumpEffectPrefab.transform.rotation;
+
+		GameObject fx = Instantiate(doubleJumpEffectPrefab, feetPos, spawnRot);
+		Destroy(fx, doubleJumpEffectLifetime);
+	}
+
+	// ===========================
+	// LANDING EFFECT (RAYCAST)
+	// ===========================
+	private void SpawnLandingEffect()
+	{
+		if (landingEffectPrefab == null) return;
+
+		if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, 5f, groundCheckLayer))
+		{
+			Vector3 spawnPos = hit.point;
+			GameObject fx = Instantiate(landingEffectPrefab, spawnPos, landingEffectPrefab.transform.rotation);
+			Destroy(fx, landingEffectLifetime);
+		}
+		else
+		{
+			Vector3 fallback = transform.position + Vector3.down * 1f;
+			GameObject fx = Instantiate(landingEffectPrefab, fallback, landingEffectPrefab.transform.rotation);
+			Destroy(fx, landingEffectLifetime);
+		}
+	}
+
+	// ===========================
+	// DOUBLE JUMP FOLLOW EFFECT
+	// ===========================
+	private void SpawnDoubleJumpFollowEffect()
+	{
+		if (doubleJumpFollowPrefab == null) return;
+
+		if (_activeFollowEffect != null)
+			Destroy(_activeFollowEffect);
+
+		_activeFollowEffect = Instantiate(doubleJumpFollowPrefab, transform.position + followOffset, doubleJumpFollowPrefab.transform.rotation);
+
+		if (_followRoutine != null)
+			StopCoroutine(_followRoutine);
+
+		_followRoutine = StartCoroutine(FollowEffectRoutine());
+	}
+
+	private IEnumerator FollowEffectRoutine()
+	{
+		float timer = 0f;
+
+		while (timer < doubleJumpFollowDuration)
+		{
+			if (_activeFollowEffect != null)
+				_activeFollowEffect.transform.position = transform.position + followOffset;
+
+			timer += Time.deltaTime;
+			yield return null;
+		}
+
+		if (_activeFollowEffect != null)
+			Destroy(_activeFollowEffect);
+
+		_activeFollowEffect = null;
+		_followRoutine = null;
+	}
+}
+</file>
+
+<file path="Assets/Scripts/TelaControlador.cs">
+using System.Collections;
+using UnityEngine;
+
+public class TelaControlador : MonoBehaviour
+{
+    [Header("Configurações Gerais")]
+    [SerializeField] private Renderer telaRenderer;
+
+    [Header("Efeito de Flicker (Piscar)")]
+    [SerializeField] private bool habilitarFlicker = true;
+    [SerializeField] [Range(0f, 1f)] private float intensidadeMinima = 0.8f;
+    [SerializeField] private float velocidadeFlicker = 15f;
+
+    [Header("Troca de Canal (Materiais)")]
+    [SerializeField] private bool habilitarTrocaCanal = true;
+    [SerializeField] private Material[] canais;
+    [SerializeField] private float tempoPorCanal = 5f;
+
+    private int indiceCanalAtual = 0;
+    private Color corEmissaoBase;
+    private float perlinOffset;
+
+    void Start()
+    {
+        if (telaRenderer == null)
+        {
+            telaRenderer = GetComponent<Renderer>();
+        }
+
+        perlinOffset = Random.Range(0f, 100f);
+
+        if (habilitarTrocaCanal && canais.Length > 0)
+        {
+            StartCoroutine(RotinaTrocaCanal());
+        }
+        else
+        {
+            ObterCorEmissaoBase();
+        }
+    }
+
+    void Update()
+    {
+        if (habilitarFlicker && telaRenderer.material != null)
+        {
+            ExecutarFlicker();
+        }
+    }
+
+    private void ExecutarFlicker()
+    {
+        float perlin = Mathf.PerlinNoise(Time.time * velocidadeFlicker, perlinOffset);
+        float multiplicador = Mathf.Lerp(intensidadeMinima, 1.0f, perlin);
+
+        telaRenderer.material.SetColor("_EmissionColor", corEmissaoBase * multiplicador);
+    }
+
+    private IEnumerator RotinaTrocaCanal()
+    {
+        TrocarParaCanal(indiceCanalAtual);
+
+        while (true)
+        {
+            yield return new WaitForSeconds(tempoPorCanal);
+
+            indiceCanalAtual = (indiceCanalAtual + 1) % canais.Length;
+            
+            TrocarParaCanal(indiceCanalAtual);
+        }
+    }
+
+    private void TrocarParaCanal(int index)
+    {
+        if (index < 0 || index >= canais.Length) return;
+
+        telaRenderer.material = canais[index];
+
+        ObterCorEmissaoBase();
+    }
+
+    private void ObterCorEmissaoBase()
+    {
+        if (telaRenderer.material.HasProperty("_EmissionColor"))
+        {
+            corEmissaoBase = telaRenderer.material.GetColor("_EmissionColor");
+        }
+    }
+}
+</file>
+
 <file path="Assets/Scripts/AudioManager.cs">
 using System;
 using System.Collections;
@@ -10198,7 +10719,12 @@ public class AudioManager : MonoBehaviour
     private float musicVolumeBase = 1f;
     private float sfxVolumeBase = 1f;
     private float ambientVolumeBase = 1f;
+    private bool isSFXMuted = false;
 
+    private bool musicWasMutedBeforeMaster = false;
+    private bool ambientWasMutedBeforeMaster = false;
+    private bool sfxWasMutedBeforeMaster = false;
+    private bool isMasterMuted = false;
 
     private float lastSFXFeedbackTime;
     private const float feedbackCooldown = 0.15f;
@@ -10236,6 +10762,7 @@ public class AudioManager : MonoBehaviour
         PlayerPrefs.SetFloat("MusicVolume", musicVolumeBase);
         PlayerPrefs.SetFloat("SFXVolume", sfxVolumeBase);
         PlayerPrefs.SetFloat("AmbientVolume", ambientVolumeBase);
+        PlayerPrefs.SetInt("MasterMuteState", isMasterMuted ? 1 : 0);
         PlayerPrefs.Save();
     }
 
@@ -10247,6 +10774,9 @@ public class AudioManager : MonoBehaviour
         ambientVolumeBase = PlayerPrefs.GetFloat("AmbientVolume", 1f);
 
         MasterVolume(masterVolumeBase);
+
+        bool masterMutedState = PlayerPrefs.GetInt("MasterMuteState", 0) == 1;
+        SetMasterMute(masterMutedState);
     }
 
     private void Start()
@@ -10292,14 +10822,16 @@ public class AudioManager : MonoBehaviour
         else
         {
             ambientSource.clip = s.clip;
-            ambientSource.volume = ambientSource.volume * masterSource.volume;
+            ambientSource.volume = ambientVolumeBase * masterSource.volume;
             ambientSource.loop = true;
             ambientSource.Play();
+            StartCoroutine(ApplyAmbientFixNextFrame());
         }
     }
 
     public void PlaySFX(string name)
     {
+        if (isSFXMuted) return;
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
             float randomPitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
@@ -10312,14 +10844,17 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    public void ToggleMusic() => musicSource.mute = !musicSource.mute;
-    public void ToggleSFX() => sfxSource.mute = !sfxSource.mute;
-    public void ToggleAmbient() => ambientSource.mute = !ambientSource.mute;
+    public void ToggleMusic() => SetMusicMute(!musicSource.mute); //musicSource.mute = !musicSource.mute;
+    public void ToggleSFX() => SetSFXMute(!isSFXMuted); //sfxSource.mute = !sfxSource.mute;
+    public void ToggleAmbient() => SetAmbientMute(!ambientSource.mute);
 
     public void MasterVolume(float volume)
     {
         masterVolumeBase = volume;
-        masterSource.volume = masterVolumeBase;
+        //masterSource.volume = masterVolumeBase;
+        float min = 0.0001f;
+        float v = Mathf.Clamp(masterVolumeBase, 0, 1f);
+        audioMixer.SetFloat("MasterVolume", Mathf.Log10(masterVolumeBase) * 20f);
 
         RecalculateMusicVolume();
         RecalculateSFXVolume();
@@ -10356,16 +10891,57 @@ public class AudioManager : MonoBehaviour
     }
     public void SetMasterMute(bool muteState) 
     {
-    	masterSource.mute = muteState;
-    	musicSource.mute = muteState;
-    	sfxSource.mute = muteState;
+        isMasterMuted = muteState;
+        float newMixerVolume;
+
+        if (muteState)
+        {
+            masterSource.volume = 0f;
+            newMixerVolume = -80f;
+        }
+        else
+        {
+            masterSource.volume = masterVolumeBase;
+            newMixerVolume = Mathf.Log10(Mathf.Max(0.0001f, masterVolumeBase)) * 20f;
+
+        }
+
+        audioMixer.SetFloat("MasterVolume", newMixerVolume);
+
+        RecalculateMusicVolume();
+        RecalculateSFXVolume();
+        RecalculateAmbientVolume();
+
+        SaveVolumes();
     }
 
-    public void SetMusicMute(bool muteState) => musicSource.mute = muteState;
+    public void SetMusicMute(bool muteState)
+    {
+        musicSource.mute = muteState;
+    }
 
-    public void SetAmbientMute(bool muteState) => ambientSource.mute = muteState;
+    public void SetAmbientMute(bool muteState)
+    {
+        //if (isMasterMuted && muteState == false) return;
+        //if (isMasterMuted && !muteState) return;
+        ambientSource.mute = muteState;
+    }
 
-    public void SetSFXMute(bool muteState) => sfxSource.mute = muteState;
+    public void SetSFXMute(bool muteState)
+    {
+        //if (isMasterMuted && muteState == false) return;
+        //if (isMasterMuted && !muteState) return;
+        isSFXMuted = muteState;
+        sfxSource.mute = muteState;
+
+        foreach (var source in loopingSources.Values)
+        {
+            if (source != null)
+            {
+                source.mute = muteState;
+            }
+        }
+    }
 
     private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
     private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -10458,6 +11034,8 @@ public class AudioManager : MonoBehaviour
 
     public void PlaySFXInSource(string name, AudioSource source)
     {
+        if (isSFXMuted) return;
+
         if (source == null || string.IsNullOrEmpty(name))
             return;
 
@@ -10513,28 +11091,6 @@ public class AudioManager : MonoBehaviour
         sfxSource.mute = false;
     }
 
-    /*public void PlaySFXForTransition(string name)
-    {
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            AudioSource tempSource = gameObject.AddComponent<AudioSource>();
-
-            // Configura o mixer (se você usa)
-            if (sfxSource.outputAudioMixerGroup != null)
-                tempSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
-
-            tempSource.clip = clip;
-            tempSource.volume = sfxSource.volume * masterSource.volume;
-            tempSource.pitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
-
-            tempSource.Play();
-            StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
-        }
-        else
-        {
-            Debug.LogWarning("Sound Not Found for transition: " + name);
-        }
-    } */
 
     private IEnumerator CleanupTemporarySource(AudioSource source, float delay)
     {
@@ -10545,8 +11101,16 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    private IEnumerator ApplyAmbientFixNextFrame()
+    {
+        yield return null; // espera 1 frame
+        RecalculateAmbientVolume();
+    }
+
     public void PlayUnscaledSFX(string name)
     {
+        if (isSFXMuted) return;
+
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
             AudioSource tempSource = gameObject.AddComponent<AudioSource>();
@@ -10560,10 +11124,9 @@ public class AudioManager : MonoBehaviour
 
             tempSource.volume = sfxSource.volume;
 
-            tempSource.pitch = UnityEngine.Random.Range(1f - sfxPitchVariation, 1f + sfxPitchVariation);
+            tempSource.pitch = 1f;
             tempSource.Play();
 
-            // 2. Limpa a fonte temporária após o clip terminar
             StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
         }
         else
@@ -10581,11 +11144,21 @@ public class AudioManager : MonoBehaviour
     private void RecalculateSFXVolume()
     {
         sfxSource.volume = sfxVolumeBase * masterSource.volume;
+
+        foreach (var source in loopingSources.Values)
+        {
+            if (source != null)
+            {
+                source.volume = sfxVolumeBase * masterSource.volume;
+            }
+        }
     }
 
     private void RecalculateAmbientVolume()
     {
-        ambientSource.volume = ambientVolumeBase * masterSource.volume;
+        float min = 0.0001f;
+        float v = Mathf.Clamp(ambientVolumeBase, min, 1f);
+        audioMixer.SetFloat("AmbientVolume", Mathf.Log10(v) * 20f);
     }
 
     public float GetMasterVolumeBase() => masterVolumeBase;
@@ -10595,724 +11168,481 @@ public class AudioManager : MonoBehaviour
 }
 </file>
 
-<file path="Assets/Scripts/BottomButtonsPanel.cs">
-using UnityEngine.UI;
+<file path="Assets/Scripts/CheckpointManager.cs">
 using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
-public class BottomButtonsPanel : MonoBehaviour
+public class CheckpointManager : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-  [Header("Referências dos Botões")]
-    [SerializeField] private Button mainMenuButton;
-    [SerializeField] private Button restartButton;
-    [SerializeField] private Button resumeButton;
+    public static CheckpointManager Instance { get; private set; }
+    
+    [Header("Configuração de Spawn")]
+    [Tooltip("Ponto de spawn inicial do jogador na fase. Obrigatório para o reset sem recarregar a cena.")]
+    [SerializeField] private Transform initialSpawnPoint;
 
-    private void OnEnable()
-    {
-        InitializeButtons();
-    }
+    [Header("Configuração de Penalidade")]
+    [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
+    [SerializeField] private float penaltyPerCheckpoint = 5f;
 
-    void Start()
-    {
-        InitializeButtons();
-    }
-    private void InitializeButtons()
-    {
-        mainMenuButton?.onClick.RemoveAllListeners();
-        resumeButton?.onClick.RemoveAllListeners();
-        restartButton?.onClick.RemoveAllListeners();
-
-
-        // Adiciona os listeners via código, garantindo que a referência ao Singleton seja sempre a mais recente
-        if (SceneManagerLogic.Instance != null)
-        {
-            mainMenuButton?.onClick.AddListener(SceneManagerLogic.Instance.LoadMainMenu);
-            restartButton?.onClick.AddListener(CheckpointManager.Instance.HardResetLevel);
-            resumeButton?.onClick.AddListener(GameFlowManager.Instance.ResumeGame);
-        }
-        else
-        {
-            Debug.LogError("SceneManagerLogic.Instance não foi encontrado. Os botões do PostGamePanel não funcionarão.");
-        }
-    }
-
-}
-</file>
-
-<file path="Assets/Scripts/PlayerAudioHandler.cs">
-using UnityEngine;
-
-[RequireComponent(typeof(PlayerMovementController))]
-public class PlayerAudioHandler : MonoBehaviour, IResettable
-{
-    private PlayerMovementController movement;
-    private GrapplingHookController grapple;
-    private Rigidbody rb;
-
-    private bool jumpSoundPlayed = false;
-
-    [Header("Sons - Movimento")]
-    [SerializeField] private string[] footstepSfxOptions;
-    [SerializeField] private string[] jumpSfxOptions;
-    [SerializeField] private string[] doubleJumpSfxOptions;
-    [SerializeField] private string[] landSfxOptions;
-    [SerializeField] private string footstepSfx = "footstep";
-    [SerializeField] private string wallHitSfx = "WallHit";
-    [SerializeField] private string[] ringSfxOptions;
-    [SerializeField] private string[] jumpPadSfxOptions;
-
-    [Header("Sons - Estado do Player")]
-    [SerializeField] private string deathSfx = "Death";
-    [SerializeField] private string timeSkillOnSfx = "TimeOn";
-    [SerializeField] private string timeSkillOffSfx = "TimeOff";
-    [SerializeField] private string victorySfx = "Victory";
-
-    [Header("Sons - Grappling Hook")]
-    [SerializeField] private string[] grappleShootSfxOptions;
-    [SerializeField] private string[] grappleAttachSfxOptions;
-    [SerializeField] private string[] grappleReleaseSfxOptions;
-
-    [Header("Parâmetros")]
-    [SerializeField] private float stepInterval = 0.35f;
-    [SerializeField] private float minStepSpeed = 2f;
-    [SerializeField] private float wallHitMinForce = 5f;
-
-    [Header("Som - Vento")]
-    [SerializeField] private string windSfx = "Wind";
-    [SerializeField] private float windMinSpeed = 20f;
-    [SerializeField] private float windMaxSpeed = 60f;
-    [SerializeField] private float windFadeSpeed = 5f;
-
-    [Header("Sons - Dano e Laser")]
-    [SerializeField] private string[] laserHitSfxOptions;
-    [SerializeField] private string[] damageSfxOptions;
-
-    [Header("Som - Laser Barreiras")]
-    [SerializeField] private string laserLoopSfx = "LaserLoop";
-    [SerializeField] private float laserMaxDistance = 10f; // distância máxima pra ouvir o laser
-    [SerializeField] private float laserFadeSpeed = 5f;
-
-    private AudioSource laserLoopSource;
-    private LaserBarrier nearestLaser;
-    private AudioSource deathSource;
-    private bool isResetting = false;
-    private bool isPausedManual = false;
-
-
-    private bool victoryPlayed = false;
-
-    private float stepTimer;
-    private bool hasLandedOnce = false;
-    private Vector3 lastPosition;
-
-    private bool wasGrappling;
-    private bool grappleJustStarted;
-
-    private bool hasJumpedOnce = false; // Já deu o primeiro pulo
-    private bool canDoubleJump = false; // Se double jump pode tocar
-
-    private bool doubleJumpAvailable = false;
-    private bool doubleJumpSoundPlayed = false;
-
-
-    private AudioSource windSource;
+    private List<Checkpoint> _checkpointsInLevel;
+    private List<IResettable> _resettableObjects;
+    private Checkpoint _lastActivatedCheckpoint;
+    private PlayerMovementController _player;
+    private bool _areCheckpointsEnabled;
 
     private void Awake()
     {
-        movement = GetComponent<PlayerMovementController>();
-        grapple = GetComponent<GrapplingHookController>();
-        rb = GetComponent<Rigidbody>();
-
-        deathSource = gameObject.AddComponent<AudioSource>();
-        deathSource.playOnAwake = false;
-        deathSource.loop = false;
-        deathSource.ignoreListenerPause = false;
-
-        isResetting = false;
-
-        stepTimer = stepInterval;
-        lastPosition = transform.position;
-
-        if (AudioManager.instance != null)
+        if (Instance != null && Instance != this)
         {
-            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+            Destroy(gameObject);
+            return;
         }
-        else
-        {
-            Debug.LogWarning("AudioManager não encontrado na cena ao iniciar PlayerAudioHandler!");
-        }
-
-
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
     }
 
     private void OnEnable()
     {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeToggled += PlayTimeSkillOff;
-            InputManager.Instance.OnResetToCheckpoint += PlayDeathSound;
-
-            BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
-
-            // Escuta manualmente JumpPads que existirem na cena
-            foreach (var jumpPad in FindObjectsOfType<JumpPad>())
-            {
-                AddJumpPadListener(jumpPad);
-            }
+            InputManager.Instance.OnResetToCheckpoint += SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset += HardResetLevel;
         }
-
-        movement.OnGroundLanded += PlayLand;
+        if (GameSettingsManager.Instance != null)
+        {
+            GameSettingsManager.OnCheckpointsEnabledChanged += UpdateCheckpointSetting;
+        }
     }
 
     private void OnDisable()
     {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
-            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOn;
-            InputManager.Instance.OnSlowTimeToggled -= PlayTimeSkillOff;
-            InputManager.Instance.OnResetToCheckpoint -= PlayDeathSound;
-
-            BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
+            InputManager.Instance.OnResetToCheckpoint -= SoftResetToCheckpoint;
+            InputManager.Instance.OnFullLevelReset -= HardResetLevel;
         }
-
-        movement.OnGroundLanded -= PlayLand;
+        if (GameSettingsManager.Instance != null)
+        {
+            GameSettingsManager.OnCheckpointsEnabledChanged -= UpdateCheckpointSetting;
+        }
     }
 
-    private void Update()
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-
-
-        if (Time.timeScale == 0f)
-            {
-   
-                if (deathSource.isPlaying) { deathSource.Pause(); isPausedManual = true; }
-
- 
-                if (AudioManager.instance != null)
-                {
-                    AudioManager.instance.PauseAllSFX();
-                    AudioManager.instance.PauseAmbient();
-                }
-
-
-                return;
-            }
-            else
-            {
-                if (isPausedManual)
-                {
-                    deathSource.UnPause();
-                    isPausedManual = false;
-                }
-
-                if (AudioManager.instance != null)
-                {
-                    AudioManager.instance.UnpauseAllSFX(); 
-                    AudioManager.instance.UnpauseAmbient();
-                }
-
-            }
-
-        HandleFootsteps();
-        HandleGrappleAudio();
-        HandleWindAudio();
-        HandleLaserAudio();
-
-        if (movement.isGrounded)
+        StartCoroutine(InitializeAfterSceneLoad());
+        if (initialSpawnPoint == null)
         {
-            hasJumpedOnce = false;
-            canDoubleJump = false;
-            doubleJumpSoundPlayed = false;
+            initialSpawnPoint = GameObject.Find("Core")?.transform;
         }
-
-        if (isResetting && !deathSource.isPlaying)
-        {
-            isResetting = false;
-        }
-
-        lastPosition = transform.position;
     }
 
-    
-
-    private void HandleJumpAudio()
+    private IEnumerator InitializeAfterSceneLoad()
     {
-        if (movement.isGrounded)
-        {
-            if (jumpSfxOptions != null && jumpSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, jumpSfxOptions.Length);
-                AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
-            }
+        yield return null;
 
-            doubleJumpAvailable = true;
-            doubleJumpSoundPlayed = false;
+        _player = FindObjectOfType<PlayerMovementController>();
+        _checkpointsInLevel = FindObjectsOfType<Checkpoint>().OrderBy(c => c.orderIndex).ToList();
+        
+        _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
+
+        _lastActivatedCheckpoint = null;
+        
+        if (GameSettingsManager.Instance != null)
+        {
+            _areCheckpointsEnabled = GameSettingsManager.Instance.CheckpointsEnabled;
         }
         else
         {
-            // Double jump: toca som apenas se ainda estiver disponível
-            if (doubleJumpAvailable && !doubleJumpSoundPlayed)
-            {
-                if (doubleJumpAvailable && !doubleJumpSoundPlayed)
-                {
-                    if (doubleJumpSfxOptions != null && doubleJumpSfxOptions.Length > 0)
-                    {
-                        int idx = Random.Range(0, doubleJumpSfxOptions.Length);
-                        AudioManager.instance.PlaySFX(doubleJumpSfxOptions[idx]);
-                    }
-
-                    doubleJumpSoundPlayed = true;
-                    doubleJumpAvailable = false;
-                }
-            }
+            Debug.LogError("GameSettingsManager.Instance é nulo. Desativando checkpoints.");
+            _areCheckpointsEnabled = false;
         }
     }
 
-
-
-
-
-    private void HandleFootsteps()
+    private void UpdateCheckpointSetting(bool isEnabled)
     {
-        if (!movement.isGrounded || rb.linearVelocity.magnitude < minStepSpeed)
+        _areCheckpointsEnabled = isEnabled;
+    }
+
+    private void HandleCheckpointActivated(Checkpoint activatedCheckpoint)
+    {
+        if (!_areCheckpointsEnabled) return;
+
+        int newIndex = _checkpointsInLevel.IndexOf(activatedCheckpoint);
+        int currentIndex = _lastActivatedCheckpoint != null ? _checkpointsInLevel.IndexOf(_lastActivatedCheckpoint) : -1;
+
+        if (newIndex > currentIndex)
         {
-            stepTimer = stepInterval;
+            _lastActivatedCheckpoint = activatedCheckpoint;
+        }
+    }
+    
+    public void SoftResetToCheckpoint()
+    {
+        ScoreManager.Instance?.IncrementDeathCount();
+        ScoreManager.Instance?.SubscribeToFirstInputEvents();
+        TimeManipulationManager.Instance?.ResetCharge();
+        
+
+        if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
+        {
+            SoftResetToStart();
             return;
         }
 
-        stepTimer -= Time.deltaTime;
-        if (stepTimer <= 0f)
+        ResetWorldState();
+        ApplyTimePenaltyAndReset();
+
+        if (_player != null)
         {
-            string sfxToPlay = footstepSfx;
-
-            if (footstepSfxOptions != null && footstepSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, footstepSfxOptions.Length);
-
-
-                if (!string.IsNullOrEmpty(footstepSfxOptions[idx]))
-                    sfxToPlay = footstepSfxOptions[idx];
-            }
-
-            AudioManager.instance.PlaySFX(sfxToPlay);
-            stepTimer = stepInterval;
+            _player.ResetToPosition(_lastActivatedCheckpoint.SpawnPoint.position);
         }
     }
 
-
-    private void HandleGrappleStart()
+    private void ApplyTimePenaltyAndReset()
     {
-        if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, grappleShootSfxOptions.Length);
-            AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
-        }
-        grappleJustStarted = true;
+        if (ScoreManager.Instance == null || _lastActivatedCheckpoint.ActivationTime < 0) return;
+
+        float stampedTime = _lastActivatedCheckpoint.ActivationTime;
+        ScoreManager.Instance.SetCurrentTime(stampedTime);
+        ScoreManager.Instance.AddPenalty(penaltyPerCheckpoint);
     }
 
-    private void HandleGrappleEnd()
+    private void ResetWorldState()
     {
-        if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
+        foreach (var resettable in _resettableObjects)
         {
-            int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
-            AudioManager.instance.PlaySFX(grappleReleaseSfxOptions[idx]);
+            resettable.ResetState();
         }
-
-        if (wasGrappling)
-        {
-            doubleJumpAvailable = true;
-            doubleJumpSoundPlayed = false;
-        }
-
-        grappleJustStarted = false;
-        wasGrappling = false;
     }
-
-    private void HandleGrappleAudio()
+    
+    private void SoftResetToStart()
     {
-        if (grapple == null || !grappleJustStarted) return;
-
-        // Som e estado só se realmente conectar
-        if (grapple.IsGrappling)
+        if (initialSpawnPoint == null)
         {
-            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
-                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
-            }
-
-            // Bloqueia double jump enquanto estiver agarrado
-            doubleJumpAvailable = false;
-            doubleJumpSoundPlayed = false;
-
-            wasGrappling = true;
-            grappleJustStarted = false;
-        }
-
-    }
-
-
-    private void HandleWindAudio()
-    {
-        if (windSource == null) return;
-
-
-        // Calcula volume base pelo movimento do player
-        float speed = rb.linearVelocity.magnitude;
-        float targetVolume = 0f;
-
-        if (speed > windMinSpeed)
-            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
-
-        // Aplica SFX e Master volume, e considera muting
-        if (AudioManager.instance != null)
-        {
-            float sfxVolume = AudioManager.instance.sfxSource.volume;
-            float masterVolume = AudioManager.instance.masterSource.volume;
-            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
-
-            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
-        }
-
-        // Suaviza a transição do volume
-        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
-    }
-
-
-
-    private void PlayLand()
-    {
-        if (!hasLandedOnce)
-        {
-            hasLandedOnce = true;
+            HardResetLevel();
             return;
         }
 
-        if (landSfxOptions != null && landSfxOptions.Length > 0)
+        ResetWorldState();
+        ScoreManager.Instance?.ResetLevelTimer();
+        _lastActivatedCheckpoint = null;
+
+        if (_player != null)
         {
-            int idx = Random.Range(0, landSfxOptions.Length);
-            AudioManager.instance.PlaySFX(landSfxOptions[idx]);
+            _player.ResetToPosition(initialSpawnPoint.position);
         }
     }
 
-    private void OnCollisionEnter(Collision collision)
+    public void HardResetLevel()
     {
-        Vector3 normal = collision.contacts[0].normal;
-        if (Vector3.Dot(normal, Vector3.up) < 0.5f && collision.relativeVelocity.magnitude > wallHitMinForce)
-        {
-            AudioManager.instance.PlaySFX(wallHitSfx);
-        }
-
-        if (!victoryPlayed && collision.gameObject.GetComponent<WinLogic>() != null)
-        {
-            victoryPlayed = true;
-            PlayVictoryAudio();
-        }
+        ScoreManager.Instance?.IncrementDeathCount();
+        SceneManagerLogic.Instance.RestartScene();
     }
-
-
-
-    private void HandlePowerRingAudio()
-    {
-        if (ringSfxOptions != null && ringSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, ringSfxOptions.Length);
-            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
-        }
-
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
-    }
-
-    private void AddJumpPadListener(JumpPad pad)
-    {
-        var trigger = pad.gameObject.AddComponent<JumpPadAudioTrigger>();
-        trigger.Setup(pad, this);
-    }
-
-    public void PlayJumpPadAudio()
-    {
-        if (jumpPadSfxOptions != null && jumpPadSfxOptions.Length > 0)
-        {
-            int idx = Random.Range(0, jumpPadSfxOptions.Length);
-            AudioManager.instance.PlaySFX(jumpPadSfxOptions[idx]);
-        }
-
-        doubleJumpAvailable = true;
-        doubleJumpSoundPlayed = false;
-    }
-
-    public void PlayLaserHitAudio()
-    {
-        if (laserHitSfxOptions != null && laserHitSfxOptions.Length > 0)
-        {
-            int laserIdx = Random.Range(0, laserHitSfxOptions.Length);
-            AudioManager.instance.PlaySFX(laserHitSfxOptions[laserIdx]);
-        }
-
-        if (damageSfxOptions != null && damageSfxOptions.Length > 0)
-        {
-            int damageIdx = Random.Range(0, damageSfxOptions.Length);
-            AudioManager.instance.PlaySFX(damageSfxOptions[damageIdx]);
-        }
-    }
-
-    public void PlayVictoryAudio()
-    {
-        if (AudioManager.instance == null) return;
-
-        AudioManager.instance.PauseMusic();
-        AudioManager.instance.PauseAmbient();
-        AudioManager.instance.PlayUnscaledSFX(victorySfx);
-    }
-
-
-    public void ResetState()
-    {
-        if (isResetting) return;
-
-        PlayDeathSound();
-    }
-    private void PlayDeathSound()
-    {
-        if (isResetting) return;
-        if ( string.IsNullOrEmpty(deathSfx) || AudioManager.instance == null)
-            return;
-
-        if (AudioManager.instance != null)
-        {
-            if (deathSource.isPlaying) deathSource.Stop();
- 
-
-            AudioManager.instance.PlaySFXInSource(deathSfx, deathSource);
-            isResetting = true;
-            Debug.Log("Death sound played!");
-        }
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.GetComponent<LaserBarrier>() != null)
-        {
-            PlayLaserHitAudio();
-        }
-
-    }
-
-
-    private void HandleLaserAudio()
-    {
-        if (laserLoopSource == null)
-            laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
-
-
-        float targetVolumeLocal = 0f;
-
-        LaserBarrier closest = null;
-        float closestDist = float.MaxValue;
-        foreach (var laser in FindObjectsOfType<LaserBarrier>())
-        {
-            Collider col = laser.GetComponent<Collider>();
-            if (!col.enabled) continue;
-
-            Vector3 closestPoint = col.ClosestPoint(transform.position);
-            float dist = Vector3.Distance(transform.position, closestPoint);
-
-            if (dist < closestDist)
-            {
-                closestDist = dist;
-                closest = laser;
-            }
-        }
-
-        nearestLaser = closest;
-
-        if (nearestLaser != null && closestDist <= laserMaxDistance)
-        {
-            targetVolumeLocal = 1f - (closestDist / laserMaxDistance);
-            targetVolumeLocal = Mathf.Clamp01(targetVolumeLocal);
-        }
-
-        float finalVolume = targetVolumeLocal;
-
-        if (AudioManager.instance != null && laserLoopSource != null)
-        {
-            float sfxVolume = AudioManager.instance.sfxSource.volume;
-            float masterVolume = AudioManager.instance.masterSource.volume;
-
-            finalVolume = targetVolumeLocal * sfxVolume * masterVolume;
-
-            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
-            laserLoopSource.mute = isMuted;
-        }
-        if (laserLoopSource != null)
-            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalVolume, Time.deltaTime * laserFadeSpeed);
-
-    }
-
-
-
-
-
-    public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);
-    public void PlayTimeSkillOff() => AudioManager.instance.PlaySFX(timeSkillOffSfx);
 }
 </file>
 
-<file path="Assets/Scripts/SettingsPanel.cs">
+<file path="Assets/Scripts/Scoring/ScoreManager.cs">
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
 
-public class SettingsPanel : UIPanel
+public class ScoreManager : MonoBehaviour
 {
-    [Header("Referências Internas")]
-    [SerializeField] private Button backButton;
-    [Header("Referências Sliders")]
-    [SerializeField] private Slider masterSlider;
-    [SerializeField] private Slider musicSlider;
-    [SerializeField] private Slider sfxSlider;
-    [SerializeField] private Slider ambientSlider;
-    [Header("Referências Toggles")]
-    [SerializeField] private Toggle masterToggle;
-    [SerializeField] private Toggle musicToggle;
-    [SerializeField] private Toggle sfxToggle;
-    [SerializeField] private Toggle ambientToggle;
-    [SerializeField] private Toggle checkpointsToggle;
+    public static ScoreManager Instance { get; private set; }
+
+    [Header("Configuração do Nível")]
+    [SerializeField] private LevelData currentLevelData;
+    [SerializeField] private bool startLevelOnFirstMoveInput = false;
+
+    private ScoreUIController _scoreUIController;
+    private LeaderboardUIController _leaderboardUIController;
+    private PlayerMovementController _playerMovementController;
+    private GrapplingHookController _grapplingHookController;
+
+    private float _levelTimer;
+    private bool _isTimerRunning = false;
+    private bool _levelStarted = false;
+    private int _deathCount = 0;
+    private bool _levelCompleted = false;
+
+    public float CurrentTime => _levelTimer;
+    public int DeathCount => _deathCount;
 
     private void Awake()
     {
-        base.Awake();
-        SetupButtonListeners();
-        SetupVolumeListeners();
-        SetupToggleListeners();
-        InitializeSliders();
+        if (Instance != null && Instance != this)
+        {
+            Instance.SetCurrentLevelData(currentLevelData);
+            Instance.startLevelOnFirstMoveInput = startLevelOnFirstMoveInput;
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
     }
 
     private void OnEnable()
     {
-        LoadToggleStates();
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        if (GameFlowManager.Instance != null)
+        {
+            GameFlowManager.Instance.OnLevelCompleted += ProcessLevelCompletion;
+            GameFlowManager.Instance.OnGamePaused += PauseTimer;
+            GameFlowManager.Instance.OnGameResumed += ResumeTimer;
+        }
+        SubscribeToFirstInputEvents();
     }
 
-    private void LoadToggleStates()
+    private void OnDisable()
     {
-        if (GameSettingsManager.Instance != null && checkpointsToggle != null)
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (GameFlowManager.Instance != null)
         {
-            checkpointsToggle.isOn = GameSettingsManager.Instance.CheckpointsEnabled;
+            GameFlowManager.Instance.OnLevelCompleted -= ProcessLevelCompletion;
+            GameFlowManager.Instance.OnGamePaused -= PauseTimer;
+            GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
+        }
+        UnsubscribeFromFirstInputEvents();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        FindSceneReferences();
+        ResetLevelTimer();
+        LoadDeathCountForLevel();
+        _levelCompleted = false;
+        SubscribeToFirstInputEvents();
+        AsyncFindSceneReferences();
+    }
+
+    private void FindSceneReferences()
+    {
+        _scoreUIController = FindObjectOfType<ScoreUIController>(true);
+        _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
+        _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
+    }
+
+    // Wait 1 frame and FindSceneReferences again (in case objects are initialized after scene load)
+    private async void AsyncFindSceneReferences()
+    {
+        await Task.Yield();
+        FindSceneReferences();
+    }
+
+    private void Update()
+    {
+        if (_isTimerRunning)
+        {
+            _levelTimer += Time.deltaTime;
+            _scoreUIController?.UpdateTimeAndRank(_levelTimer);
         }
     }
 
-    private void SetupVolumeListeners()
+    public void StartLevelTimer()
     {
-        if (AudioManager.instance == null)
+        if (_levelStarted) return;
+        _levelTimer = 0f;
+        _levelStarted = true;
+        _isTimerRunning = true;
+        UnsubscribeFromFirstInputEvents();
+    }
+
+    public void StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths)
+    {
+        if (!_levelStarted)
         {
-            Debug.LogError("AudioManager.instance não foi encontrado. Os sliders de volume não funcionarão.");
+            finalTime = -1f;
+            finalRank = Rank.NA;
+            deaths = _deathCount;
+            return;
+        }
+        _isTimerRunning = false;
+        finalTime = _levelTimer;
+        finalRank = currentLevelData.GetRankForTime(finalTime);
+        deaths = _deathCount;
+    }
+
+    private void PauseTimer() { _isTimerRunning = false; }
+    private void ResumeTimer() { if (_levelStarted) { _isTimerRunning = true; } }
+
+    public void ResetLevelTimer()
+    {
+        _levelTimer = 0f;
+        _isTimerRunning = false;
+        _levelStarted = false;
+        _scoreUIController?.UpdateTimeAndRank(_levelTimer);
+    }
+
+    public void SetCurrentTime(float newTime)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer = Mathf.Max(0f, newTime);
+        }
+    }
+
+    public void AddPenalty(float penaltySeconds)
+    {
+        if (_levelStarted)
+        {
+            _levelTimer += penaltySeconds;
+        }
+    }
+
+    public Rank GetRankForTime(float time)
+    {
+        if (currentLevelData == null) return Rank.NA;
+        return currentLevelData.GetRankForTime(time);
+    }
+
+    public void IncrementDeathCount()
+    {
+        _deathCount++;
+    }
+
+    private void LoadDeathCountForLevel()
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
+        {
+            _deathCount = 0;
             return;
         }
 
-        masterSlider?.onValueChanged.RemoveAllListeners();
-        musicSlider?.onValueChanged.RemoveAllListeners();
-        sfxSlider?.onValueChanged.RemoveAllListeners();
-        ambientSlider?.onValueChanged.RemoveAllListeners();
-
-        masterSlider?.onValueChanged.AddListener(AudioManager.instance.MasterVolume);
-        musicSlider?.onValueChanged.AddListener(AudioManager.instance.MusicVolume);
-        sfxSlider?.onValueChanged.AddListener(AudioManager.instance.SFXVolume);
-        ambientSlider?.onValueChanged.AddListener(AudioManager.instance.AmbientVolume);
-    }
-
-    private void SetupToggleListeners()
-    {
-        if (AudioManager.instance != null)
+        string levelId = currentLevelData.GetFullLevelId();
+        if (activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
         {
-            masterToggle?.onValueChanged.RemoveAllListeners();
-            musicToggle?.onValueChanged.RemoveAllListeners();
-            sfxToggle?.onValueChanged.RemoveAllListeners();
-            ambientToggle?.onValueChanged.RemoveAllListeners();
-
-            masterToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMasterMute(!value));
-            musicToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetMusicMute(!value));
-            sfxToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetSFXMute(!value));
-            ambientToggle?.onValueChanged.AddListener(value => AudioManager.instance.SetAmbientMute(!value));
-        }
-
-        if (GameSettingsManager.Instance != null)
-        {
-            checkpointsToggle?.onValueChanged.RemoveAllListeners();
-            checkpointsToggle?.onValueChanged.AddListener(GameSettingsManager.Instance.SetCheckpointsEnabled);
-        }
-    }
-
-    private void SetupButtonListeners()
-    {
-        backButton?.onClick.RemoveAllListeners();
-
-        if (UIManager.Instance != null)
-        {
-            if (PanelType == UIPanelType.Settings)
-            {
-                backButton?.onClick.AddListener(UIManager.Instance.CloseSettingsPanel);
-            }
-            else
-            {
-                backButton?.onClick.AddListener(UIManager.Instance.CloseLevelSelectPanel);
-            }
+            _deathCount = record.totalDeaths;
         }
         else
         {
-            Debug.LogError("UIManager.Instance não foi encontrado. O botão 'Back' do SettingsPanel não funcionará.");
+            _deathCount = 0;
         }
     }
-    
-    private void InitializeSliders()
+
+    private async void ProcessLevelCompletion(LevelCompletionData data)
     {
-        if (AudioManager.instance == null) return;
+        if (_levelCompleted) return;
+        _levelCompleted = true;
 
-        if (masterSlider != null)
+        SaveLevelStats(data.FinalTime, data.Deaths);
+
+        VictoryPanelUI victoryPanel = FindObjectOfType<VictoryPanelUI>(true);
+        if (victoryPanel != null)
         {
-            masterSlider.value = AudioManager.instance.GetMasterVolumeBase();
+            victoryPanel.gameObject.SetActive(true);
+            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
+            victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
         }
 
-        if (musicSlider != null)
+        await SubmitScoreAsync(data.FinalTime);
+
+        await Task.Delay(System.TimeSpan.FromSeconds(0.75));
+
+        _leaderboardUIController?.ShowLeaderboard();
+    }
+
+    private void SaveLevelStats(float finalTime, int totalDeathsForLevel)
+    {
+        UserProfile activeProfile = SaveManager.Instance.GetActiveUserProfile();
+        if (activeProfile == null || currentLevelData == null)
         {
-            musicSlider.value = AudioManager.instance.GetMusicVolumeBase();
+            Debug.LogError("Perfil ativo ou LevelData não encontrado para salvar o recorde.");
+            return;
         }
 
-        if (sfxSlider != null)
+        string levelId = currentLevelData.GetFullLevelId();
+
+        if (!activeProfile.levelRecords.TryGetValue(levelId, out LevelRecord record))
         {
-            sfxSlider.value = AudioManager.instance.GetSFXVolumeBase();
+            record = new LevelRecord();
+            activeProfile.levelRecords.Add(levelId, record);
+        }
+        
+        if (finalTime < record.bestTime)
+        {
+            record.bestTime = finalTime;
+            record.bestRank = GetRankForTime(finalTime);
+        }
+        
+        record.totalDeaths = totalDeathsForLevel;
+        SaveManager.Instance.SaveGame();
+    }
+
+    private async Task<bool> SubmitScoreAsync(float finalTime)
+    {
+        if (LeaderboardManager.Instance == null || PlayerProfile.Instance?.CurrentProfile == null)
+        {
+            Debug.LogError("LeaderboardManager ou PlayerProfile não estão disponíveis.");
+            return false;
         }
 
-        if (ambientSlider != null)
-        {
-            ambientSlider.value = AudioManager.instance.GetAmbientVolumeBase();
-        }
+        var scoreEntry = new ScoreEntry(
+            PlayerProfile.Instance.CurrentProfile.profileId,
+            PlayerProfile.Instance.CurrentProfile.profileName,
+            finalTime,
+            currentLevelData.GetFullLevelId()
+        );
 
-        if (masterToggle != null)
-        {
-            masterToggle.isOn = !AudioManager.instance.masterSource.mute;
-        }
+        bool success = await LeaderboardManager.Instance.SubmitScoreAsync(scoreEntry);
 
-        if (musicToggle != null)
-        {
-            musicToggle.isOn = !AudioManager.instance.musicSource.mute;
-        }
+        if (success) { Debug.Log("Pontuação submetida com sucesso!"); }
+        else { Debug.LogWarning("Falha ao submeter pontuação."); }
 
-        if (sfxToggle != null)
-        {
-            sfxToggle.isOn = !AudioManager.instance.sfxSource.mute;
-        }
+        return success;
+    }
 
-        if (ambientToggle != null)
+    private void HandleFirstInput()
+    {
+        if (startLevelOnFirstMoveInput && !_levelStarted)
         {
-            ambientToggle.isOn = !AudioManager.instance.ambientSource.mute;
+            StartLevelTimer();
         }
+    }
+
+    private void HandleFirstMoveInput(Vector2 moveValue)
+    {
+        if (moveValue.sqrMagnitude > 0.1f)
+        {
+            HandleFirstInput();
+        }
+    }
+
+    public void SubscribeToFirstInputEvents()
+    {
+        if (InputManager.Instance != null && startLevelOnFirstMoveInput)
+        {
+            InputManager.Instance.OnMove += HandleFirstMoveInput;
+            if (_playerMovementController != null) _playerMovementController.OnJumped += HandleFirstInput;
+            if (_grapplingHookController != null) _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+        }
+    }
+
+    private void UnsubscribeFromFirstInputEvents()
+    {
+        if (InputManager.Instance != null && _playerMovementController != null && _grapplingHookController != null)
+        {
+            InputManager.Instance.OnMove -= HandleFirstMoveInput;
+            _playerMovementController.OnJumped -= HandleFirstInput;
+            _grapplingHookController.OnGrappleStarted -= HandleFirstInput;
+        }
+    }
+
+    public LevelData GetCurrentLevelData()
+    {
+        return currentLevelData;
+    }
+    
+    public void SetCurrentLevelData(LevelData data)
+    {
+        currentLevelData = data;
     }
 }
 </file>

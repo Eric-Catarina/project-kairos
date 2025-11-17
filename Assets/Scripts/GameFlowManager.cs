@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/Core/GameFlowManager.cs
-
 using System;
 using System.Collections;
 using TMPro;
@@ -12,6 +10,7 @@ public struct LevelCompletionData
     public float FinalTime;
     public int Deaths;
     public Rank FinalRank;
+    public bool IsDebugWin;
 }
 
 public class GameFlowManager : MonoBehaviour
@@ -19,7 +18,7 @@ public class GameFlowManager : MonoBehaviour
     public static GameFlowManager Instance { get; private set; }
     public GameState CurrentState { get; private set; }
 
-    public event System.Action<LevelCompletionData> OnLevelCompleted; // Mudar assinatura
+    public event System.Action<LevelCompletionData> OnLevelCompleted;
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
@@ -116,7 +115,7 @@ public class GameFlowManager : MonoBehaviour
             ResumeGame();
     }
     
-    public void CompleteLevel()
+    public void CompleteLevel(bool isDebugWin = false)
     {
         if (CurrentState != GameState.Playing) return;
         CurrentState = GameState.LevelFinished;
@@ -124,7 +123,7 @@ public class GameFlowManager : MonoBehaviour
         InputStateManager.Instance.SwitchState(InputState.PostGame);
         ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths);
 
-        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank };
+        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank, IsDebugWin = isDebugWin };
         OnLevelCompleted?.Invoke(data);
     }
 

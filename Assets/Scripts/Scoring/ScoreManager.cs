@@ -10,6 +10,10 @@ public class ScoreManager : MonoBehaviour
     [SerializeField] private LevelData currentLevelData;
     [SerializeField] private bool startLevelOnFirstMoveInput = false;
 
+    [Header("Configurações de Penalidade")]
+    [Tooltip("Segundos a serem adicionados ao tempo ao completar a fase via atalho de debug.")]
+    [SerializeField] private float debugCompletionPenalty = 70f;
+
     private ScoreUIController _scoreUIController;
     private LeaderboardUIController _leaderboardUIController;
     private PlayerMovementController _playerMovementController;
@@ -29,7 +33,6 @@ public class ScoreManager : MonoBehaviour
         if (Instance != null && Instance != this)
         {
             Instance.SetCurrentLevelData(currentLevelData);
-            Instance.startLevelOnFirstMoveInput = startLevelOnFirstMoveInput;
             Destroy(gameObject);
             return;
         }
@@ -67,7 +70,6 @@ public class ScoreManager : MonoBehaviour
         LoadDeathCountForLevel();
         _levelCompleted = false;
         SubscribeToFirstInputEvents();
-        AsyncFindSceneReferences();
     }
 
     private void FindSceneReferences()
@@ -76,13 +78,6 @@ public class ScoreManager : MonoBehaviour
         _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
         _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
         _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
-    }
-
-    // Wait 1 frame and FindSceneReferences again (in case objects are initialized after scene load)
-    private async void AsyncFindSceneReferences()
-    {
-        await Task.Yield();
-        FindSceneReferences();
     }
 
     private void Update()
@@ -180,6 +175,12 @@ public class ScoreManager : MonoBehaviour
     {
         if (_levelCompleted) return;
         _levelCompleted = true;
+
+        if (data.IsDebugWin)
+        {
+            data.FinalTime += debugCompletionPenalty;
+            data.FinalRank = GetRankForTime(data.FinalTime);
+        }
 
         SaveLevelStats(data.FinalTime, data.Deaths);
 

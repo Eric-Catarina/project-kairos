@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/WinLogic.cs
-
 using UnityEngine;
 
 public class WinLogic : MonoBehaviour
@@ -12,6 +10,6 @@ public class WinLogic : MonoBehaviour
 
         _levelFinished = true;
         
-        GameFlowManager.Instance.CompleteLevel();
+        GameFlowManager.Instance.CompleteLevel(false);
     }
 }
