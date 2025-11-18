@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2176480153855055193}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: PatrolTargetA
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2915817236938628363}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: PatrolTargetB
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -451,7 +451,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6279997106017727753}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: MovingSlowablePlatform
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -485,6 +485,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6279997106017727753}
     m_Modifications:
+    - target: {fileID: 28596694676156832, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 347193718715044263, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
       propertyPath: m_Size.x
       value: 6.7617393
@@ -509,9 +513,33 @@ PrefabInstance:
       propertyPath: m_Center.z
       value: -0.20754884
       objectReference: {fileID: 0}
+    - target: {fileID: 1297772009934796813, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2279570368189628760, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2399633290330925115, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 3295038843561029865, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 4164208427517771623, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 4738105909955318989, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
       propertyPath: m_Name
       value: BigDrone
+      objectReference: {fileID: 0}
+    - target: {fileID: 5170756482049406544, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 5371372223827316343, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
       propertyPath: m_LocalScale.x
@@ -568,6 +596,14 @@ PrefabInstance:
     - target: {fileID: 5371372223827316343, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
       propertyPath: m_ConstrainProportionsScale
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6259328420699820701, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 9014603986813991834, guid: d11f437935abe364f93b4d8ca309ddbb, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
