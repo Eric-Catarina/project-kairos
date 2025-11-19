@@ -115,7 +115,9 @@ public class CheckpointManager : MonoBehaviour
     public void SoftResetToCheckpoint()
     {
         ScoreManager.Instance?.IncrementDeathCount();
+        ScoreManager.Instance?.SubscribeToFirstInputEvents();
         TimeManipulationManager.Instance?.ResetCharge();
+        
 
         if (!_areCheckpointsEnabled || _lastActivatedCheckpoint == null)
         {
