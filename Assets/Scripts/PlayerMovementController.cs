@@ -462,6 +462,7 @@ public class PlayerMovementController : MonoBehaviour
 
 	private IEnumerator ResetPositionRoutine(Vector3 position)
 	{
+		position = position + Vector3.up * 3;
 		grapplingHookController?.StopGrapple();
 
 		_rigidbody.isKinematic = true;
