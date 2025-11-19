@@ -15,6 +15,7 @@ public class PlayerMovementController : MonoBehaviour
 	public event Action OnDoubleJumpUsed;
 	public event Action<float> OnHorizontalVelocityChanged;
 	public event Action OnShocked;
+	public event Action OnResetToCheckpointFinished;
 	#endregion
 
 	#region State
@@ -469,6 +470,9 @@ public class PlayerMovementController : MonoBehaviour
 		yield return transform.DOMove(position, 0.5f).SetEase(Ease.InOutExpo).WaitForCompletion();
 
 		yield return new WaitForFixedUpdate();
+
+		OnResetToCheckpointFinished?.Invoke();
+
 		_rigidbody.isKinematic = false;
 
 		_rigidbody.linearVelocity = Vector3.zero;

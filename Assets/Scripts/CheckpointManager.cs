@@ -20,6 +20,7 @@ public class CheckpointManager : MonoBehaviour
     private List<IResettable> _resettableObjects;
     private Checkpoint _lastActivatedCheckpoint;
     private PlayerMovementController _player;
+    [SerializeField] private ParticleSystem _respawnEffect;
     private bool _areCheckpointsEnabled;
 
     private void Awake()
@@ -82,6 +83,10 @@ public class CheckpointManager : MonoBehaviour
         _resettableObjects = FindObjectsOfType<MonoBehaviour>(true).OfType<IResettable>().ToList();
 
         _lastActivatedCheckpoint = null;
+        _player.OnResetToCheckpointFinished += () => 
+        {
+            PlayResetToCheckpointEffect(_player.transform.position);
+        };
         
         if (GameSettingsManager.Instance != null)
         {
@@ -173,5 +178,14 @@ public class CheckpointManager : MonoBehaviour
     {
         ScoreManager.Instance?.IncrementDeathCount();
         SceneManagerLogic.Instance.RestartScene();
+    }
+
+    private void PlayResetToCheckpointEffect(Vector3 position)
+    {
+        if (_respawnEffect != null)
+        {
+            ParticleSystem spawnedEffect = Instantiate(_respawnEffect, position, Quaternion.identity);
+            spawnedEffect.Play();
+        }
     }
 }
