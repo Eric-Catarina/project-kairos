@@ -50,7 +50,10 @@ public class GameFlowManager : MonoBehaviour
 
     private void OnDisable()
     {
-        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        }
         SceneManager.sceneLoaded -= OnSceneLoaded;
         if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
     }
@@ -59,6 +62,7 @@ public class GameFlowManager : MonoBehaviour
     {
         FindSceneReferences();
         _isSettingsPanelOpen = false;
+        _isCountingDown = false;
         
         if (IsInGameplayScene)
         {
@@ -107,7 +111,12 @@ public class GameFlowManager : MonoBehaviour
 
     public void TogglePauseState()
     {
-        if (_isCountingDown) return;
+        // Se estiver contando (3-2-1), pula direto para o jogo
+        if (_isCountingDown)
+        {
+            SkipCountdown();
+            return;
+        }
 
         if (CurrentState == GameState.Playing)
             PauseGame();
@@ -143,7 +152,21 @@ public class GameFlowManager : MonoBehaviour
         if (CurrentState != GameState.Paused) return;
         
         _uiManager?.ClosePanel(UIPanelType.Settings);
+        
+        // Inicia a contagem regressiva
+        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
         _countdownCoroutine = StartCoroutine(ResumeCountdown());
+    }
+
+    private void SkipCountdown()
+    {
+        if (_countdownCoroutine != null)
+        {
+            StopCoroutine(_countdownCoroutine);
+            _countdownCoroutine = null;
+        }
+        
+        FinishResume();
     }
 
     private IEnumerator ResumeCountdown()
@@ -157,10 +180,13 @@ public class GameFlowManager : MonoBehaviour
         }
 
         _countdownUI.panel.SetActive(true);
+        
         _countdownUI.text.text = "3";
         yield return new WaitForSecondsRealtime(1f);
+        
         _countdownUI.text.text = "2";
         yield return new WaitForSecondsRealtime(1f);
+        
         _countdownUI.text.text = "1";
         yield return new WaitForSecondsRealtime(1f);
         
@@ -169,7 +195,12 @@ public class GameFlowManager : MonoBehaviour
 
     private void FinishResume()
     {
-        if(_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
+        // Garante que a UI do countdown suma, caso tenhamos skippado
+        if (_countdownUI?.panel != null) 
+        {
+            _countdownUI.panel.SetActive(false);
+        }
+        
         _isCountingDown = false;
         _countdownCoroutine = null;
         
