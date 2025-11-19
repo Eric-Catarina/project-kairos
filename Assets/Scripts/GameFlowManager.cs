@@ -1,5 +1,3 @@
-// Local: Assets/Scripts/Core/GameFlowManager.cs
-
 using System;
 using System.Collections;
 using TMPro;
@@ -12,6 +10,7 @@ public struct LevelCompletionData
     public float FinalTime;
     public int Deaths;
     public Rank FinalRank;
+    public bool IsDebugWin;
 }
 
 public class GameFlowManager : MonoBehaviour
@@ -19,7 +18,7 @@ public class GameFlowManager : MonoBehaviour
     public static GameFlowManager Instance { get; private set; }
     public GameState CurrentState { get; private set; }
 
-    public event System.Action<LevelCompletionData> OnLevelCompleted; // Mudar assinatura
+    public event System.Action<LevelCompletionData> OnLevelCompleted;
     public event Action OnGamePaused;
     public event Action OnGameResumed;
 
@@ -51,7 +50,10 @@ public class GameFlowManager : MonoBehaviour
 
     private void OnDisable()
     {
-        InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnPausePressed -= HandlePauseRequest;
+        }
         SceneManager.sceneLoaded -= OnSceneLoaded;
         if (_uiManager != null) _uiManager.OnPanelStateChanged -= HandlePanelStateChanged;
     }
@@ -60,6 +62,7 @@ public class GameFlowManager : MonoBehaviour
     {
         FindSceneReferences();
         _isSettingsPanelOpen = false;
+        _isCountingDown = false;
         
         if (IsInGameplayScene)
         {
@@ -108,7 +111,12 @@ public class GameFlowManager : MonoBehaviour
 
     public void TogglePauseState()
     {
-        if (_isCountingDown) return;
+        // Se estiver contando (3-2-1), pula direto para o jogo
+        if (_isCountingDown)
+        {
+            SkipCountdown();
+            return;
+        }
 
         if (CurrentState == GameState.Playing)
             PauseGame();
@@ -116,7 +124,7 @@ public class GameFlowManager : MonoBehaviour
             ResumeGame();
     }
     
-    public void CompleteLevel()
+    public void CompleteLevel(bool isDebugWin = false)
     {
         if (CurrentState != GameState.Playing) return;
         CurrentState = GameState.LevelFinished;
@@ -124,7 +132,7 @@ public class GameFlowManager : MonoBehaviour
         InputStateManager.Instance.SwitchState(InputState.PostGame);
         ScoreManager.Instance.StopTimerAndGetResults(out float finalTime, out Rank finalRank, out int deaths);
 
-        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank };
+        var data = new LevelCompletionData { FinalTime = finalTime, Deaths = deaths, FinalRank = finalRank, IsDebugWin = isDebugWin };
         OnLevelCompleted?.Invoke(data);
     }
 
@@ -144,7 +152,21 @@ public class GameFlowManager : MonoBehaviour
         if (CurrentState != GameState.Paused) return;
         
         _uiManager?.ClosePanel(UIPanelType.Settings);
+        
+        // Inicia a contagem regressiva
+        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
         _countdownCoroutine = StartCoroutine(ResumeCountdown());
+    }
+
+    private void SkipCountdown()
+    {
+        if (_countdownCoroutine != null)
+        {
+            StopCoroutine(_countdownCoroutine);
+            _countdownCoroutine = null;
+        }
+        
+        FinishResume();
     }
 
     private IEnumerator ResumeCountdown()
@@ -158,10 +180,13 @@ public class GameFlowManager : MonoBehaviour
         }
 
         _countdownUI.panel.SetActive(true);
+        
         _countdownUI.text.text = "3";
         yield return new WaitForSecondsRealtime(1f);
+        
         _countdownUI.text.text = "2";
         yield return new WaitForSecondsRealtime(1f);
+        
         _countdownUI.text.text = "1";
         yield return new WaitForSecondsRealtime(1f);
         
@@ -170,7 +195,12 @@ public class GameFlowManager : MonoBehaviour
 
     private void FinishResume()
     {
-        if(_countdownUI?.panel != null) _countdownUI.panel.SetActive(false);
+        // Garante que a UI do countdown suma, caso tenhamos skippado
+        if (_countdownUI?.panel != null) 
+        {
+            _countdownUI.panel.SetActive(false);
+        }
+        
         _isCountingDown = false;
         _countdownCoroutine = null;
         
