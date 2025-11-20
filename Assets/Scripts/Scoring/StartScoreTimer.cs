@@ -7,6 +7,7 @@ public class StartScoreTimer : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
+            ScoreManager.Instance.ResetLevelTimer();
             ScoreManager.Instance.StartLevelTimer();
         }
     }

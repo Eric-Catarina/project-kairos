@@ -99,7 +99,7 @@ public class InputManager : MonoBehaviour
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
     private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
-    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel();
+    private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel(true);
     private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
     private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
     private void HandlePausePressed(InputAction.CallbackContext context) => OnPausePressed?.Invoke();

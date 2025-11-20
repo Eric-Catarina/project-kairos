@@ -105,6 +105,7 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted += OnGrappleInputStarted;
         InputManager.Instance.OnGrappleCanceled += OnGrappleInputCanceled;
         InputManager.Instance.OnMove += SetMoveInput;
+        InputManager.Instance.OnJumpPerformed += HandleJumpInput;
         if (playerMovement != null) playerMovement.OnGroundLanded += ResetGrappleAvailability;
     }
 
@@ -114,6 +115,7 @@ public class GrapplingHookController : MonoBehaviour
         InputManager.Instance.OnGrappleStarted -= OnGrappleInputStarted;
         InputManager.Instance.OnGrappleCanceled -= OnGrappleInputCanceled;
         InputManager.Instance.OnMove -= SetMoveInput;
+        InputManager.Instance.OnJumpPerformed -= HandleJumpInput;
         if (playerMovement != null) playerMovement.OnGroundLanded -= ResetGrappleAvailability;
 
         if (_wasPredictionTargetValidLastFrame)
@@ -199,6 +201,15 @@ public class GrapplingHookController : MonoBehaviour
         else if (!_isGrappling && _cooldownTimer <= 0) { _isInputBuffered = true; _grappleInputBufferTimer = grappleInputBufferTime; }
     }
     private void OnGrappleInputCanceled() { StopGrapple(); ClearInputBuffer(); }
+    
+    private void HandleJumpInput()
+    {
+        if (IsGrappling)
+        {
+            StopGrapple();
+        }
+    }
+    
     private void ResetGrappleAvailability() { if (!canDoMultipleGrapple && !_hasGrappleAvailable) { _hasGrappleAvailable = true; } }
     public void ResetGrapple() { _hasGrappleAvailable = true; _cooldownTimer = 0f; _hasCooldownTolerance = true; }
     #endregion
