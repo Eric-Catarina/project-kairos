@@ -46,6 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   currentLevelData: {fileID: 11400000, guid: 52ffb2ed7b005b8488f39ee45d05df8a, type: 2}
   startLevelOnFirstMoveInput: 1
+  debugCompletionPenalty: 70
 --- !u!1 &826282399583510400
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,7 +237,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   initialSpawnPoint: {fileID: 0}
-  penaltyPerCheckpoint: 5
+  penaltyPerCheckpoint: 0
+  _respawnEffect: {fileID: 0}
 --- !u!1 &2581661355542986561
 GameObject:
   m_ObjectHideFlags: 0
@@ -734,7 +736,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96d8600d249de746daf259d86d847c5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxChargeDuration: 7
+  maxChargeDuration: 15
   rechargeDuration: 3
   slowPercentage: 100
   slowDownColor: {r: 0, g: 1, b: 1, a: 1}
