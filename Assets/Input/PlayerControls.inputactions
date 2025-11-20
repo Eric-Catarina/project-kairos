@@ -631,15 +631,6 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
-                },
-                {
-                    "name": "SlowTimeEffect",
-                    "type": "Button",
-                    "id": "32a73797-c6b3-493e-963b-84690f36d8f4",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -766,6 +757,17 @@
                 },
                 {
                     "name": "",
+                    "id": "b59f3445-6ddf-4fc0-a46b-f0623faeea0f",
+                    "path": "<Keyboard>/leftShift",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "SlowTime",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "de32b2d8-89fa-443b-8e73-8abd87a05f24",
                     "path": "<Keyboard>/f5",
                     "interactions": "",
@@ -805,17 +807,6 @@
                     "processors": "",
                     "groups": "",
                     "action": "Dash",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "bf58d15a-b96f-4573-b03b-9cf072e52367",
-                    "path": "<Mouse>/rightButton",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "SlowTimeEffect",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

@@ -14,7 +14,11 @@ public class InputManager : MonoBehaviour
     public event Action OnJumpCanceled;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
-    public event Action OnSlowTimeToggled;
+    
+    // Alterado: Eventos separados para inicio e fim do input para permitir lógica Hold/Toggle
+    public event Action OnSlowTimeInputStarted;
+    public event Action OnSlowTimeInputCanceled;
+    
     public event Action OnResetToCheckpoint;
     public event Action OnFullLevelReset;
     public event Action OnPausePressed;
@@ -54,7 +58,11 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Jump.canceled += HandleJumpCanceled;
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed += HandleSlowTimeToggled;
+        
+        // Alterado: Usando started e canceled para lógica hibrida
+        _playerControls.Player.SlowTime.started += HandleSlowTimeInputStarted;
+        _playerControls.Player.SlowTime.canceled += HandleSlowTimeInputCanceled;
+        
         _playerControls.Player.FinishLevel.performed += HandleFinishLevel;
         _playerControls.Player.RestartLevel.performed += HandleResetToCheckpoint;
         _playerControls.Player.FullReset.performed += HandleFullLevelReset;
@@ -82,7 +90,10 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Jump.canceled -= HandleJumpCanceled;
         _playerControls.Player.Grapple.performed -= HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled -= HandleGrappleCanceled;
-        _playerControls.Player.SlowTime.performed -= HandleSlowTimeToggled;
+        
+        _playerControls.Player.SlowTime.started -= HandleSlowTimeInputStarted;
+        _playerControls.Player.SlowTime.canceled -= HandleSlowTimeInputCanceled;
+        
         _playerControls.Player.FinishLevel.performed -= HandleFinishLevel;
         _playerControls.Player.RestartLevel.performed -= HandleResetToCheckpoint;
         _playerControls.Player.FullReset.performed -= HandleFullLevelReset;
@@ -98,7 +109,11 @@ public class InputManager : MonoBehaviour
     private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
-    private void HandleSlowTimeToggled(InputAction.CallbackContext context) => OnSlowTimeToggled?.Invoke();
+    
+    // Novos handlers
+    private void HandleSlowTimeInputStarted(InputAction.CallbackContext context) => OnSlowTimeInputStarted?.Invoke();
+    private void HandleSlowTimeInputCanceled(InputAction.CallbackContext context) => OnSlowTimeInputCanceled?.Invoke();
+    
     private void HandleFinishLevel(InputAction.CallbackContext context) => GameFlowManager.Instance.CompleteLevel(true);
     private void HandleResetToCheckpoint(InputAction.CallbackContext context) => OnResetToCheckpoint?.Invoke();
     private void HandleFullLevelReset(InputAction.CallbackContext context) => OnFullLevelReset?.Invoke();
