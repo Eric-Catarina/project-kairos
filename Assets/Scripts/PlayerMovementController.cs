@@ -5,6 +5,7 @@ using DG.Tweening;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Collider))]
 public class PlayerMovementController : MonoBehaviour
 {
 	#region Events
@@ -32,6 +33,7 @@ public class PlayerMovementController : MonoBehaviour
 	[SerializeField] private GrapplingHookController grapplingHookController;
 	[SerializeField] private TextMeshProUGUI velocityText, distanceText;
 	private Rigidbody _rigidbody;
+	private Collider _playerCollider;
 	private Vector2 _moveInput;
 	#endregion
 
@@ -118,8 +120,11 @@ public class PlayerMovementController : MonoBehaviour
 	private void Awake()
 	{
 		_rigidbody = GetComponent<Rigidbody>();
+		_playerCollider = GetComponent<Collider>();
 		_rigidbody.freezeRotation = true;
 		_baseAirDrag = airDrag;
+
+		SetupFrictionlessMaterial();
 	}
 
 	private void OnEnable()
@@ -151,6 +156,26 @@ public class PlayerMovementController : MonoBehaviour
 		ApplyExtraGravity();
 		LimitVelocity();
 		BroadcastHorizontalVelocity();
+	}
+
+	/// <summary>
+	/// Configura um material físico sem atrito para evitar que o jogador
+	/// grude nas paredes (Wall Stick) ao pular contra elas.
+	/// O controle de parada no chão é feito via Linear Damping (Drag).
+	/// </summary>
+	private void SetupFrictionlessMaterial()
+	{
+		if (_playerCollider != null)
+		{
+			PhysicsMaterial frictionlessMat = new PhysicsMaterial("PlayerFrictionless");
+			frictionlessMat.dynamicFriction = 0f;
+			frictionlessMat.staticFriction = 0f;
+			frictionlessMat.frictionCombine = PhysicsMaterialCombine.Minimum;
+			frictionlessMat.bounciness = 0f;
+			frictionlessMat.bounceCombine = PhysicsMaterialCombine.Minimum;
+
+			_playerCollider.material = frictionlessMat;
+		}
 	}
 
 	private void SetMoveInput(Vector2 input) => _moveInput = input;
