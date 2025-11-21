@@ -717,15 +717,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""SlowTimeEffect"",
-                    ""type"": ""Button"",
-                    ""id"": ""32a73797-c6b3-493e-963b-84690f36d8f4"",
-                    ""expectedControlType"": """",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -852,6 +843,17 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""b59f3445-6ddf-4fc0-a46b-f0623faeea0f"",
+                    ""path"": ""<Keyboard>/leftShift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SlowTime"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""de32b2d8-89fa-443b-8e73-8abd87a05f24"",
                     ""path"": ""<Keyboard>/f5"",
                     ""interactions"": """",
@@ -891,17 +893,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Dash"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": """",
-                    ""id"": ""bf58d15a-b96f-4573-b03b-9cf072e52367"",
-                    ""path"": ""<Mouse>/rightButton"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""SlowTimeEffect"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -1082,7 +1073,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_FullReset = m_Player.FindAction("FullReset", throwIfNotFound: true);
         m_Player_Pause = m_Player.FindAction("Pause", throwIfNotFound: true);
         m_Player_Dash = m_Player.FindAction("Dash", throwIfNotFound: true);
-        m_Player_SlowTimeEffect = m_Player.FindAction("SlowTimeEffect", throwIfNotFound: true);
         // Debug
         m_Debug = asset.FindActionMap("Debug", throwIfNotFound: true);
         m_Debug_ToggleInfiniteJumps = m_Debug.FindAction("ToggleInfiniteJumps", throwIfNotFound: true);
@@ -1392,7 +1382,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_FullReset;
     private readonly InputAction m_Player_Pause;
     private readonly InputAction m_Player_Dash;
-    private readonly InputAction m_Player_SlowTimeEffect;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -1444,10 +1433,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/Dash".
         /// </summary>
         public InputAction @Dash => m_Wrapper.m_Player_Dash;
-        /// <summary>
-        /// Provides access to the underlying input action "Player/SlowTimeEffect".
-        /// </summary>
-        public InputAction @SlowTimeEffect => m_Wrapper.m_Player_SlowTimeEffect;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1504,9 +1489,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Dash.started += instance.OnDash;
             @Dash.performed += instance.OnDash;
             @Dash.canceled += instance.OnDash;
-            @SlowTimeEffect.started += instance.OnSlowTimeEffect;
-            @SlowTimeEffect.performed += instance.OnSlowTimeEffect;
-            @SlowTimeEffect.canceled += instance.OnSlowTimeEffect;
         }
 
         /// <summary>
@@ -1548,9 +1530,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Dash.started -= instance.OnDash;
             @Dash.performed -= instance.OnDash;
             @Dash.canceled -= instance.OnDash;
-            @SlowTimeEffect.started -= instance.OnSlowTimeEffect;
-            @SlowTimeEffect.performed -= instance.OnSlowTimeEffect;
-            @SlowTimeEffect.canceled -= instance.OnSlowTimeEffect;
         }
 
         /// <summary>
@@ -1982,13 +1961,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnDash(InputAction.CallbackContext context);
-        /// <summary>
-        /// Method invoked when associated input action "SlowTimeEffect" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
-        /// </summary>
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnSlowTimeEffect(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Debug" which allows adding and removing callbacks.

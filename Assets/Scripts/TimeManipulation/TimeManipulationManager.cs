@@ -1,9 +1,7 @@
-// Assets/Scripts/TimeManipulation/TimeManipulationManager.cs
-
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement; // Adicionado para ouvir eventos de cena
+using UnityEngine.SceneManagement;
 
 public class TimeManipulationManager : MonoBehaviour
 {
@@ -16,10 +14,18 @@ public class TimeManipulationManager : MonoBehaviour
     [SerializeField] private float maxChargeDuration = 3f;
     [Tooltip("Tempo em segundos para recarregar a bateria de 0 a 100%.")]
     [SerializeField] private float rechargeDuration = 5f;
+
+    [Header("Configurações de Input")]
+    [Tooltip("Tempo máximo em segundos para considerar o clique como um 'Toggle'. Segurar mais que isso conta como 'Hold'.")]
+    [SerializeField] private float holdThreshold = 0.25f;
     
     private float _currentCharge;
     private float _rechargeRate;
     private bool _isTimeSlowed = false;
+
+    // Variáveis para lógica Híbrida (Toggle/Hold)
+    private float _inputPressTime;
+    private bool _wasSlowedBeforePress;
 
     public bool IsTimeSlowed => _isTimeSlowed;
 
@@ -51,9 +57,9 @@ public class TimeManipulationManager : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnSlowTimeToggled += HandleSlowTimeToggle;
+            InputManager.Instance.OnSlowTimeInputStarted += HandleInputStarted;
+            InputManager.Instance.OnSlowTimeInputCanceled += HandleInputCanceled;
         }
-        // *** NOVO: Se inscreve no evento de carregamento de cena ***
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -61,19 +67,17 @@ public class TimeManipulationManager : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.OnSlowTimeToggled -= HandleSlowTimeToggle;
+            InputManager.Instance.OnSlowTimeInputStarted -= HandleInputStarted;
+            InputManager.Instance.OnSlowTimeInputCanceled -= HandleInputCanceled;
         }
 
         if (_isTimeSlowed) DeactivateSlowTime();
         
-        // *** NOVO: Se desinscreve do evento para evitar memory leaks ***
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    // *** NOVO: Método chamado sempre que uma cena é carregada ***
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Reseta a carga e o estado do time stop
         ResetCharge();
     }
     
@@ -116,20 +120,44 @@ public class TimeManipulationManager : MonoBehaviour
         }
     }
     
-    private void HandleSlowTimeToggle()
+    private void HandleInputStarted()
     {
-        if (_isTimeSlowed)
-        {
-            DeactivateSlowTime();
-        }
-        else if (_currentCharge > 0.1f) 
+        _inputPressTime = Time.unscaledTime;
+        _wasSlowedBeforePress = _isTimeSlowed;
+
+        // Feedback imediato: se não estava parado, para agora (se tiver carga)
+        if (!_isTimeSlowed && _currentCharge > 0.1f)
         {
             ActivateSlowTime();
         }
     }
 
+    private void HandleInputCanceled()
+    {
+        float pressDuration = Time.unscaledTime - _inputPressTime;
+
+        if (pressDuration < holdThreshold)
+        {
+            // Foi um TAP (Toggle)
+            // Se já estava ativado antes de apertar, o tap serve para desligar
+            if (_wasSlowedBeforePress)
+            {
+                DeactivateSlowTime();
+            }
+            // Se estava desligado, já ligamos no Started, então mantemos ligado
+        }
+        else
+        {
+            // Foi um HOLD (Segurou)
+            // Ao soltar o botão depois de segurar, sempre desativa
+            DeactivateSlowTime();
+        }
+    }
+
     private void ActivateSlowTime()
     {
+        if (_isTimeSlowed) return;
+        
         _isTimeSlowed = true;
         foreach (var slowable in _slowableObjects)
         {
@@ -140,6 +168,8 @@ public class TimeManipulationManager : MonoBehaviour
 
     private void DeactivateSlowTime()
     {
+        if (!_isTimeSlowed) return;
+
         _isTimeSlowed = false;
         foreach (var slowable in _slowableObjects)
         {
@@ -148,19 +178,14 @@ public class TimeManipulationManager : MonoBehaviour
         OnTimeStopStopped?.Invoke();
     }
 
-    // *** NOVO: Método público para resetar a carga ***
     public void ResetCharge()
     {
-        // Garante que o efeito visual seja desativado se a cena reiniciar durante o time stop
         if (_isTimeSlowed)
         {
             DeactivateSlowTime();
         }
 
-        // Reseta a carga para o máximo
         _currentCharge = maxChargeDuration;
-
-        // Notifica a UI para atualizar
         OnChargeChanged?.Invoke(1f);
     }
     
