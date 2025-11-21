@@ -233,38 +233,16 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cee491f7e2a05f4885adcfd1b71250d, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -37634061819329816}
+      addedObject: {fileID: -1072522712459476471}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cee491f7e2a05f4885adcfd1b71250d, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -1072522712459476471}
+      addedObject: {fileID: 5236127964410402328}
   m_SourcePrefab: {fileID: 100100000, guid: 6cee491f7e2a05f4885adcfd1b71250d, type: 3}
 --- !u!1 &399371227267623753 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cee491f7e2a05f4885adcfd1b71250d, type: 3}
   m_PrefabInstance: {fileID: 669826684165379608}
   m_PrefabAsset: {fileID: 0}
---- !u!95 &-37634061819329816
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 399371227267623753}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: ddb4ab390060c6142a7fdc5a5b88ed74, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!54 &-1072522712459476471
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -292,6 +270,21 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &5236127964410402328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 399371227267623753}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1db6e23ab5bcaec89712d080a59b7ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  canBeGrappledWhileMoving: 1
+  grappleableLayerName: Grappleable
+  slowDownColor: {r: 0, g: 1, b: 1, a: 1}
 --- !u!4 &1063142735860216307 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 6cee491f7e2a05f4885adcfd1b71250d, type: 3}
