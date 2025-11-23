@@ -7,6 +7,7 @@ public enum UIPanelType
     Settings,
     PauseMenu,
     LevelSelect,
+    Help,
     // Adicione outros painéis aqui (ex: Inventory, Map)
 
     // Painéis que NÃO bloqueiam o input (HUD)

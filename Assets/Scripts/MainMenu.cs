@@ -8,7 +8,7 @@ public class MainMenu : UIPanel
 {
     [Header("Referências dos Botões")]
     [SerializeField] private Button startButton;
-    [SerializeField] private Button extraButton; // Assumindo que você terá uma lógica para ele
+    [SerializeField] private Button helpButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button exitButton;
     [SerializeField] private Button selectLevelButton;
@@ -44,7 +44,7 @@ public class MainMenu : UIPanel
     {
         // Remove quaisquer listeners antigos do Inspector para evitar chamadas duplicadas
         startButton?.onClick.RemoveAllListeners();
-        extraButton?.onClick.RemoveAllListeners();
+        helpButton?.onClick.RemoveAllListeners();
         settingsButton?.onClick.RemoveAllListeners();
         exitButton?.onClick.RemoveAllListeners();
         selectLevelButton?.onClick.RemoveAllListeners();
@@ -72,13 +72,11 @@ public class MainMenu : UIPanel
         }
 
         // Lógica para o botão Extra (Exemplo: abrir um painel de extras)
-        extraButton?.onClick.AddListener(HandleExtraButtonClicked);
+        helpButton?.onClick.AddListener(HandleHelpButtonClicked);
     }
 
-    private void HandleExtraButtonClicked()
+    private void HandleHelpButtonClicked()
     {
-        // Implemente aqui a lógica para o botão "Extra"
-        Debug.Log("Botão Extra clicado! (Implemente a funcionalidade aqui)");
-        // Exemplo: UIManager.Instance.ShowPanel(UIPanelType.Extras);
+        UIManager.Instance.OpenHelpPanel();
     }
 }

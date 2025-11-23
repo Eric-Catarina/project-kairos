@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
 using UnityEngine.EventSystems;
+using System;
 
 public class ButtonJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
@@ -22,6 +23,9 @@ public class ButtonJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
     private Sequence clickSequence;
     private Image selfImage;
 
+    public event Action OnHoverEnter;
+    public event Action OnHoverExit;
+
     void Start()
     {
         // Garante que o targetImage foi atribuído para evitar erros
@@ -41,12 +45,14 @@ public class ButtonJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
     {
         // Mata a animação anterior para evitar conflitos e executa a nova
         CreateHoverSequence(true).Play();
+        OnHoverEnter?.Invoke();
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         // Mata a animação anterior e executa a de retorno
         CreateHoverSequence(false).Play();
+        OnHoverExit?.Invoke();
     }
 
     public void OnPointerClick(PointerEventData eventData)

@@ -145,4 +145,13 @@ public class UIManager : MonoBehaviour
         ClosePanel(UIPanelType.LevelSelect);
     }
 
+    public void OpenHelpPanel()
+    {
+        ShowPanel(UIPanelType.Help); 
+    }
+
+    public void CloseHelpPanel()
+    {
+        ClosePanel(UIPanelType.Help);
+    }
 }
