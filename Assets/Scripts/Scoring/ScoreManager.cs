@@ -27,6 +27,9 @@ public class ScoreManager : MonoBehaviour
 
     public float CurrentTime => _levelTimer;
     public int DeathCount => _deathCount;
+    
+    // *** NOVO: Propriedade pública para verificar se o nível começou ***
+    public bool IsLevelStarted => _levelStarted;
 
     private void Awake()
     {
