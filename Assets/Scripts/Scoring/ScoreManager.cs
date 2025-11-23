@@ -28,7 +28,6 @@ public class ScoreManager : MonoBehaviour
     public float CurrentTime => _levelTimer;
     public int DeathCount => _deathCount;
     
-    // *** NOVO: Propriedade pública para verificar se o nível começou ***
     public bool IsLevelStarted => _levelStarted;
 
     private void Awake()
@@ -51,6 +50,13 @@ public class ScoreManager : MonoBehaviour
             GameFlowManager.Instance.OnGamePaused += PauseTimer;
             GameFlowManager.Instance.OnGameResumed += ResumeTimer;
         }
+        
+        // Tenta se inscrever se o player já estiver cacheado (ex: reload de script)
+        if (_playerMovementController != null)
+        {
+            _playerMovementController.OnResetToCheckpointFinished += HandleResetFinished;
+        }
+        
         SubscribeToFirstInputEvents();
     }
 
@@ -63,6 +69,12 @@ public class ScoreManager : MonoBehaviour
             GameFlowManager.Instance.OnGamePaused -= PauseTimer;
             GameFlowManager.Instance.OnGameResumed -= ResumeTimer;
         }
+        
+        if (_playerMovementController != null)
+        {
+            _playerMovementController.OnResetToCheckpointFinished -= HandleResetFinished;
+        }
+        
         UnsubscribeFromFirstInputEvents();
     }
 
@@ -79,8 +91,34 @@ public class ScoreManager : MonoBehaviour
     {
         _scoreUIController = FindObjectOfType<ScoreUIController>(true);
         _leaderboardUIController = FindObjectOfType<LeaderboardUIController>(true);
+        
+        // Remove listeners antigos antes de buscar novas referências para evitar duplicação
+        if (_playerMovementController != null)
+        {
+            _playerMovementController.OnResetToCheckpointFinished -= HandleResetFinished;
+        }
+
         _playerMovementController = FindObjectOfType<PlayerMovementController>(true);
         _grapplingHookController = FindObjectOfType<GrapplingHookController>(true);
+
+        // Se inscreve no novo player encontrado
+        if (_playerMovementController != null)
+        {
+            _playerMovementController.OnResetToCheckpointFinished += HandleResetFinished;
+        }
+    }
+
+    // *** LÓGICA NOVA: Chamado EXATAMENTE quando o DOTween termina ***
+    private void HandleResetFinished()
+    {
+        if (startLevelOnFirstMoveInput && !_levelStarted)
+        {
+            // Verifica o input atual no InputManager (que agora lê direto do hardware)
+            if (InputManager.Instance != null && InputManager.Instance.CurrentMoveInput.sqrMagnitude > 0.1f)
+            {
+                StartLevelTimer();
+            }
+        }
     }
 
     private void Update()
@@ -275,6 +313,10 @@ public class ScoreManager : MonoBehaviour
             InputManager.Instance.OnMove += HandleFirstMoveInput;
             if (_playerMovementController != null) _playerMovementController.OnJumped += HandleFirstInput;
             if (_grapplingHookController != null) _grapplingHookController.OnGrappleStarted += HandleFirstInput;
+            
+            // Nota: Removemos a verificação imediata aqui para evitar o bug do reset.
+            // Agora confiamos no evento HandleMove (para início normal) 
+            // e no HandleResetFinished (para início pós-reset).
         }
     }
 
