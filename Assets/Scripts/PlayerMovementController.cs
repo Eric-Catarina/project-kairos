@@ -508,6 +508,8 @@ public class PlayerMovementController : MonoBehaviour
 		_coyoteTimeCounter = 0f;
 		_jumpBufferCounter = 0f;
 		ResetDoubleJump();
+		grapplingHookController?.StopGrapple();
+
 
 		_resetCoroutine = null;
 	}
