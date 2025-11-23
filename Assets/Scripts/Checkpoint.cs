@@ -40,8 +40,17 @@ public class Checkpoint : MonoBehaviour
     {
         if (_hasBeenActivated || !other.CompareTag("Player")) return;
 
+        // *** NOVO: Validação de Segurança ***
+        // Impede que o checkpoint seja salvo se o nível acabou de ser resetado (tempo 0) 
+        // ou se o contador ainda não começou oficialmente.
         if (ScoreManager.Instance != null)
         {
+            // Se o nível não começou OU o tempo é muito próximo de zero (frame de reset)
+            if (!ScoreManager.Instance.IsLevelStarted || ScoreManager.Instance.CurrentTime <= 0.02f)
+            {
+                return;
+            }
+
             ActivationTime = ScoreManager.Instance.CurrentTime;
         }
 

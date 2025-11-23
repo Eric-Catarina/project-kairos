@@ -9,13 +9,19 @@ public class InputManager : MonoBehaviour
 
     public PlayerControls PlayerControls => _playerControls;
 
+    // *** CORREÇÃO SENIOR: Leitura direta do Action ***
+    // Não armazenamos mais em variável. Lemos o valor em tempo real.
+    // Isso garante que se o jogador estiver segurando o botão, retornará o valor correto imediatamente.
+    public Vector2 CurrentMoveInput => _playerControls != null && _playerControls.Player.enabled 
+        ? _playerControls.Player.Move.ReadValue<Vector2>() 
+        : Vector2.zero;
+
     public event Action<Vector2> OnMove;
     public event Action OnJumpPerformed;
     public event Action OnJumpCanceled;
     public event Action OnGrappleStarted;
     public event Action OnGrappleCanceled;
     
-    // Alterado: Eventos separados para inicio e fim do input para permitir lógica Hold/Toggle
     public event Action OnSlowTimeInputStarted;
     public event Action OnSlowTimeInputCanceled;
     
@@ -59,7 +65,6 @@ public class InputManager : MonoBehaviour
         _playerControls.Player.Grapple.performed += HandleGrappleStarted;
         _playerControls.Player.Grapple.canceled += HandleGrappleCanceled;
         
-        // Alterado: Usando started e canceled para lógica hibrida
         _playerControls.Player.SlowTime.started += HandleSlowTimeInputStarted;
         _playerControls.Player.SlowTime.canceled += HandleSlowTimeInputCanceled;
         
@@ -104,13 +109,16 @@ public class InputManager : MonoBehaviour
         _playerControls.Disable();
     }
     
-    private void HandleMove(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
+    private void HandleMove(InputAction.CallbackContext context) 
+    {
+        OnMove?.Invoke(context.ReadValue<Vector2>());
+    }
+
     private void HandleJumpPerformed(InputAction.CallbackContext context) => OnJumpPerformed?.Invoke();
     private void HandleJumpCanceled(InputAction.CallbackContext context) => OnJumpCanceled?.Invoke();
     private void HandleGrappleStarted(InputAction.CallbackContext context) => OnGrappleStarted?.Invoke();
     private void HandleGrappleCanceled(InputAction.CallbackContext context) => OnGrappleCanceled?.Invoke();
     
-    // Novos handlers
     private void HandleSlowTimeInputStarted(InputAction.CallbackContext context) => OnSlowTimeInputStarted?.Invoke();
     private void HandleSlowTimeInputCanceled(InputAction.CallbackContext context) => OnSlowTimeInputCanceled?.Invoke();
     
