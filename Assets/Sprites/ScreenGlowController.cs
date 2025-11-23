@@ -25,7 +25,6 @@ public class ScreenGlowController : MonoBehaviour
     public float duracaoDoFade = 1.5f;
     public string nomeDaPropriedade = "_AlphaIntensity"; 
 
-    // Variáveis internas
     private Material _matSpeed;
     private float _intensidadeSpeed = 0f;
     private Coroutine _routineSpeed;
@@ -44,30 +43,27 @@ public class ScreenGlowController : MonoBehaviour
     {
         _propID = Shader.PropertyToID(nomeDaPropriedade);
 
-        // --- SETUP SPEED (Mantém sempre ligado, só zera o valor) ---
+        // --- SETUP SPEED
         if (rendererSpeed != null)
         {
-            rendererSpeed.enabled = true; // Garante que está renderizando
+            rendererSpeed.enabled = true;
             _matSpeed = rendererSpeed.material;
             if (_matSpeed.HasProperty(_propID)) _matSpeed.SetFloat(_propID, 0f);
         }
 
-        // --- SETUP JUMP (Mantém sempre ligado, só zera o valor) ---
+        // --- SETUP JUMP
         if (rendererJump != null)
         {
-            rendererJump.enabled = true; // Garante que está renderizando
+            rendererJump.enabled = true;
             _matJump = rendererJump.material;
             if (_matJump.HasProperty(_propID)) _matJump.SetFloat(_propID, 0f);
         }
 
-        // --- SETUP DAMAGE (ESPECIAL: Começa DESLIGADO) ---
         if (rendererDamage != null)
         {
             _matDamage = rendererDamage.material;
-            // Zera o valor por segurança
             if (_matDamage.HasProperty(_propID)) _matDamage.SetFloat(_propID, 0f);
             
-            // O PULO DO GATO: Desliga o Mesh Renderer no início
             rendererDamage.enabled = false; 
         }
     }
@@ -99,7 +95,6 @@ public class ScreenGlowController : MonoBehaviour
         _matSpeed.SetFloat(_propID, _intensidadeSpeed);
 
         if (_routineSpeed != null) StopCoroutine(_routineSpeed);
-        // Chama a rotina sem pedir para desligar no final (null)
         _routineSpeed = StartCoroutine(FadeRoutine((val) => _intensidadeSpeed = val, _intensidadeSpeed, _matSpeed, null));
     }
 
@@ -114,7 +109,6 @@ public class ScreenGlowController : MonoBehaviour
         _matJump.SetFloat(_propID, _intensidadeJump);
 
         if (_routineJump != null) StopCoroutine(_routineJump);
-        // Chama a rotina sem pedir para desligar no final (null)
         _routineJump = StartCoroutine(FadeRoutine((val) => _intensidadeJump = val, _intensidadeJump, _matJump, null));
     }
 
@@ -123,7 +117,6 @@ public class ScreenGlowController : MonoBehaviour
     {
         if (_matDamage == null) return;
 
-        // 1. LIGA O RENDERER AGORA!
         rendererDamage.enabled = true;
 
         _intensidadeDamage = damageIncremento; 
@@ -131,13 +124,10 @@ public class ScreenGlowController : MonoBehaviour
 
         if (_routineDamage != null) StopCoroutine(_routineDamage);
         
-        // AQUI ESTÁ A MUDANÇA: Passamos o 'rendererDamage' como último argumento
-        // para a rotina saber que tem que desligar ele quando acabar.
         _routineDamage = StartCoroutine(FadeRoutine((val) => _intensidadeDamage = val, _intensidadeDamage, _matDamage, rendererDamage));
     }
 
     // --- CORROTINA GENÉRICA ---
-    // Adicionei um parâmetro opcional 'rendererParaDesligar'
     IEnumerator FadeRoutine(System.Action<float> atualizarVar, float valorInicial, Material matAlvo, Renderer rendererParaDesligar)
     {
         float elapsed = 0f;
