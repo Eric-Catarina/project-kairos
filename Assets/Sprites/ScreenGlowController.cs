@@ -16,17 +16,15 @@ public class ScreenGlowController : MonoBehaviour
     public float jumpMaximo = 5.0f;
 
     [Header("=== Configuração DAMAGE (Vermelho/Glitch) ===")]
-    public Renderer rendererDamage; // Arraste o Quad do Glitch aqui
-    public string tagDamage = "DamageZone"; // Tag do Laser
-    public float damageIncremento = 5.0f; // Impacto forte
+    public Renderer rendererDamage;
+    public string tagDamage = "DamageZone";
+    public float damageIncremento = 5.0f;
     public float damageMaximo = 5.0f;
 
     [Header("=== Configuração Geral ===")]
     public float duracaoDoFade = 1.5f;
-    // O nome deve ser IGUAL ao que você colocou no Shader Graph (Reference)
     public string nomeDaPropriedade = "_AlphaIntensity"; 
 
-    // Variáveis internas
     private Material _matSpeed;
     private float _intensidadeSpeed = 0f;
     private Coroutine _routineSpeed;
@@ -45,25 +43,28 @@ public class ScreenGlowController : MonoBehaviour
     {
         _propID = Shader.PropertyToID(nomeDaPropriedade);
 
-        // Setup Speed
+        // --- SETUP SPEED
         if (rendererSpeed != null)
         {
+            rendererSpeed.enabled = true;
             _matSpeed = rendererSpeed.material;
             if (_matSpeed.HasProperty(_propID)) _matSpeed.SetFloat(_propID, 0f);
         }
 
-        // Setup Jump
+        // --- SETUP JUMP
         if (rendererJump != null)
         {
+            rendererJump.enabled = true;
             _matJump = rendererJump.material;
             if (_matJump.HasProperty(_propID)) _matJump.SetFloat(_propID, 0f);
         }
 
-        // Setup Damage
         if (rendererDamage != null)
         {
             _matDamage = rendererDamage.material;
             if (_matDamage.HasProperty(_propID)) _matDamage.SetFloat(_propID, 0f);
+            
+            rendererDamage.enabled = false; 
         }
     }
 
@@ -83,8 +84,7 @@ public class ScreenGlowController : MonoBehaviour
         }
     }
 
-    // --- FUNÇÕES DE ATIVAÇÃO ---
-
+    // --- LÓGICA SPEED ---
     void AtivarSpeed()
     {
         if (_matSpeed == null) return;
@@ -95,9 +95,10 @@ public class ScreenGlowController : MonoBehaviour
         _matSpeed.SetFloat(_propID, _intensidadeSpeed);
 
         if (_routineSpeed != null) StopCoroutine(_routineSpeed);
-        _routineSpeed = StartCoroutine(FadeRoutine((val) => _intensidadeSpeed = val, _intensidadeSpeed, _matSpeed));
+        _routineSpeed = StartCoroutine(FadeRoutine((val) => _intensidadeSpeed = val, _intensidadeSpeed, _matSpeed, null));
     }
 
+    // --- LÓGICA JUMP ---
     void AtivarJump()
     {
         if (_matJump == null) return;
@@ -108,25 +109,26 @@ public class ScreenGlowController : MonoBehaviour
         _matJump.SetFloat(_propID, _intensidadeJump);
 
         if (_routineJump != null) StopCoroutine(_routineJump);
-        _routineJump = StartCoroutine(FadeRoutine((val) => _intensidadeJump = val, _intensidadeJump, _matJump));
+        _routineJump = StartCoroutine(FadeRoutine((val) => _intensidadeJump = val, _intensidadeJump, _matJump, null));
     }
 
+    // --- LÓGICA DAMAGE ---
     void AtivarDamage()
     {
         if (_matDamage == null) return;
 
-        // Dano não acumula combo, é pancada seca. 
-        // Já setamos direto para o incremento (ex: 5).
+        rendererDamage.enabled = true;
+
         _intensidadeDamage = damageIncremento; 
-        
         _matDamage.SetFloat(_propID, _intensidadeDamage);
 
         if (_routineDamage != null) StopCoroutine(_routineDamage);
-        _routineDamage = StartCoroutine(FadeRoutine((val) => _intensidadeDamage = val, _intensidadeDamage, _matDamage));
+        
+        _routineDamage = StartCoroutine(FadeRoutine((val) => _intensidadeDamage = val, _intensidadeDamage, _matDamage, rendererDamage));
     }
 
-    // --- CORROTINA GENÉRICA DE FADE ---
-    IEnumerator FadeRoutine(System.Action<float> atualizarVar, float valorInicial, Material matAlvo)
+    // --- CORROTINA GENÉRICA ---
+    IEnumerator FadeRoutine(System.Action<float> atualizarVar, float valorInicial, Material matAlvo, Renderer rendererParaDesligar)
     {
         float elapsed = 0f;
 
@@ -135,7 +137,6 @@ public class ScreenGlowController : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = elapsed / duracaoDoFade;
 
-            // Curva suave
             float valorNovo = Mathf.Lerp(valorInicial, 0f, t * t);
             
             atualizarVar(valorNovo);
@@ -144,7 +145,14 @@ public class ScreenGlowController : MonoBehaviour
             yield return null;
         }
 
+        // Finalização
         atualizarVar(0f);
         matAlvo.SetFloat(_propID, 0f);
+
+        // SE foi passado um renderer (caso do Damage), desliga ele agora
+        if (rendererParaDesligar != null)
+        {
+            rendererParaDesligar.enabled = false;
+        }
     }
 }
