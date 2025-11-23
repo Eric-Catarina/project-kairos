@@ -229,7 +229,7 @@ Transform:
   m_GameObject: {fileID: 233762149061522545}
   serializedVersion: 2
   m_LocalRotation: {x: -0.07880577, y: 0.7027018, z: 0.078805774, w: 0.7027016}
-  m_LocalPosition: {x: -2.6031773, y: 58.7542, z: 69}
+  m_LocalPosition: {x: -309.88318, y: 117.2942, z: 110.19}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -515,7 +515,7 @@ GameObject:
   - component: {fileID: 321255439373650533}
   - component: {fileID: 2563968357696318080}
   m_Layer: 0
-  m_Name: VFX_GoldScreen
+  m_Name: VFX_SpeedRingScreen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -551,13 +551,13 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 422967106631109548}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
+  m_DynamicOccludee: 0
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
-  m_LightProbeUsage: 1
+  m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
@@ -11401,13 +11401,13 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1696874283343430894}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
+  m_DynamicOccludee: 0
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
-  m_LightProbeUsage: 1
+  m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
@@ -11662,8 +11662,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2023490099328316449}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -306.82, y: 116.64, z: 110.65}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11673,7 +11673,7 @@ Transform:
   - {fileID: 1547691079890294024}
   - {fileID: 1119953438383546055}
   m_Father: {fileID: 6288892216577708504}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!54 &1577671208887957498
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -12323,7 +12323,7 @@ GameObject:
   - component: {fileID: 2634107753551723195}
   - component: {fileID: 418659321037137562}
   m_Layer: 0
-  m_Name: VFX_BlueScreen
+  m_Name: VFX_JumpRingScreen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -12359,13 +12359,13 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2967832299992508642}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
+  m_DynamicOccludee: 0
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
-  m_LightProbeUsage: 1
+  m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
@@ -12607,8 +12607,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4110254221261267479}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.078805365, y: 0.7027017, z: 0.078805365, w: 0.70270175}
-  m_LocalPosition: {x: -2.6031773, y: 0.65420175, z: -0.00000018257961}
+  m_LocalRotation: {x: -0.07880576, y: 0.70270175, z: 0.078805774, w: 0.7027016}
+  m_LocalPosition: {x: -309.88318, y: 117.2942, z: 110.19}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
