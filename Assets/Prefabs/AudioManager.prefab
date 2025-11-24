@@ -45,7 +45,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0.2617706
+  m_Volume: 1
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -508,11 +508,11 @@ MonoBehaviour:
   - name: JumpPad2
     clip: {fileID: 8300000, guid: 90105d26a6b5ba446a8ff581bb8d3859, type: 3}
   - name: Ring1
-    clip: {fileID: 8300000, guid: 83560faf899e9dc4ead3380410b5c7d8, type: 3}
+    clip: {fileID: 8300000, guid: 20221d6007f903f459b4ac5a8049f12c, type: 3}
   - name: Ring2
-    clip: {fileID: 8300000, guid: 83560faf899e9dc4ead3380410b5c7d8, type: 3}
+    clip: {fileID: 8300000, guid: 20221d6007f903f459b4ac5a8049f12c, type: 3}
   - name: Ring3
-    clip: {fileID: 8300000, guid: 83560faf899e9dc4ead3380410b5c7d8, type: 3}
+    clip: {fileID: 8300000, guid: 20221d6007f903f459b4ac5a8049f12c, type: 3}
   - name: LaserLoop
     clip: {fileID: 8300000, guid: 4e5a1478991245249b19379033916277, type: 3}
   - name: LaserHit
@@ -532,34 +532,36 @@ MonoBehaviour:
   audioMixer: {fileID: 24100000, guid: 558244343adc0684d84eb304c41aaff7, type: 2}
   sfxPitchVariation: 0.2
   sceneMusics:
-  - scene: 6
+  - scene: 8
     musicName: Menu
-  - scene: 9
-    musicName: Gameplay
-  - scene: 5
-    musicName: Gameplay2
-  - scene: 7
-    musicName: Gameplay3
-  - scene: 0
-    musicName: Gameplay4
-  - scene: 12
-    musicName: Gameplay5
   - scene: 13
+    musicName: Gameplay
+  - scene: 6
+    musicName: Gameplay2
+  - scene: 9
+    musicName: Gameplay3
+  - scene: 2
+    musicName: Gameplay4
+  - scene: 3
+    musicName: Gameplay5
+  - scene: 11
     musicName: Gameplay6
-  - scene: 15
+  - scene: 10
     musicName: Gameplay7
   sceneAmbients:
+  - scene: 13
+    musicName: City1
+  - scene: 6
+    musicName: City1
   - scene: 9
     musicName: City1
-  - scene: 5
+  - scene: 2
+    musicName: City2
+  - scene: 3
     musicName: City1
-  - scene: 7
+  - scene: 11
     musicName: City1
-  - scene: 0
-    musicName: City1
-  - scene: 12
-    musicName: City1
-  - scene: 13
+  - scene: 10
     musicName: City1
 --- !u!82 &7767049816164541703
 AudioSource:

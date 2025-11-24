@@ -3,18 +3,20 @@ using System;
 [Serializable]
 public enum GameScene
 {
-    ARTBonesClimbGrayBox,
     ARTBonesClimbGrayBoxCopia,
     Basic,
     CarLevel,
+    ClimbingCorpSec,
+    ClimbingCorpSecBackup,
+    CopiaParaEmbelezarOMainMenu,
     Hellcat,
-    HellcatCanvasHUD,
+    HellcatCanvasHUDCopiapeu,
     MainMenu,
+    NeonHound,
     SectorCore,
+    SectorJump,
     Standard,
     Tutorial,
     TutorialCopiaPeu,
     VFXBonesTest,
-    VictorGraybox,
-    ViniciusLevelDesign,
 }
