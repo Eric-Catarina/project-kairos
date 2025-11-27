@@ -48,6 +48,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
     [SerializeField] private float laserMaxDistance = 10f;
     [SerializeField] private float laserFadeSpeed = 5f;
 
+    private AudioSource windSource;
     private AudioSource laserLoopSource;
     private LaserBarrier nearestLaser;
     private AudioSource deathSource;
@@ -69,7 +70,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
     private bool doubleJumpAvailable = false;
     private bool doubleJumpSoundPlayed = false;
 
-    private AudioSource windSource;
 
     private void Awake()
     {
@@ -141,6 +141,15 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         }
 
         movement.OnGroundLanded -= PlayLand;
+
+        if (windSource != null)
+        {
+            Destroy(windSource.gameObject);
+        }
+        if (laserLoopSource != null)
+        {
+            Destroy(laserLoopSource.gameObject);
+        }
     }
 
     private void Update()
@@ -299,12 +308,20 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (windSource == null) return;
 
         float speed = rb.linearVelocity.magnitude;
+        //float targetVolume = 0f;
         float targetVolume = 0f;
 
-        if (speed > windMinSpeed)
-            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+        /*if (speed > windMinSpeed)
+            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);*/
 
-        if (AudioManager.instance != null)
+        if (speed > windMinSpeed)
+        {
+            
+            float t = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
+            targetVolume = t * t;
+        }
+
+        /*if (AudioManager.instance != null)
         {
             float sfxVolume = AudioManager.instance.sfxSource.volume;
             float masterVolume = AudioManager.instance.masterSource.volume;
@@ -314,6 +331,15 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         }
 
         windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+        */
+        if (AudioManager.instance != null)
+        {
+            float globalSFXVolume = AudioManager.instance.sfxSource.volume;
+            bool isMuted = AudioManager.instance.sfxSource.mute;
+            targetVolume = isMuted ? 0f : targetVolume * globalSFXVolume;
+
+            windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+        }
     }
 
     private void PlayLand()
@@ -417,7 +443,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
             if (deathSource.isPlaying) deathSource.Stop();
             AudioManager.instance.PlaySFXInSource(deathSfx, deathSource);
             isResetting = true;
-            Debug.Log("Death sound played!");
         }
     }
 
@@ -433,6 +458,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
     {
         if (laserLoopSource == null)
             laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
+        //if (laserLoopSource != null) return;
 
         float targetVolumeLocal = 0f;
         float closestDist = float.MaxValue;
@@ -462,13 +488,18 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
 
         if (AudioManager.instance != null && laserLoopSource != null)
         {
-            float sfxVolume = AudioManager.instance.sfxSource.volume;
-            float masterVolume = AudioManager.instance.masterSource.volume;
-
-            finalVolume = targetVolumeLocal * sfxVolume * masterVolume;
-
+            //float sfxVolume = AudioManager.instance.sfxSource.volume;
+            //float masterVolume = AudioManager.instance.masterSource.volume;
+            //finalVolume = targetVolumeLocal * sfxVolume * masterVolume;
+            float globalSFXVolume = AudioManager.instance.sfxSource.volume;
             bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
             laserLoopSource.mute = isMuted;
+
+            float finalTargetVolume = isMuted ? 0f : targetVolumeLocal * globalSFXVolume;
+
+            laserLoopSource.mute = isMuted; // Garante que o mute instantâneo funcione
+            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalTargetVolume, Time.deltaTime * laserFadeSpeed);
+        
         }
         if (laserLoopSource != null)
             laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalVolume, Time.deltaTime * laserFadeSpeed);

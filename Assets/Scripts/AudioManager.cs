@@ -167,7 +167,7 @@ public class AudioManager : MonoBehaviour
     public void MasterVolume(float volume)
     {
         masterVolumeBase = volume;
-        //masterSource.volume = masterVolumeBase;
+        masterSource.volume = masterVolumeBase;
         float min = 0.0001f;
         float v = Mathf.Clamp(masterVolumeBase, 0, 1f);
         audioMixer.SetFloat("MasterVolume", Mathf.Log10(masterVolumeBase) * 20f);
@@ -265,7 +265,17 @@ public class AudioManager : MonoBehaviour
     public AudioSource PlayLoopingSFX(string name, float initialVolume = 1f)
     {
         if (loopingSources.TryGetValue(name, out AudioSource existingSource))
-            return existingSource;
+        {
+            if (existingSource != null)
+            {
+                return existingSource;
+            }
+            else
+            {
+                loopingSources.Remove(name);
+            }
+        }
+            
 
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
@@ -273,10 +283,16 @@ public class AudioManager : MonoBehaviour
             obj.transform.parent = transform;
 
             AudioSource newSource = obj.AddComponent<AudioSource>();
+
+            if (sfxSource.outputAudioMixerGroup != null)
+            {
+                newSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
+            }
+
             newSource.clip = clip;
             newSource.loop = true;
             newSource.playOnAwake = false;
-            newSource.volume = initialVolume * sfxSource.volume * masterSource.volume;
+            newSource.volume = initialVolume * sfxSource.volume;
             newSource.Play();
 
             loopingSources.Add(name, newSource);
@@ -311,13 +327,22 @@ public class AudioManager : MonoBehaviour
 
     private void PlaySceneAmbient(GameScene sceneEnum)
     {
+        bool foundAmbient = false;
+
         foreach (var sceneAmbient in sceneAmbients)
         {
             if (sceneAmbient.scene == sceneEnum)
             {
-                PlayAmbient(sceneAmbient.musicName); 
+                PlayAmbient(sceneAmbient.musicName);
+                foundAmbient = true;
                 return;
             }
+        }
+
+        if (!foundAmbient)
+        {
+            ambientSource.Stop();
+            ambientSource.clip = null;
         }
 
     }
@@ -438,7 +463,7 @@ public class AudioManager : MonoBehaviour
 
             tempSource.clip = clip;
 
-            tempSource.volume = sfxSource.volume;
+            tempSource.volume = sfxSource.volume * masterVolumeBase;
 
             tempSource.pitch = 1f;
             tempSource.Play();
