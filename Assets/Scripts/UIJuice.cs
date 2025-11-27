@@ -9,10 +9,15 @@ public class UIJuice : MonoBehaviour
     [SerializeField] protected float duration = 0.5f;
     [SerializeField] protected float delay = 0f;
     [SerializeField] protected Ease easeType = Ease.OutBack;
+    [SerializeField] protected Ease reverseEaseType = Ease.InBack; // Novo campo para o ease de saída
     [SerializeField] private Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
 
     // Novo campo para a escala inicial da animação TV Scan (ponto pequeno)
     [SerializeField] private Vector3 tvScanStartScale = new Vector3(0.01f, 0.01f, 1f);
+
+    [Header("Configurações de Slide")]
+    [SerializeField] private bool enableSlide = true; // Habilita o slide lateral
+    [SerializeField] private float slideOffsetX = -1000f; // Offset horizontal para o slide (negativo para esquerda, positivo para direita)
 
     [Header("Comportamento")]
     [SerializeField] protected bool playOnEnable = false; // Irrelevante agora, pois sempre roda a TV Scan
@@ -26,11 +31,13 @@ public class UIJuice : MonoBehaviour
     private CanvasGroup canvasGroup;
     private RectTransform rectTransform;
     private Sequence sequence;
+    private Vector2 originalAnchoredPosition; // Para armazenar a posição original
 
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
         rectTransform = GetComponent<RectTransform>();
+        originalAnchoredPosition = rectTransform.anchoredPosition; // Salva a posição original
     }
 
     protected virtual void OnEnable()
@@ -96,6 +103,12 @@ public class UIJuice : MonoBehaviour
         canvasGroup.alpha = 0f;
         rectTransform.localScale = startScale;
 
+        // Se slide estiver habilitado, define a posição inicial fora da tela
+        if (enableSlide)
+        {
+            rectTransform.anchoredPosition = originalAnchoredPosition + new Vector2(slideOffsetX, 0);
+        }
+
         sequence = DOTween.Sequence().SetUpdate(true);
 
         if (delay > 0)
@@ -105,6 +118,13 @@ public class UIJuice : MonoBehaviour
 
         sequence.Append(canvasGroup.DOFade(1f, duration).SetEase(easeType));
         sequence.Join(rectTransform.DOScale(Vector3.one, duration).SetEase(easeType));
+
+        // Se slide estiver habilitado, anima a posição de volta para a original
+        if (enableSlide)
+        {
+            sequence.Join(rectTransform.DOAnchorPos(originalAnchoredPosition, duration).SetEase(easeType));
+        }
+
         sequence.Pause();
     }
 
@@ -140,12 +160,12 @@ public class UIJuice : MonoBehaviour
         sequence = DOTween.Sequence().SetUpdate(true);
 
         // Parte 1: Escalar verticalmente para formar uma linha reta (Y de 1 para 0.01, X permanece 1)
-        sequence.Append(rectTransform.DOScaleY(tvScanStartScale.y, duration / 2f).SetEase(Ease.InBack));
-        sequence.Join(canvasGroup.DOFade(0.5f, duration / 2f).SetEase(Ease.InBack)); // Fade parcial
+        sequence.Append(rectTransform.DOScaleY(tvScanStartScale.y, duration / 2f).SetEase(reverseEaseType));
+        sequence.Join(canvasGroup.DOFade(0.5f, duration / 2f).SetEase(reverseEaseType)); // Fade parcial
 
         // Parte 2: Escalar horizontalmente para um ponto (X de 1 para 0.01, Y permanece pequeno)
-        sequence.Append(rectTransform.DOScaleX(tvScanStartScale.x, duration / 2f).SetEase(Ease.InBack));
-        sequence.Join(canvasGroup.DOFade(0f, duration / 2f).SetEase(Ease.InBack)); // Fade completo
+        sequence.Append(rectTransform.DOScaleX(tvScanStartScale.x, duration / 2f).SetEase(reverseEaseType));
+        sequence.Join(canvasGroup.DOFade(0f, duration / 2f).SetEase(reverseEaseType)); // Fade completo
         sequence.OnComplete(() => gameObject.SetActive(false)); // Desativa o painel no final
         sequence.Pause();
     }
@@ -156,8 +176,15 @@ public class UIJuice : MonoBehaviour
 
         sequence = DOTween.Sequence().SetUpdate(true);
         
-        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(Ease.InBack));
-        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(Ease.InBack));
+        sequence.Append(canvasGroup.DOFade(0f, duration).SetEase(reverseEaseType));
+        sequence.Join(rectTransform.DOScale(startScale, duration).SetEase(reverseEaseType));
+
+        // Se slide estiver habilitado, anima a posição para fora da tela
+        if (enableSlide)
+        {
+            sequence.Join(rectTransform.DOAnchorPos(originalAnchoredPosition + new Vector2(slideOffsetX, 0), duration).SetEase(reverseEaseType));
+        }
+
         sequence.OnComplete(() => gameObject.SetActive(false));
         sequence.Pause();
     }
