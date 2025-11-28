@@ -33,7 +33,8 @@ public class ScoreUIEntry : MonoBehaviour
         }
         
         nameText.text = data.playerName;
-        timeText.text = $"{data.scoreTime:F3}s";
+	System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(data.scoreTime);
+        timeText.text = $"{timeSpan:mm\\:ss\\.ff}";
 
         if (background != null)
         {

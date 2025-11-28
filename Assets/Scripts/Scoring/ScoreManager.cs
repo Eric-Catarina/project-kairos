@@ -229,7 +229,7 @@ public class ScoreManager : MonoBehaviour
         if (victoryPanel != null)
         {
             victoryPanel.gameObject.SetActive(true);
-            victoryPanel.GetComponent<UIJuice>()?.PlayAnimation();
+            victoryPanel.GetComponent<UIJuice>()?.PlayTVScanAnimation();
             victoryPanel.ShowResults(data.FinalTime, data.Deaths, data.FinalRank);
         }
 
