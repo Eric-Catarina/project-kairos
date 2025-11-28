@@ -2108,8 +2108,11 @@ MonoBehaviour:
   duration: 0.3
   delay: 0.1
   easeType: 0
+  reverseEaseType: 26
   startScale: {x: 0, y: 0, z: 1}
   tvScanStartScale: {x: 0.01, y: 0.01, z: 1}
+  enableSlide: 1
+  slideOffsetX: -1000
   playOnEnable: 1
   OnPlayStart:
     m_PersistentCalls:
@@ -10400,8 +10403,11 @@ MonoBehaviour:
   duration: 0.3
   delay: 0.1
   easeType: 0
+  reverseEaseType: 26
   startScale: {x: 0, y: 0, z: 1}
   tvScanStartScale: {x: 0.01, y: 0.01, z: 1}
+  enableSlide: 1
+  slideOffsetX: -1000
   playOnEnable: 1
   OnPlayStart:
     m_PersistentCalls:
@@ -10432,9 +10438,12 @@ MonoBehaviour:
   masterSlider: {fileID: 4866501519641970631}
   musicSlider: {fileID: 8665859509282086682}
   sfxSlider: {fileID: 6811923639392580768}
+  ambientSlider: {fileID: 0}
   masterToggle: {fileID: 6302902689822782249}
   musicToggle: {fileID: 2479467847177490929}
   sfxToggle: {fileID: 4345268776507277325}
+  ambientToggle: {fileID: 0}
+  checkpointsToggle: {fileID: 0}
 --- !u!114 &2886703552790889766
 MonoBehaviour:
   m_ObjectHideFlags: 0
