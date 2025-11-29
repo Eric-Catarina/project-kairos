@@ -1025,7 +1025,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1897039689079920572, guid: 01be6afb690c68e5cb461040ae089bf9, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2148.97
+      value: 2149.3
       objectReference: {fileID: 0}
     - target: {fileID: 1897039689079920572, guid: 01be6afb690c68e5cb461040ae089bf9, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2221,6 +2221,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &418332438 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5835744581863888646, guid: bee10c2fe9143ba419f2539874cd9199, type: 3}
@@ -2333,6 +2334,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1 &476718073
 GameObject:
   m_ObjectHideFlags: 0
@@ -2387,6 +2389,7 @@ MonoBehaviour:
   shootForce: 400
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1001 &481202006
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2515,6 +2518,18 @@ PrefabInstance:
       propertyPath: m_AnchorMin.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2897894477893375385, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2897894477893375385, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2897894477893375385, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3211624180147351080, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -2537,6 +2552,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3327113087650220629, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
       propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4318629564661268796, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4318629564661268796, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+      propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4708589044668835590, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
@@ -2711,6 +2734,7 @@ MonoBehaviour:
   shootForce: 250
   prefabLifetime: 15
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!43 &528283032
 Mesh:
   m_ObjectHideFlags: 0
@@ -4892,6 +4916,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1 &951382326
 GameObject:
   m_ObjectHideFlags: 0
@@ -5356,6 +5381,7 @@ MonoBehaviour:
   shootForce: 500
   prefabLifetime: 16
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1019462927
 Transform:
   m_ObjectHideFlags: 0
@@ -5413,6 +5439,7 @@ MonoBehaviour:
   shootForce: 500
   prefabLifetime: 16
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1039153289
 Transform:
   m_ObjectHideFlags: 0
@@ -5539,6 +5566,7 @@ MonoBehaviour:
   shootForce: 400
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1063897915 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3502937604169225613, guid: e62bdd4934c01614b89d7cfe0397f7fc, type: 3}
@@ -5827,6 +5855,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1001 &1132366514
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6272,6 +6301,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1 &1215845320
 GameObject:
   m_ObjectHideFlags: 0
@@ -7012,6 +7042,7 @@ MonoBehaviour:
   shootForce: 400
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1339985376
 Transform:
   m_ObjectHideFlags: 0
@@ -7414,6 +7445,7 @@ MonoBehaviour:
   shootForce: 400
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1 &1492944738
 GameObject:
   m_ObjectHideFlags: 0
@@ -7456,6 +7488,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 16
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1492944740
 Transform:
   m_ObjectHideFlags: 0
@@ -7916,6 +7949,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!1 &1573794839
 GameObject:
   m_ObjectHideFlags: 0
@@ -8152,6 +8186,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1608906965 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5210866934570649983, guid: 42937fbeaf29e7818b30e6efbb5b98a3, type: 3}
@@ -8211,6 +8246,7 @@ MonoBehaviour:
   shootForce: 250
   prefabLifetime: 15
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1654807504 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3502937604169225613, guid: e62bdd4934c01614b89d7cfe0397f7fc, type: 3}
@@ -9338,6 +9374,7 @@ MonoBehaviour:
   shootForce: 700
   prefabLifetime: 16
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1862863195
 Transform:
   m_ObjectHideFlags: 0
@@ -9522,6 +9559,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 16
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1869429394
 Transform:
   m_ObjectHideFlags: 0
@@ -9648,6 +9686,7 @@ MonoBehaviour:
   shootForce: 600
   prefabLifetime: 7
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1890290460 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3502937604169225613, guid: e62bdd4934c01614b89d7cfe0397f7fc, type: 3}
@@ -9695,6 +9734,7 @@ MonoBehaviour:
   shootForce: 700
   prefabLifetime: 16
   enablePrewarm: 1
+  initialPoolSize: 10
 --- !u!4 &1900735310
 Transform:
   m_ObjectHideFlags: 0

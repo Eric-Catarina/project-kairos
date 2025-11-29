@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6859514209498548155}
   - component: {fileID: 5024240711145640873}
   - component: {fileID: 4297780019532764629}
+  - component: {fileID: 1035727386317268379}
   m_Layer: 0
   m_Name: JumpPad
   m_TagString: Untagged
@@ -127,3 +128,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 22.443296, y: 3.0592499, z: 22.740578}
   m_Center: {x: -0.036200523, y: -0.47227162, z: -0.028110504}
+--- !u!114 &1035727386317268379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6705867644402488404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56509664c9a12934abdda77f8329b22d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 7222019547738813398, guid: 18b105f241597274385bd9c5ab39caa3, type: 3}
+  lifetime: 2
+  offset: {x: 0, y: -0.7, z: 0}
