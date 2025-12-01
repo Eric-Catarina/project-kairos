@@ -101,8 +101,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
-            //InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
-            //InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
             InputManager.Instance.OnResetToCheckpoint += PlayDeathSound;
 
             BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
@@ -237,7 +235,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
                 int idx = Random.Range(0, jumpSfxOptions.Length);
                 AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
             }
-
+            doubleJumpAvailable = true;
             doubleJumpSoundPlayed = false;
         }
         else
@@ -384,7 +382,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (ringSfxOptions != null && ringSfxOptions.Length > 0)
         {
             int idx = Random.Range(0, ringSfxOptions.Length);
-            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
+            AudioManager.instance.PlayUnscaledSFX(ringSfxOptions[idx]);
         }
 
         doubleJumpAvailable = true;
