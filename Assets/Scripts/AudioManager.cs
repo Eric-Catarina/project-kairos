@@ -506,4 +506,13 @@ public class AudioManager : MonoBehaviour
     public float GetMusicVolumeBase() => musicVolumeBase;
     public float GetSFXVolumeBase() => sfxVolumeBase;
     public float GetAmbientVolumeBase() => ambientVolumeBase;
+
+
+    public void UnregisterLoopingSource(string name)
+    {
+        if (loopingSources.ContainsKey(name))
+        {
+            loopingSources.Remove(name);
+        }
+    }
 }
