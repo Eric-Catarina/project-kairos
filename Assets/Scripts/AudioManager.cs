@@ -123,7 +123,7 @@ public class AudioManager : MonoBehaviour
         else
         {
             musicSource.clip = s.clip;
-            musicSource.volume = musicSource.volume * masterSource.volume;
+            musicSource.volume = musicVolumeBase * masterSource.volume;
             musicSource.Play();
         }
     }
@@ -160,8 +160,8 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    public void ToggleMusic() => SetMusicMute(!musicSource.mute); //musicSource.mute = !musicSource.mute;
-    public void ToggleSFX() => SetSFXMute(!isSFXMuted); //sfxSource.mute = !sfxSource.mute;
+    public void ToggleMusic() => SetMusicMute(!musicSource.mute);
+    public void ToggleSFX() => SetSFXMute(!isSFXMuted);
     public void ToggleAmbient() => SetAmbientMute(!ambientSource.mute);
 
     public void MasterVolume(float volume)
@@ -238,15 +238,11 @@ public class AudioManager : MonoBehaviour
 
     public void SetAmbientMute(bool muteState)
     {
-        //if (isMasterMuted && muteState == false) return;
-        //if (isMasterMuted && !muteState) return;
         ambientSource.mute = muteState;
     }
 
     public void SetSFXMute(bool muteState)
     {
-        //if (isMasterMuted && muteState == false) return;
-        //if (isMasterMuted && !muteState) return;
         isSFXMuted = muteState;
         sfxSource.mute = muteState;
 
@@ -506,4 +502,13 @@ public class AudioManager : MonoBehaviour
     public float GetMusicVolumeBase() => musicVolumeBase;
     public float GetSFXVolumeBase() => sfxVolumeBase;
     public float GetAmbientVolumeBase() => ambientVolumeBase;
+
+
+    public void UnregisterLoopingSource(string name)
+    {
+        if (loopingSources.ContainsKey(name))
+        {
+            loopingSources.Remove(name);
+        }
+    }
 }

@@ -101,8 +101,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnJumpPerformed += HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted += HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled += HandleGrappleEnd;
             InputManager.Instance.OnResetToCheckpoint += PlayDeathSound;
 
             BasePowerUpRing.OnPowerRingActivated += HandlePowerRingAudio;
@@ -111,6 +109,12 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
             {
                 AddJumpPadListener(jumpPad);
             }
+        }
+
+        if (grapple != null)
+        {
+            grapple.OnGrappleStarted += HandleGrappleStart;
+            grapple.OnGrappleStopped += HandleGrappleEnd;
         }
 
         if (TimeManipulationManager.Instance != null)
@@ -127,8 +131,8 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
-            InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
-            InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
+            //InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
+            //InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
             InputManager.Instance.OnResetToCheckpoint -= PlayDeathSound;
 
             BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
@@ -140,14 +144,27 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
             TimeManipulationManager.Instance.OnTimeStopStopped -= PlayTimeSkillOff;
         }
 
+        if (grapple != null)
+        {
+            grapple.OnGrappleStarted -= HandleGrappleStart;
+            grapple.OnGrappleStopped -= HandleGrappleEnd;
+        }
+
         movement.OnGroundLanded -= PlayLand;
 
         if (windSource != null)
         {
+            windSource.volume = 0f;
+            windSource.Stop();
+            windSource.clip = null; 
             Destroy(windSource.gameObject);
         }
+
         if (laserLoopSource != null)
         {
+            laserLoopSource.volume = 0f;
+            laserLoopSource.Stop();
+            laserLoopSource.clip = null;
             Destroy(laserLoopSource.gameObject);
         }
     }
@@ -157,6 +174,12 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (Time.timeScale == 0f)
         {
             if (deathSource.isPlaying) { deathSource.Pause(); isPausedManual = true; }
+
+
+            if (laserLoopSource != null && laserLoopSource.isPlaying)
+            {
+                laserLoopSource.Pause();
+            }
 
             if (AudioManager.instance != null)
             {
@@ -173,6 +196,11 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
                 isPausedManual = false;
             }
 
+            if (laserLoopSource != null && !laserLoopSource.isPlaying)
+            {
+                laserLoopSource.UnPause();
+            }
+
             if (AudioManager.instance != null)
             {
                 AudioManager.instance.UnpauseAllSFX(); 
@@ -181,14 +209,12 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         }
 
         HandleFootsteps();
-        HandleGrappleAudio();
         HandleWindAudio();
         HandleLaserAudio();
 
         if (movement.isGrounded)
         {
             hasJumpedOnce = false;
-            canDoubleJump = false;
             doubleJumpSoundPlayed = false;
         }
 
@@ -209,7 +235,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
                 int idx = Random.Range(0, jumpSfxOptions.Length);
                 AudioManager.instance.PlaySFX(jumpSfxOptions[idx]);
             }
-
             doubleJumpAvailable = true;
             doubleJumpSoundPlayed = false;
         }
@@ -224,7 +249,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
                 }
 
                 doubleJumpSoundPlayed = true;
-                doubleJumpAvailable = false;
             }
         }
     }
@@ -255,18 +279,32 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         }
     }
 
+
     private void HandleGrappleStart()
     {
+
         if (grappleShootSfxOptions != null && grappleShootSfxOptions.Length > 0)
         {
             int idx = Random.Range(0, grappleShootSfxOptions.Length);
             AudioManager.instance.PlaySFX(grappleShootSfxOptions[idx]);
         }
-        grappleJustStarted = true;
+
+        if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
+        {
+            int idx = Random.Range(0, grappleAttachSfxOptions.Length);
+            AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
+        }
+
+        doubleJumpAvailable = false;
+        doubleJumpSoundPlayed = false;
+
+        wasGrappling = true;
+        grappleJustStarted = false;
     }
 
     private void HandleGrappleEnd()
     {
+
         if (grappleReleaseSfxOptions != null && grappleReleaseSfxOptions.Length > 0)
         {
             int idx = Random.Range(0, grappleReleaseSfxOptions.Length);
@@ -283,36 +321,13 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         wasGrappling = false;
     }
 
-    private void HandleGrappleAudio()
-    {
-        if (grapple == null || !grappleJustStarted) return;
-
-        if (grapple.IsGrappling)
-        {
-            if (grappleAttachSfxOptions != null && grappleAttachSfxOptions.Length > 0)
-            {
-                int idx = Random.Range(0, grappleAttachSfxOptions.Length);
-                AudioManager.instance.PlaySFX(grappleAttachSfxOptions[idx]);
-            }
-
-            doubleJumpAvailable = false;
-            doubleJumpSoundPlayed = false;
-
-            wasGrappling = true;
-            grappleJustStarted = false;
-        }
-    }
-
     private void HandleWindAudio()
     {
         if (windSource == null) return;
 
         float speed = rb.linearVelocity.magnitude;
-        //float targetVolume = 0f;
-        float targetVolume = 0f;
 
-        /*if (speed > windMinSpeed)
-            targetVolume = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);*/
+        float targetVolume = 0f;
 
         if (speed > windMinSpeed)
         {
@@ -321,17 +336,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
             targetVolume = t * t;
         }
 
-        /*if (AudioManager.instance != null)
-        {
-            float sfxVolume = AudioManager.instance.sfxSource.volume;
-            float masterVolume = AudioManager.instance.masterSource.volume;
-            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
 
-            targetVolume = isMuted ? 0f : targetVolume * sfxVolume * masterVolume;
-        }
-
-        windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
-        */
         if (AudioManager.instance != null)
         {
             float globalSFXVolume = AudioManager.instance.sfxSource.volume;
@@ -377,7 +382,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (ringSfxOptions != null && ringSfxOptions.Length > 0)
         {
             int idx = Random.Range(0, ringSfxOptions.Length);
-            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
+            AudioManager.instance.PlayUnscaledSFX(ringSfxOptions[idx]);
         }
 
         doubleJumpAvailable = true;
@@ -456,10 +461,17 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
 
     private void HandleLaserAudio()
     {
+        
         if (laserLoopSource == null)
+        {
             laserLoopSource = AudioManager.instance.PlayLoopingSFX(laserLoopSfx, 0f);
-        //if (laserLoopSource != null) return;
+            if (AudioManager.instance != null)
+                AudioManager.instance.UnregisterLoopingSource(laserLoopSfx);
+        }
 
+        if (laserLoopSource == null) return;
+
+        
         float targetVolumeLocal = 0f;
         float closestDist = float.MaxValue;
 
@@ -484,25 +496,23 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
             targetVolumeLocal = Mathf.Clamp01(targetVolumeLocal);
         }
 
-        float finalVolume = targetVolumeLocal;
-
-        if (AudioManager.instance != null && laserLoopSource != null)
+        if (AudioManager.instance != null)
         {
-            //float sfxVolume = AudioManager.instance.sfxSource.volume;
-            //float masterVolume = AudioManager.instance.masterSource.volume;
-            //finalVolume = targetVolumeLocal * sfxVolume * masterVolume;
+
             float globalSFXVolume = AudioManager.instance.sfxSource.volume;
-            bool isMuted = AudioManager.instance.sfxSource.mute || AudioManager.instance.masterSource.mute;
+
+
+            bool isMuted = AudioManager.instance.sfxSource.mute;
             laserLoopSource.mute = isMuted;
 
             float finalTargetVolume = isMuted ? 0f : targetVolumeLocal * globalSFXVolume;
 
-            laserLoopSource.mute = isMuted; // Garante que o mute instantâneo funcione
             laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalTargetVolume, Time.deltaTime * laserFadeSpeed);
-        
         }
-        if (laserLoopSource != null)
-            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, finalVolume, Time.deltaTime * laserFadeSpeed);
+        else
+        {
+            laserLoopSource.volume = Mathf.MoveTowards(laserLoopSource.volume, targetVolumeLocal, Time.deltaTime * laserFadeSpeed);
+        }
     }
 
     public void PlayTimeSkillOn() => AudioManager.instance.PlaySFX(timeSkillOnSfx);

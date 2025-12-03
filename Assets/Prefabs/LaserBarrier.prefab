@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 5033771731271599393}
   - component: {fileID: 7020592587259891410}
   - component: {fileID: 8465115478681916398}
+  - component: {fileID: -8220156806400014964}
   m_Layer: 0
   m_Name: LaserBarrier
   m_TagString: DamageZone
@@ -379,6 +380,21 @@ MonoBehaviour:
   repulsionSfx: LaserRepulsion
   deactivateSfx: LaserDeactivate
   reactivateSfx: LaserReactivate
+--- !u!114 &-8220156806400014964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4959766635706267145}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56509664c9a12934abdda77f8329b22d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 1547801151685730534, guid: 924044607b8cc6148997d80200479744, type: 3}
+  lifetime: 1
+  offset: {x: 0, y: 0, z: 0}
 --- !u!1001 &4590841384018739336
 PrefabInstance:
   m_ObjectHideFlags: 0
