@@ -52830,6 +52830,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6279997106017727753, guid: 5e2c8b951f9f49e5f84cb0d63ad57b08, type: 3}
   m_PrefabInstance: {fileID: 968049699}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1110625470 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5855762458731246332, guid: 719a245f9586a81409da0893ce7899ad, type: 3}
+  m_PrefabInstance: {fileID: 1572823225247188685}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1111506631
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -84645,14 +84656,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3477858797517182702, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      propertyPath: currentLevelData
+    - target: {fileID: 8392232970332989018, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
+      propertyPath: feedbackText
       value: 
-      objectReference: {fileID: 11400000, guid: 80415fb99b00f8e4ca60a537465b9095, type: 2}
-    - target: {fileID: 3477858797517182702, guid: 3d27ae85873c9df4eab68e43535f9b28, type: 3}
-      propertyPath: debugCompletionPenalty
-      value: 600
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1110625470}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -132064,5 +132071,5 @@ SceneRoots:
   - {fileID: 355407458}
   - {fileID: 1811192022}
   - {fileID: 1776535974}
-  - {fileID: 1572823225247188685}
   - {fileID: 1287898280}
+  - {fileID: 1572823225247188685}
