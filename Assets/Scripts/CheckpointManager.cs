@@ -1,6 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
+using DG.Tweening;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
@@ -15,6 +17,16 @@ public class CheckpointManager : MonoBehaviour
     [Header("Configuração de Penalidade")]
     [Tooltip("Segundos a serem adicionados ao tempo ao respawnar em um checkpoint.")]
     [SerializeField] private float penaltyPerCheckpoint = 5f;
+
+    [Header("Feedback de UI")]
+    [Tooltip("O Text Mesh Pro para feedback de checkpoint.")]
+    [SerializeField] private TMP_Text feedbackText;
+    [Tooltip("Texto a ser exibido.")]
+    [SerializeField] private string feedbackMessage = "Checkpoint Activated!";
+    [Tooltip("Duração da exibição.")]
+    [SerializeField] private float displayDuration = 1f;
+    [Tooltip("Duração do fade.")]
+    [SerializeField] private float fadeDuration = 0.2f;
 
     private List<Checkpoint> _checkpointsInLevel;
     private List<IResettable> _resettableObjects;
@@ -114,7 +126,24 @@ public class CheckpointManager : MonoBehaviour
         if (newIndex > currentIndex)
         {
             _lastActivatedCheckpoint = activatedCheckpoint;
+            ShowCheckpointFeedback();  // Novo: Mostra o feedback
         }
+
+    }
+
+    private void ShowCheckpointFeedback()
+    {
+        if (feedbackText == null) return;
+
+        feedbackText.text = feedbackMessage;
+        feedbackText.alpha = 0f;
+        feedbackText.gameObject.SetActive(true);
+
+        Sequence sequence = DOTween.Sequence();
+        sequence.Append(feedbackText.DOFade(1f, fadeDuration))
+                .AppendInterval(displayDuration)
+                .Append(feedbackText.DOFade(0f, fadeDuration))
+                .OnComplete(() => feedbackText.gameObject.SetActive(false));
     }
     
     public void SoftResetToCheckpoint()

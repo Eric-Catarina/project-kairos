@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 993cea230119c104987c208af9748f46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentLevelData: {fileID: 11400000, guid: 52ffb2ed7b005b8488f39ee45d05df8a, type: 2}
+  currentLevelData: {fileID: 11400000, guid: 80415fb99b00f8e4ca60a537465b9095, type: 2}
   startLevelOnFirstMoveInput: 1
   debugCompletionPenalty: 600
 --- !u!1 &826282399583510400
@@ -238,6 +238,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   initialSpawnPoint: {fileID: 0}
   penaltyPerCheckpoint: 0
+  feedbackText: {fileID: 0}
+  feedbackMessage: Checkpoint Activated!
+  displayDuration: 2
+  fadeDuration: 0.2
   _respawnEffect: {fileID: 0}
 --- !u!1 &2581661355542986561
 GameObject:
