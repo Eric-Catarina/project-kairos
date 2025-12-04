@@ -3466,8 +3466,11 @@ MonoBehaviour:
   duration: 0.3
   delay: 0.1
   easeType: 0
+  reverseEaseType: 26
   startScale: {x: 0, y: 0, z: 1}
   tvScanStartScale: {x: 0.01, y: 0.01, z: 1}
+  enableSlide: 1
+  slideOffsetX: -1000
   playOnEnable: 1
   OnPlayStart:
     m_PersistentCalls:
@@ -3498,9 +3501,11 @@ MonoBehaviour:
   masterSlider: {fileID: 8357985186254878075}
   musicSlider: {fileID: 327874510997700495}
   sfxSlider: {fileID: 3887200014697930933}
+  ambientSlider: {fileID: 0}
   masterToggle: {fileID: 365220700491969738}
   musicToggle: {fileID: 4030769909343146110}
   sfxToggle: {fileID: 1563589634732133306}
+  ambientToggle: {fileID: 0}
   checkpointsToggle: {fileID: 0}
 --- !u!1 &3073778339875605356
 GameObject:
@@ -12869,8 +12874,125 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3803990725680947481, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8775109602807894138}
+    - targetCorrespondingSourceObject: {fileID: 3803990725680947481, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9014134932473762854}
+    - targetCorrespondingSourceObject: {fileID: 5885703200086868531, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7934016699438536502}
+    - targetCorrespondingSourceObject: {fileID: 5885703200086868531, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4716239929675287983}
+    - targetCorrespondingSourceObject: {fileID: 2362788609019635333, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5378494773849594587}
+    - targetCorrespondingSourceObject: {fileID: 2362788609019635333, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2465879980301733433}
   m_SourcePrefab: {fileID: 100100000, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+--- !u!1 &4416463750753771428 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5885703200086868531, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+  m_PrefabInstance: {fileID: 7846494864284818839}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7934016699438536502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4416463750753771428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
+--- !u!114 &4716239929675287983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4416463750753771428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!1 &5489349430055009042 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2362788609019635333, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+  m_PrefabInstance: {fileID: 7846494864284818839}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5378494773849594587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5489349430055009042}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &2465879980301733433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5489349430055009042}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
+--- !u!1 &6354056706079095950 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3803990725680947481, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}
+  m_PrefabInstance: {fileID: 7846494864284818839}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8775109602807894138
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6354056706079095950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &9014134932473762854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6354056706079095950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!224 &7826520689008208108 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 34122897665291643, guid: 2b93c558e6d054943bdbdfab6daad9cd, type: 3}

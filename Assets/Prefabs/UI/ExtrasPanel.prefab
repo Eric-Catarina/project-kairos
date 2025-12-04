@@ -803,6 +803,8 @@ GameObject:
   - component: {fileID: 5089336204438449632}
   - component: {fileID: 7698039101839376084}
   - component: {fileID: 3886771915200414853}
+  - component: {fileID: 5862765654748131729}
+  - component: {fileID: 7655363745439659889}
   m_Layer: 5
   m_Name: HelpButton
   m_TagString: Untagged
@@ -943,6 +945,34 @@ MonoBehaviour:
   hoverDuration: 0.2
   punchScaleFactor: -0.1
   punchDuration: 0.1
+--- !u!114 &5862765654748131729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 298860341330103004}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &7655363745439659889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 298860341330103004}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!1 &327475053420537595
 GameObject:
   m_ObjectHideFlags: 0
@@ -6241,6 +6271,8 @@ GameObject:
   - component: {fileID: 7661351495444475138}
   - component: {fileID: 1615404328361946598}
   - component: {fileID: 8555911628565286819}
+  - component: {fileID: 3275017383032938130}
+  - component: {fileID: 115984513949352880}
   m_Layer: 5
   m_Name: BackButton (1)
   m_TagString: Untagged
@@ -6381,6 +6413,34 @@ MonoBehaviour:
   hoverDuration: 0.2
   punchScaleFactor: -0.1
   punchDuration: 0.1
+--- !u!114 &3275017383032938130
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321242505190610593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &115984513949352880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321242505190610593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!1 &2378381025120226188
 GameObject:
   m_ObjectHideFlags: 0
@@ -7490,6 +7550,8 @@ GameObject:
   - component: {fileID: 8192566426311273180}
   - component: {fileID: 3350510406434312352}
   - component: {fileID: 50831924421138525}
+  - component: {fileID: 1808158408997954247}
+  - component: {fileID: 8152418162801972366}
   - component: {fileID: 8885213076699386030}
   m_Layer: 5
   m_Name: CreditsButton
@@ -7613,6 +7675,34 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &1808158408997954247
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3056143988912947119}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &8152418162801972366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3056143988912947119}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!114 &8885213076699386030
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9067,6 +9157,8 @@ GameObject:
   - component: {fileID: 809659850145872407}
   - component: {fileID: 7202845517030035965}
   - component: {fileID: 3902758072365085338}
+  - component: {fileID: 2894127580759333251}
+  - component: {fileID: 4795797935536478066}
   m_Layer: 5
   m_Name: BackButton
   m_TagString: Untagged
@@ -9207,6 +9299,34 @@ MonoBehaviour:
   hoverDuration: 0.2
   punchScaleFactor: -0.1
   punchDuration: 0.1
+--- !u!114 &2894127580759333251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3631723598507234942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &4795797935536478066
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3631723598507234942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!1 &3636445546376686073
 GameObject:
   m_ObjectHideFlags: 0
@@ -14339,6 +14459,8 @@ GameObject:
   - component: {fileID: 9146479318226476003}
   - component: {fileID: 6404113114777159664}
   - component: {fileID: 271317682175147494}
+  - component: {fileID: 7084009815598993848}
+  - component: {fileID: 9003795277003530355}
   m_Layer: 5
   m_Name: FeaturesButton
   m_TagString: Untagged
@@ -14479,6 +14601,34 @@ MonoBehaviour:
   hoverDuration: 0.2
   punchScaleFactor: -0.1
   punchDuration: 0.1
+--- !u!114 &7084009815598993848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5687362349777372298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &9003795277003530355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5687362349777372298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!1 &5713360034791517180
 GameObject:
   m_ObjectHideFlags: 0
@@ -15575,6 +15725,8 @@ GameObject:
   - component: {fileID: 2200313500137098076}
   - component: {fileID: 2493333846855439223}
   - component: {fileID: 4517719360757933235}
+  - component: {fileID: 1599254651553624515}
+  - component: {fileID: 6155006743050709107}
   m_Layer: 5
   m_Name: BackButton (1)
   m_TagString: Untagged
@@ -15715,6 +15867,34 @@ MonoBehaviour:
   hoverDuration: 0.2
   punchScaleFactor: -0.1
   punchDuration: 0.1
+--- !u!114 &1599254651553624515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6151772440778671814}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &6155006743050709107
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6151772440778671814}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!1 &6186294701263652672
 GameObject:
   m_ObjectHideFlags: 0
@@ -21682,6 +21862,8 @@ GameObject:
   - component: {fileID: 8280282058090175588}
   - component: {fileID: 5989947930380421725}
   - component: {fileID: 3241558644410310638}
+  - component: {fileID: 3762966593732418144}
+  - component: {fileID: 2088919744558674164}
   m_Layer: 5
   m_Name: BackButton (1)
   m_TagString: Untagged
@@ -21822,6 +22004,34 @@ MonoBehaviour:
   hoverDuration: 0.2
   punchScaleFactor: -0.1
   punchDuration: 0.1
+--- !u!114 &3762966593732418144
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8635361292079520537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
+--- !u!114 &2088919744558674164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8635361292079520537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
 --- !u!1 &8670787008734381245
 GameObject:
   m_ObjectHideFlags: 0
