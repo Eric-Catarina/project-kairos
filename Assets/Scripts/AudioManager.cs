@@ -43,7 +43,7 @@ public class AudioManager : MonoBehaviour
     private bool isMasterMuted = false;
 
     private float lastSFXFeedbackTime;
-    private const float feedbackCooldown = 0.15f;
+    private const float feedbackCooldown = 0.25f;
 
     private bool sfxWasMutedBeforePause = false;
 
@@ -444,7 +444,7 @@ public class AudioManager : MonoBehaviour
         RecalculateAmbientVolume();
     }
 
-    public void PlayUnscaledSFX(string name)
+    /*public void PlayUnscaledSFX(string name)
     {
         if (isSFXMuted) return;
 
@@ -459,7 +459,45 @@ public class AudioManager : MonoBehaviour
 
             tempSource.clip = clip;
 
-            tempSource.volume = sfxSource.volume * masterVolumeBase;
+            tempSource.volume = sfxVolumeBase * masterVolumeBase;
+
+            tempSource.pitch = 1f;
+            tempSource.Play();
+
+            StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
+        }
+        else
+        {
+            Debug.LogWarning("Unscaled Sound Not Found: " + name);
+        }
+    }*/
+
+    public void PlayUnscaledSFX(string name)
+    {
+        if (isSFXMuted) return;
+
+        // 1. Calcular o volume base antes
+        float finalVolume = sfxVolumeBase * masterVolumeBase;
+
+        // 2. Checagem de segurança: Se o volume for quase zero, não toca nada.
+        // Isso resolve o problema de ouvir um "rzrzr" baixinho quando arrasta pro zero.
+        if (finalVolume <= 0.001f) return;
+
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            AudioSource tempSource = gameObject.AddComponent<AudioSource>();
+
+            tempSource.ignoreListenerPause = true;
+
+            if (sfxSource.outputAudioMixerGroup != null)
+                tempSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
+
+            tempSource.clip = clip;
+
+            // 3. Aplicando a redução de ~2dB (multiplicando por 0.8f)
+            // Se quiser reduzir apenas 1dB, use 0.9f. Se quiser -3dB, use 0.7f.
+            float unscaledReductionMultiplier = 0.6f;
+            tempSource.volume = finalVolume * unscaledReductionMultiplier;
 
             tempSource.pitch = 1f;
             tempSource.Play();
