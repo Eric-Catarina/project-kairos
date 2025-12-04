@@ -24,6 +24,7 @@ public class AudioManager : MonoBehaviour
 
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] private float sfxPitchVariation = 0.1f;
+    [SerializeField] private AudioMixerGroup ambientMixerGroup;
 
     [Header("Músicas por Cena (Enum)")]
     [SerializeField] private SceneMusic[] sceneMusics;
@@ -37,13 +38,14 @@ public class AudioManager : MonoBehaviour
     private float ambientVolumeBase = 1f;
     private bool isSFXMuted = false;
 
-    private bool musicWasMutedBeforeMaster = false;
-    private bool ambientWasMutedBeforeMaster = false;
-    private bool sfxWasMutedBeforeMaster = false;
-    private bool isMasterMuted = false;
+    //private bool musicWasMutedBeforeMaster = false;
+    //private bool ambientWasMutedBeforeMaster = false;
+    //private bool sfxWasMutedBeforeMaster = false;
+    public bool isMasterMuted = false;
 
     private float lastSFXFeedbackTime;
     private const float feedbackCooldown = 0.25f;
+    private bool ignoreNextSFXFeedback = true;
 
     private bool sfxWasMutedBeforePause = false;
 
@@ -68,6 +70,8 @@ public class AudioManager : MonoBehaviour
         }
 
         LoadVolumes();
+
+        lastSFXFeedbackTime = Time.unscaledTime;
     }
 
 
@@ -97,6 +101,7 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
+
         GameScene currentSceneEnum = GetSceneEnum(SceneManager.GetActiveScene().name);
         PlaySceneMusic(currentSceneEnum);
     }
@@ -187,16 +192,24 @@ public class AudioManager : MonoBehaviour
     }
 
     public void SFXVolume(float volume)
+
     {
         sfxVolumeBase = volume;
         RecalculateSFXVolume();
         SaveVolumes();
+
+        if (ignoreNextSFXFeedback)
+        {
+            ignoreNextSFXFeedback = false; // ignora apenas na primeira chamada
+            return;
+        }
 
         if (Time.unscaledTime - lastSFXFeedbackTime > feedbackCooldown)
         {
             PlayUnscaledSFX("SFXFeedback");
             lastSFXFeedbackTime = Time.unscaledTime;
         }
+
     }
 
     public void AmbientVolume(float volume)
@@ -303,11 +316,15 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        ignoreNextSFXFeedback = true;
+
         GameScene sceneEnum = GetSceneEnum(scene.name);
         PlaySceneMusic(sceneEnum);
 
         PlaySceneAmbient(sceneEnum);
     }
+
+    
 
     private void PlaySceneMusic(GameScene sceneEnum)
     {
@@ -440,49 +457,14 @@ public class AudioManager : MonoBehaviour
 
     private IEnumerator ApplyAmbientFixNextFrame()
     {
-        yield return null; // espera 1 frame
+        yield return null;
         RecalculateAmbientVolume();
     }
-
-    /*public void PlayUnscaledSFX(string name)
-    {
-        if (isSFXMuted) return;
-
-        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
-        {
-            AudioSource tempSource = gameObject.AddComponent<AudioSource>();
-
-            tempSource.ignoreListenerPause = true;
-
-            if (sfxSource.outputAudioMixerGroup != null)
-                tempSource.outputAudioMixerGroup = sfxSource.outputAudioMixerGroup;
-
-            tempSource.clip = clip;
-
-            tempSource.volume = sfxVolumeBase * masterVolumeBase;
-
-            tempSource.pitch = 1f;
-            tempSource.Play();
-
-            StartCoroutine(CleanupTemporarySource(tempSource, clip.length));
-        }
-        else
-        {
-            Debug.LogWarning("Unscaled Sound Not Found: " + name);
-        }
-    }*/
 
     public void PlayUnscaledSFX(string name)
     {
         if (isSFXMuted) return;
 
-        // 1. Calcular o volume base antes
-        float finalVolume = sfxVolumeBase * masterVolumeBase;
-
-        // 2. Checagem de segurança: Se o volume for quase zero, não toca nada.
-        // Isso resolve o problema de ouvir um "rzrzr" baixinho quando arrasta pro zero.
-        if (finalVolume <= 0.001f) return;
-
         if (sfxDictionary.TryGetValue(name, out AudioClip clip))
         {
             AudioSource tempSource = gameObject.AddComponent<AudioSource>();
@@ -494,10 +476,7 @@ public class AudioManager : MonoBehaviour
 
             tempSource.clip = clip;
 
-            // 3. Aplicando a redução de ~2dB (multiplicando por 0.8f)
-            // Se quiser reduzir apenas 1dB, use 0.9f. Se quiser -3dB, use 0.7f.
-            float unscaledReductionMultiplier = 0.6f;
-            tempSource.volume = finalVolume * unscaledReductionMultiplier;
+            tempSource.volume = sfxSource.volume * masterVolumeBase;
 
             tempSource.pitch = 1f;
             tempSource.Play();
@@ -509,6 +488,7 @@ public class AudioManager : MonoBehaviour
             Debug.LogWarning("Unscaled Sound Not Found: " + name);
         }
     }
+
 
 
     private void RecalculateMusicVolume()
@@ -549,4 +529,39 @@ public class AudioManager : MonoBehaviour
             loopingSources.Remove(name);
         }
     }
+
+    public AudioSource PlayLoopingAmbientSFX(string name, float initialVolume = 0f)
+    {
+        if (sfxDictionary.TryGetValue(name, out AudioClip clip))
+        {
+            GameObject obj = new GameObject("DedicatedAmbientSFX_" + name);
+            obj.transform.parent = transform;
+
+            AudioSource newSource = obj.AddComponent<AudioSource>();
+
+            if (ambientMixerGroup != null)
+            {
+                newSource.outputAudioMixerGroup = ambientMixerGroup;
+            }
+
+            newSource.clip = clip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+
+            float baseVolume = GetAmbientVolumeBase();
+            float masterVolume = GetMasterVolumeBase();
+            newSource.volume = initialVolume * baseVolume * masterVolume;
+
+
+            newSource.Play();
+
+            return newSource;
+        }
+        else
+        {
+            Debug.LogWarning("Dedicated Ambient Sound Not Found: " + name);
+            return null;
+        }
+    }
+
 }

@@ -45,7 +45,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0
+  m_Volume: 0.47551143
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -458,6 +458,8 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: d918fc7f3480cb44e8e697aa565634e1, type: 3}
   - name: City2
     clip: {fileID: 8300000, guid: 8f56b6c811bcb2a49955065c836b3a91, type: 3}
+  - name: Wind
+    clip: {fileID: 8300000, guid: 649ef686e125c2844938aeb0ea7e1f6a, type: 3}
   sfxSounds:
   - name: Footstep
     clip: {fileID: 8300000, guid: 58479adbc6b802b448a63f6a9473c127, type: 3}
@@ -485,8 +487,6 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: be12c2c1d6c15a142bff951876542812, type: 3}
   - name: CheckpointActivate
     clip: {fileID: 0}
-  - name: Wind
-    clip: {fileID: 8300000, guid: 649ef686e125c2844938aeb0ea7e1f6a, type: 3}
   - name: GrappleAttach
     clip: {fileID: 8300000, guid: 0ff712ecfb822354982bed8c2433c491, type: 3}
   - name: GrappleRelease
@@ -535,6 +535,7 @@ MonoBehaviour:
   ambientSource: {fileID: 2059441101410470850}
   audioMixer: {fileID: 24100000, guid: 558244343adc0684d84eb304c41aaff7, type: 2}
   sfxPitchVariation: 0.2
+  ambientMixerGroup: {fileID: 0}
   sceneMusics:
   - scene: 8
     musicName: Menu
@@ -567,6 +568,7 @@ MonoBehaviour:
     musicName: City1
   - scene: 10
     musicName: City1
+  isMasterMuted: 0
 --- !u!82 &7767049816164541703
 AudioSource:
   m_ObjectHideFlags: 0
@@ -709,7 +711,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0.15708466
+  m_Volume: 0.4982157
   m_Pitch: 1
   Loop: 1
   Mute: 0

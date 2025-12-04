@@ -24,7 +24,5 @@ public class UIButtonClickSound : MonoBehaviour, IPointerClickHandler
         {
             AudioManager.instance.PlaySFX(clickSoundName);
         }
-
-        Debug.Log($"Chamou função click. Unscaled: {ignoreTimeScale}");
     }
 }

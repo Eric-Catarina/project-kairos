@@ -24,7 +24,5 @@ public class UIButtonHoverSound : MonoBehaviour, IPointerEnterHandler
         {
             AudioManager.instance.PlaySFX(hoverSoundName);
         }
-
-        Debug.Log($"Chamou função Hover. Unscaled: {ignoreTimeScale}");
     }
 }
