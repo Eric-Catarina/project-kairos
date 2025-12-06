@@ -1,5 +1,8 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 public class GameSettingsManager : MonoBehaviour
 {
@@ -13,12 +16,16 @@ public class GameSettingsManager : MonoBehaviour
 
     private GameSettings _settings;
 
-    public float MouseSensitivityX => _settings.mouseSensitivityX;
-    public float MouseSensitivityY => _settings.mouseSensitivityY;
-    public bool InvertMouseX => _settings.invertMouseX;
-    public bool InvertMouseY => _settings.invertMouseY;
-    public float MotionBlurIntensity => _settings.motionBlurIntensity;
-    public bool CheckpointsEnabled => _settings.checkpointsEnabled;
+    [Header("Motion Blur Settings")]
+    [SerializeField] private float minBlurIntensity = 0f;
+    [SerializeField] private float maxBlurIntensity = 0.02f;
+
+    public float MouseSensitivityX => _settings != null ? _settings.mouseSensitivityX : 0.5f;
+    public float MouseSensitivityY => _settings != null ? _settings.mouseSensitivityY : 0.5f;
+    public bool InvertMouseX => _settings != null && _settings.invertMouseX;
+    public bool InvertMouseY => _settings != null && _settings.invertMouseY;
+    public float MotionBlurIntensity => _settings != null ? _settings.motionBlurIntensity : 0f;
+    public bool CheckpointsEnabled => _settings != null && _settings.checkpointsEnabled;
 
     private void Awake()
     {
@@ -31,51 +38,129 @@ public class GameSettingsManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
     private void Start()
     {
-        _settings = SaveManager.Instance.GetSettings();
+        // Garante que pegamos as configurações se ainda não tivermos
+        if (_settings == null && SaveManager.Instance != null)
+        {
+            _settings = SaveManager.Instance.GetSettings();
+        }
+        
+        // Aplica o blur imediatamente ao iniciar o jogo
+        ApplyMotionBlurToScene();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Reaplica o blur sempre que mudar de fase
+        ApplyMotionBlurToScene();
     }
 
     public void SetMouseSensitivityX(float normalizedValue)
     {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        _settings.mouseSensitivityX = clampedValue;
-        SaveManager.Instance.SaveGame();
-        OnMouseSensitivityXChanged?.Invoke(clampedValue);
+        if (EnsureSettingsLoaded())
+        {
+            float clampedValue = Mathf.Clamp01(normalizedValue);
+            _settings.mouseSensitivityX = clampedValue;
+            SaveManager.Instance.SaveGame();
+            OnMouseSensitivityXChanged?.Invoke(clampedValue);
+        }
     }
     
     public void SetMouseSensitivityY(float normalizedValue)
     {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        _settings.mouseSensitivityY = clampedValue;
-        SaveManager.Instance.SaveGame();
-        OnMouseSensitivityYChanged?.Invoke(clampedValue);
+        if (EnsureSettingsLoaded())
+        {
+            float clampedValue = Mathf.Clamp01(normalizedValue);
+            _settings.mouseSensitivityY = clampedValue;
+            SaveManager.Instance.SaveGame();
+            OnMouseSensitivityYChanged?.Invoke(clampedValue);
+        }
     }
 
     public void SetInvertX(bool isInverted)
     {
-        _settings.invertMouseX = isInverted;
-        SaveManager.Instance.SaveGame();
-        OnInvertXChanged?.Invoke(isInverted);
+        if (EnsureSettingsLoaded())
+        {
+            _settings.invertMouseX = isInverted;
+            SaveManager.Instance.SaveGame();
+            OnInvertXChanged?.Invoke(isInverted);
+        }
     }
 
     public void SetInvertY(bool isInverted)
     {
-        _settings.invertMouseY = isInverted;
-        SaveManager.Instance.SaveGame();
-        OnInvertYChanged?.Invoke(isInverted);
+        if (EnsureSettingsLoaded())
+        {
+            _settings.invertMouseY = isInverted;
+            SaveManager.Instance.SaveGame();
+            OnInvertYChanged?.Invoke(isInverted);
+        }
     }
     
     public void SetMotionBlur(float normalizedValue)
     {
-        _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
-        SaveManager.Instance.SaveGame();
+        if (EnsureSettingsLoaded())
+        {
+            _settings.motionBlurIntensity = Mathf.Clamp01(normalizedValue);
+            SaveManager.Instance.SaveGame();
+            
+            // Aplica imediatamente ao alterar o valor
+            ApplyMotionBlurToScene();
+        }
     }
     
     public void SetCheckpointsEnabled(bool isEnabled)
     {
-        _settings.checkpointsEnabled = isEnabled;
-        SaveManager.Instance.SaveGame();
-        OnCheckpointsEnabledChanged?.Invoke(isEnabled);
+        if (EnsureSettingsLoaded())
+        {
+            _settings.checkpointsEnabled = isEnabled;
+            SaveManager.Instance.SaveGame();
+            OnCheckpointsEnabledChanged?.Invoke(isEnabled);
+        }
+    }
+
+    private bool EnsureSettingsLoaded()
+    {
+        if (_settings == null)
+        {
+            if (SaveManager.Instance != null)
+            {
+                _settings = SaveManager.Instance.GetSettings();
+            }
+        }
+        return _settings != null;
+    }
+
+    private void ApplyMotionBlurToScene()
+    {
+        // Correção do NullReferenceException:
+        // Se OnSceneLoaded rodar antes do Start ou antes do SaveManager estar pronto,
+        // tentamos carregar. Se falhar, abortamos (o Start vai rodar depois e aplicar corretamente).
+        if (!EnsureSettingsLoaded()) return;
+
+        float targetIntensity = Mathf.Lerp(minBlurIntensity, maxBlurIntensity, _settings.motionBlurIntensity);
+        
+        // Encontra todos os volumes na cena (incluindo TimeStop volumes)
+        Volume[] volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        
+        foreach (var volume in volumes)
+        {
+            if (volume.profile != null && volume.profile.TryGet(out MotionBlur motionBlur))
+            {
+                motionBlur.clamp.Override(targetIntensity);
+                motionBlur.intensity.Override(1f); // Garante que a intensidade base esteja ligada para o clamp funcionar
+            }
+        }
     }
 }
