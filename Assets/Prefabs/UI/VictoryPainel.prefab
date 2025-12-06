@@ -1078,6 +1078,8 @@ GameObject:
   - component: {fileID: 3585085625991336140}
   - component: {fileID: 5488990647027434256}
   - component: {fileID: 2845474221403773753}
+  - component: {fileID: 6626051628182963274}
+  - component: {fileID: 4500431648425587254}
   m_Layer: 5
   m_Name: ContinueBTN
   m_TagString: Untagged
@@ -1199,6 +1201,34 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &6626051628182963274
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3087841385567942805}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6ec0a8c3c37ca041bd0f6ed59970b96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverSoundName: UIHover
+  ignoreTimeScale: 1
+--- !u!114 &4500431648425587254
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3087841385567942805}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9e24b8a9589f24986399dadda7ccc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSoundName: UISoundClick
+  ignoreTimeScale: 1
 --- !u!1 &3460042158978893544
 GameObject:
   m_ObjectHideFlags: 0
@@ -1638,8 +1668,11 @@ MonoBehaviour:
   duration: 0.3
   delay: 0.1
   easeType: 0
+  reverseEaseType: 26
   startScale: {x: 0, y: 0, z: 1}
   tvScanStartScale: {x: 0.01, y: 0.01, z: 1}
+  enableSlide: 1
+  slideOffsetX: -1000
   playOnEnable: 1
   OnPlayStart:
     m_PersistentCalls:

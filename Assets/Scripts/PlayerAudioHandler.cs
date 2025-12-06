@@ -88,7 +88,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
 
         if (AudioManager.instance != null)
         {
-            windSource = AudioManager.instance.PlayLoopingSFX(windSfx, 0f);
+            windSource = AudioManager.instance.PlayLoopingAmbientSFX(windSfx, 0f);
         }
         else
         {
@@ -131,8 +131,6 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnJumpPerformed -= HandleJumpAudio;
-            //InputManager.Instance.OnGrappleStarted -= HandleGrappleStart;
-            //InputManager.Instance.OnGrappleCanceled -= HandleGrappleEnd;
             InputManager.Instance.OnResetToCheckpoint -= PlayDeathSound;
 
             BasePowerUpRing.OnPowerRingActivated -= HandlePowerRingAudio;
@@ -181,6 +179,11 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
                 laserLoopSource.Pause();
             }
 
+            if (windSource != null && windSource.isPlaying)
+            {
+                windSource.Pause();
+            }
+
             if (AudioManager.instance != null)
             {
                 AudioManager.instance.PauseAllSFX();
@@ -194,6 +197,11 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
             {
                 deathSource.UnPause();
                 isPausedManual = false;
+            }
+
+            if (windSource != null && !windSource.isPlaying && windSource.clip != null)
+            {
+                windSource.UnPause();
             }
 
             if (laserLoopSource != null && !laserLoopSource.isPlaying)
@@ -326,24 +334,30 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (windSource == null) return;
 
         float speed = rb.linearVelocity.magnitude;
-
-        float targetVolume = 0f;
+        float targetVolumeLocal = 0f;
 
         if (speed > windMinSpeed)
         {
-            
             float t = Mathf.InverseLerp(windMinSpeed, windMaxSpeed, speed);
-            targetVolume = t * t;
+            targetVolumeLocal = t * t;
         }
 
 
         if (AudioManager.instance != null)
         {
-            float globalSFXVolume = AudioManager.instance.sfxSource.volume;
-            bool isMuted = AudioManager.instance.sfxSource.mute;
-            targetVolume = isMuted ? 0f : targetVolume * globalSFXVolume;
+            float ambientBaseVolume = AudioManager.instance.GetAmbientVolumeBase();
+            float masterVolume = AudioManager.instance.GetMasterVolumeBase();
+            float finalTargetVolume = targetVolumeLocal * ambientBaseVolume * masterVolume;
 
-            windSource.volume = Mathf.MoveTowards(windSource.volume, targetVolume, Time.deltaTime * windFadeSpeed);
+            bool isMuted = windSource.mute || AudioManager.instance.isMasterMuted;
+
+            if (isMuted)
+            {
+                finalTargetVolume = 0f;
+            }
+
+
+            windSource.volume = Mathf.MoveTowards(windSource.volume, finalTargetVolume, Time.deltaTime * windFadeSpeed);
         }
     }
 
@@ -382,7 +396,7 @@ public class PlayerAudioHandler : MonoBehaviour, IResettable
         if (ringSfxOptions != null && ringSfxOptions.Length > 0)
         {
             int idx = Random.Range(0, ringSfxOptions.Length);
-            AudioManager.instance.PlayUnscaledSFX(ringSfxOptions[idx]);
+            AudioManager.instance.PlaySFX(ringSfxOptions[idx]);
         }
 
         doubleJumpAvailable = true;
