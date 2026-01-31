@@ -3,11 +3,21 @@ using System.Collections;
 using TMPro;
 using DG.Tweening;
 using UnityEngine;
+using Zenject;
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(Collider))]
 public class PlayerMovementController : MonoBehaviour
 {
+	private InputManager _inputManager;
+
+	[Inject]
+	public void Construct(InputManager inputManager)
+	{
+		_inputManager = inputManager;
+	}
+	
+
 	#region Events
 	public event Action OnGroundLanded;
 	public event Action OnLeftGround;
@@ -129,17 +139,17 @@ public class PlayerMovementController : MonoBehaviour
 
 	private void OnEnable()
 	{
-		InputManager.Instance.OnMove += SetMoveInput;
-		InputManager.Instance.OnJumpPerformed += ProcessJumpRequest;
-		InputManager.Instance.OnJumpCanceled += HandleJumpRelease;
+		_inputManager.OnMove += SetMoveInput;
+		_inputManager.OnJumpPerformed += ProcessJumpRequest;
+		_inputManager.OnJumpCanceled += HandleJumpRelease;
 	}
 
 	private void OnDisable()
 	{
-		if (InputManager.Instance == null) return;
-		InputManager.Instance.OnMove -= SetMoveInput;
-		InputManager.Instance.OnJumpPerformed -= ProcessJumpRequest;
-		InputManager.Instance.OnJumpCanceled -= HandleJumpRelease;
+		if (_inputManager == null) return;
+		_inputManager.OnMove -= SetMoveInput;
+		_inputManager.OnJumpPerformed -= ProcessJumpRequest;
+		_inputManager.OnJumpCanceled -= HandleJumpRelease;
 	}
 
 	private void Update()
